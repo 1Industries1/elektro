@@ -1,0 +1,157 @@
+UPGRADE_ROLLER:
+
+20% Damage
++5% Crit Chance
+20% FireRate
+20% AltFireRate
++10m TargetRange
+
++2 Bullets GrenadeSalvo
+
++15 MaxHP
++5% Lifesteal
++15% XP Gain
++15% Pickup Range
++1% Powerup Drop Chance
+
+
+
+
+
+
+
+Waffen-Upgrades (direkt auf die Kanone)
+
+Schaden+ – Grundschaden rauf, skaliert gut mit Tick-Treffern.
+
+Proj+ – Zusätzliche Projektile; enger Winkel für Kanonenfeeling.
+
+Durchschlagkern – x Feinde pro Schuss durchdringen.
+
+Kettenblitz – Treffer springen auf n weitere Ziele über.
+
+Verzweigung – Jeder 3. Treffer splittet in 2 schwächere Funken.
+
+Rückprall – Projektile prallen an Wänden/Bildschirmkanten ab.
+
+Überladung – Markiert Gegner; 3 Markierungen → Mini-Nova.
+
+Leitfilm – Getroffene Gegner leiten 20% des Schadens an Nachbarn.
+
+Kritische Entladung – Krit-Chance & Krit-Multiplikator für Elektro.
+
+Betäubungsimpuls – Kleine Stun-Chance pro Tick.
+
+EMP-Störung – Kurzer Silence auf Elites/Zaubernde.
+
+Ionenbohrer – +Rüstungspenetration / ignoriert Schadensreduzierung.
+
+Überhitzung – +30% Schaden, −15% Feuerrate (Risikoreward).
+
+Präzisionsspule – Genauigkeit rauf, kritische Reichweite ↑.
+
+Ladungsentzug – Lifesteal in klein bei Überladungs-Explosionen.
+
+Kapazitätsbank – Baut Ladungen pro Sek.; feuert bei voller Bank eine große Entladung.
+
+Kondensatorfeld – Je mehr Gegner in Nähe, desto höher dein Schaden.
+
+Kaskade – Jeder Kill mit Kettenblitz erhöht kurzzeitig Kettenreichweite.
+
+Superleiter – Elektro ignoriert 50% „Nass/Kälte“-Widerstände & liebt „Nass“-Synergien.
+
+Staub-Ionisation – Projektile hinterlassen kurz schädliche Funkenwolken.
+
+
+
+Crowd-Control & Utility
+
+Magnetfeld – XP-Pickup-Radius ↑, zieht auch Münzen leicht an.
+
+Flux-Sprint – Movespeed ↑; nach Dash kurz +Feuerrate.
+
+Blinkspule (Dash) – Kurzer Teleport mit Mikro-Schockwelle.
+
+Trägheitsdämpfer – Knockback auf Gegner, Mindestabstand halten.
+
+Energieschild – Regenerierbarer Schild; lädt schneller nach Kills.
+
+Blitzwächter – 1–3 Orbital-Drohnen, die periodisch entladen.
+
+Vakuumimpuls – Kurzer Sog, gruppiert Mobs fürs AOE-Killen.
+
+Überbleibsel – Getötete Gegner lassen geladene Kugeln fallen (aufsammeln → Sofort-Nova).
+
+Überfluss – +Gold/+XP-Multiplikator, aber +5% Gegnerdichte (leichter „Fluch“).
+
+Reparatur-Protokoll – Heile 1 HP alle X Sekunden, verdoppelt nach Elite-Kill.
+
+
+
+Status/Synergien (für Builds)
+
+Leitfähigkeit – Deine Treffer geben „Leiter“-Debuff: +20% erhaltener Elektro-Schaden.
+
+Nassmacher – Sehr niedrige Chance, „Nass“ aufzutragen (Elektro macht +25% auf Nass).
+
+Frostschock – Kleine Chance, kurz zu verlangsamen; +Schaden vs. eingefrorene Ziele.
+
+Ionenbrand – Elektro-Ticks können brennende Ziele zum Explodieren bringen.
+
+
+
+Rarität-Ideen (selten/legendär)
+
+Mini-Tesla (selten) – Alle 5 Sek. freier Kettenblitz vom Spieler aus.
+
+Donnersiegel (legendär) – Jeder 10. Schuss garantiert kritisch und springt unbegrenzt, aber −20% Basisschaden.
+
+Sturmauge (legendär) – Stehend bleiben lädt einen Ring aus Blitzen; bewegt dich → entlädt für hohen AOE-Schaden.
+
+Nullfeld (legendär) – Elites verlieren temporär ihre Auren nach EMP-Treffer.
+
+
+
+Passiv-Items (für Synergie/Meta)
+
+Kühlkörper – Verringert Überhitzungs-Malus, mehr Dauerfeuer.
+
+Hochspannung – +Max-Ladungen für Kapazitätsbank.
+
+Isolationshandschuhe – −Schaden bei Berührung, +Pickup-Range.
+
+Taktischer Kern – +Proj+ cap ↑ und Streuung ↓.
+
+Messspitze – Krit-Chance skaliert zusätzlich mit Kills.
+
+Blitzfiole – Consumable: Sofort 1 große Entladung.
+
+Konduktor-Platte – Stehen auf Platte (spawnt selten) erhöht Schaden stark.
+
+
+
+Evolutions (Rezepte bei Max-Level + passivem Item)
+
+Ionenkanone = Elektro-Kanone + Kapazitätsbank → Feuert periodisch einen dicken Strahl, der durch alles schneidet.
+
+Sturmspule = Elektro-Kanone + Kettenblitz → Ketten ohne Zielverlust; jeder Sprung +5% Schaden.
+
+Donnerkeil = Elektro-Kanone + Durchschlagkern → Projektile bohren & hinterlassen Funken-Spur.
+
+Blitzkranz = Elektro-Kanone + Blitzwächter → Orbitale verbinden sich zu kreisendem Storm-Ring.
+
+EMP-Emitter = Elektro-Kanone + Betäubungsimpuls → Regelmäßiger Flächen-Stun, Elites erhalten extra Schaden.
+
+
+
+Balancing-Hinweise (kurz)
+
+Verteile starke Effekte auf Synergien/Evolutions, damit frühe Runs nicht zu trivial werden.
+
+Gib „Kettenblitz“ und „Durchschlagkern“ weiche Caps (abnehmende Renditen).
+
+Legendäre Items sollten Build-definierend sein, aber mit klaren Trade-offs.
+
+Lass „Nass/Frost/Brand“ nur als Bonus-Synergien existieren, damit Elektro-Solo-Builds trotzdem funktionieren.
+
+Wenn du magst, bastle ich dir daraus gleich Loot-Pools (Common/Rare/Epic/Legendary) mit Drop-Raten und Level-Kurven.
