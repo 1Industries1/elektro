@@ -7,39 +7,84 @@ using System.Linq;
 public class PlayerXP : NetworkBehaviour
 {
     [Header("Progression")]
+    [Tooltip("Aktuelles Spielerlevel (startet bei 1).")]
     public int level = 1;
+
+    [Tooltip("Gesammelte XP im aktuellen Level.")]
     public int xp = 0;
-    public int xpToNext = 10;
-    public int baseIncrease = 5;    // xpToNext += baseIncrease + level * perLevelScale
-    public int perLevelScale = 5;
+
+    [Tooltip("Startkosten für Level 1 → 2.")]
+    public int baseCost = 10;
+
+    [Tooltip("Multiplikator pro Level (z. B. 1.12 = +12 % je Level).")]
+    [Range(1.05f, 1.25f)]
+    public float costMult = 1.12f;
+
+    [SerializeField, Tooltip("XP, die zum nächsten Level benötigt werden (readonly).")]
+    private int _xpToNext;
+
+    /// <summary>Öffentlicher Readonly-Zugriff (z. B. für HUD/Debug).</summary>
+    public int xpToNext => _xpToNext;
 
     [Header("State")]
-    private bool _awaitingChoice = false;           // blockt weitere Offers bis gewählt
+    [Tooltip("Blockt weitere Upgrade-Angebote bis eine Wahl getroffen wurde.")]
+    private bool _awaitingChoice = false;
+
     private PlayerUpgrades _upgrades;
 
     // Speichert die zuletzt gerollten 3 (encodeten) Choices für diesen Spieler (Server-seitig).
     private int[] _lastChoicesEncoded = null;
 
+    // ======================== Lifecycle ========================
+
     private void Awake()
     {
         _upgrades = GetComponent<PlayerUpgrades>();
+        RecalcCost(); // Initialisieren
     }
 
-    // ===== Server: XP hinzufügen =====
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        // Editor-Schutz + Live-Vorschau im Inspector
+        costMult = Mathf.Clamp(costMult, 1.01f, 2.0f);
+        baseCost = Mathf.Max(1, baseCost);
+        level = Mathf.Max(1, level);
+
+        RecalcCost();
+    }
+#endif
+
+    /// <summary>
+    /// Berechnet die Kosten für das nächste Level: baseCost * costMult^(level-1)
+    /// </summary>
+    private void RecalcCost()
+    {
+        double pow = Math.Pow(costMult, Math.Max(0, level - 1));
+        _xpToNext = Mathf.Max(1, Mathf.RoundToInt((float)(baseCost * pow)));
+    }
+
+    // ======================== XP / Level ========================
+
+    /// <summary>
+    /// Server: XP hinzufügen. Kann mehrere Levelups auf einmal auslösen.
+    /// </summary>
     public void Server_AddXP(int amount)
     {
         if (!IsServer || amount <= 0) return;
+
         xp += amount;
 
         // HUD (Owner)
         XpUpdateOwnerClientRpc(level, xp, xpToNext, OwnerClientId);
 
-        // Mehrere Stufen auf einmal möglich (z.B. großer Drop)
+        // Mehrere Stufen auf einmal möglich (z. B. großer XP-Drop)
         while (xp >= xpToNext)
         {
             xp -= xpToNext;
             level++;
-            xpToNext += baseIncrease + (level * perLevelScale);
+
+            RecalcCost();
 
             // Wenn bereits eine Auswahl offen ist, spare weitere Offers auf
             if (!_awaitingChoice)
@@ -49,7 +94,11 @@ public class PlayerXP : NetworkBehaviour
         }
     }
 
-    // ===== Server: 3 Upgrade-Optionen anbieten (encodet mit Rarity) =====
+    // ======================== Upgrades: Angebot ========================
+
+    /// <summary>
+    /// Server: 3 Upgrade-Optionen anbieten (encodet mit Rarity).
+    /// </summary>
     private void OfferUpgradeChoices()
     {
         if (!IsServer || _awaitingChoice) return;
@@ -68,7 +117,8 @@ public class PlayerXP : NetworkBehaviour
         OfferUpgradesClientRpc(choices, p);
     }
 
-    // ===== Client: UI öffnen =====
+    // ======================== Client: UI öffnen ========================
+
     [ClientRpc]
     private void OfferUpgradesClientRpc(int[] choices, ClientRpcParams _ = default)
     {
@@ -76,7 +126,8 @@ public class PlayerXP : NetworkBehaviour
         LevelUpUI.Instance?.Show(choices, lockInput: true);
     }
 
-    // ===== Server: Wahl entgegennehmen (encoded choiceId) =====
+    // ======================== Server: Wahl entgegennehmen ========================
+
     [ServerRpc]
     public void ChooseUpgradeServerRpc(int choiceId, ServerRpcParams rpcParams = default)
     {
@@ -94,7 +145,13 @@ public class PlayerXP : NetworkBehaviour
         }
 
         if (_upgrades == null) _upgrades = GetComponent<PlayerUpgrades>();
-        if (_upgrades == null) { Debug.LogWarning("[PlayerXP] No PlayerUpgrades found"); ChoiceResultOwnerClientRpc(false, choiceId, OwnerClientId); _awaitingChoice = false; return; }
+        if (_upgrades == null)
+        {
+            Debug.LogWarning("[PlayerXP] No PlayerUpgrades found");
+            ChoiceResultOwnerClientRpc(false, choiceId, OwnerClientId);
+            _awaitingChoice = false;
+            return;
+        }
 
         // Muss eine der zuletzt angebotenen Karten sein
         if (_lastChoicesEncoded == null || Array.IndexOf(_lastChoicesEncoded, choiceId) < 0)
@@ -110,8 +167,8 @@ public class PlayerXP : NetworkBehaviour
         var type   = UpgradeRoller.ResolveFromChoice(choiceId);
         int stacks = UpgradeRoller.StacksForChoice(choiceId);
 
-        int cur = _upgrades.GetLevel(type);
-        int max = _upgrades.GetMaxLevel(type);
+        int cur  = _upgrades.GetLevel(type);
+        int max  = _upgrades.GetMaxLevel(type);
         int room = Mathf.Max(0, max - cur);
 
         if (room <= 0)
@@ -139,16 +196,18 @@ public class PlayerXP : NetworkBehaviour
         if (xp >= xpToNext) OfferUpgradeChoices();
     }
 
-    // Vergibt N Level, ohne dass du zwingend deine PlayerUpgrades-Overload brauchst.
+    /// <summary>
+    /// Vergibt N Level, ohne dass du zwingend deine PlayerUpgrades-Overload brauchst.
+    /// FIX: pro Iteration 1 Level, nicht 'levels'.
+    /// </summary>
     private void ApplyLevelsSafely(PlayerUpgrades up, UpgradeType type, int levels)
     {
-        // Wenn du eine Overload hast: up.PurchaseFreeLevel_Server(type, levels);
-        // Hier fallback über Schleife:
         for (int i = 0; i < levels; i++)
-            up.PurchaseFreeLevel_Server(type, levels);
+            up.PurchaseFreeLevel_Server(type, 1); // 1, nicht 'levels'
     }
 
-    // ===== Client: Ergebnis & UI schließen =====
+    // ======================== Client: Ergebnis & HUD ========================
+
     [ClientRpc]
     private void ChoiceResultOwnerClientRpc(bool ok, int choiceId, ulong forOwner, ClientRpcParams _ = default)
     {
@@ -158,11 +217,23 @@ public class PlayerXP : NetworkBehaviour
         // Optional: Toast/SFX hier
     }
 
-    // ===== Client: XP HUD =====
     [ClientRpc]
     private void XpUpdateOwnerClientRpc(int lvl, int cur, int next, ulong forOwner, ClientRpcParams _ = default)
     {
         if (!(IsOwner && NetworkManager.Singleton.LocalClientId == forOwner)) return;
         PlayerHUD.Instance?.SetXP(lvl, cur, next); // optional
+    }
+
+    // ======================== Utility (optional) ========================
+
+    /// <summary>
+    /// Optionaler Soft-Cap: ab Lvl 30 wird's leicht teurer.
+    /// Aufruf bei Bedarf z. B. im LevelUp-Loop nach level++:
+    /// if (level >= 30) BumpSoftCap(0.02f);
+    /// </summary>
+    private void BumpSoftCap(float addMult = 0.02f)
+    {
+        costMult = Mathf.Max(1.0f, costMult + Mathf.Abs(addMult));
+        RecalcCost();
     }
 }

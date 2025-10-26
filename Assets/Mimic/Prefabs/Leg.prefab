@@ -10,9 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 9086833611668175798}
   - component: {fileID: 5502688029690540395}
+  - component: {fileID: 2336278065694270157}
   - component: {fileID: 6164918350687002688}
   - component: {fileID: 2512604949561864013}
-  - component: {fileID: 2336278065694270157}
   m_Layer: 0
   m_Name: Leg
   m_TagString: Untagged
@@ -43,6 +43,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1682633662898237459}
   m_Mesh: {fileID: 0}
+--- !u!114 &2336278065694270157
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1682633662898237459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d689dd698bef9544bb6e1f078a8757e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isDeployed: 0
+  footPosition: {x: 0, y: 0, z: 0}
+  maxLegDistance: 0
+  legResolution: 0
+  legLine: {fileID: 6164918350687002688}
+  handlesCount: 8
+  legMinHeight: 0.6
+  legMaxHeight: 1.2
+  handles: []
+  handleOffsetMinRadius: 0.2
+  handleOffsetMaxRadius: 0.65
+  handleOffsets: []
+  finalFootDistance: 0.35
+  growCoef: 3
+  growTarget: 1
+  progression: 0
+  minDuration: 0.5
+  rotationSpeed: 180
+  minRotSpeed: 15
+  maxRotSpeed: 150
+  oscillationSpeed: 0
+  minOscillationSpeed: 20
+  maxOscillationSpeed: 100
+  myColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!120 &6164918350687002688
 LineRenderer:
   serializedVersion: 2
@@ -226,39 +262,3 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &2336278065694270157
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1682633662898237459}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7d689dd698bef9544bb6e1f078a8757e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  isDeployed: 0
-  footPosition: {x: 0, y: 0, z: 0}
-  maxLegDistance: 0
-  legResolution: 0
-  legLine: {fileID: 0}
-  handlesCount: 8
-  legMinHeight: 0.6
-  legMaxHeight: 1.2
-  handles: []
-  handleOffsetMinRadius: 0.2
-  handleOffsetMaxRadius: 0.65
-  handleOffsets: []
-  finalFootDistance: 0.35
-  growCoef: 3
-  growTarget: 1
-  progression: 0
-  minDuration: 0.5
-  rotationSpeed: 180
-  minRotSpeed: 15
-  maxRotSpeed: 150
-  oscillationSpeed: 0
-  minOscillationSpeed: 20
-  maxOscillationSpeed: 100
-  myColor: {r: 0, g: 0, b: 0, a: 0}

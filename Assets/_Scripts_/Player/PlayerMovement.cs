@@ -381,8 +381,13 @@ public class PlayerMovement : NetworkBehaviour
         // 2) Speed-Multiplikator durch Rollen
         float speedMult = srvRollHeld ? rollSpeedMultiplier : 1f;
 
+        // >>> SPIDER: Slow anwenden <<<
+        float slow = 1f;
+        var slowRecv = GetComponent<PlayerSlowReceiver>();
+        if (slowRecv != null) slow = slowRecv.CurrentMultiplier;
+
         float ocMove = overclocks ? overclocks.GetMoveSpeedMult() : 1f;
-        Vector3 targetVelocity = moveDirection * moveSpeed * speedMult * control * ocMove;
+        Vector3 targetVelocity = moveDirection * moveSpeed * speedMult * control * ocMove * slow;
 
         Vector3 currentVel   = rb.linearVelocity;
         Vector3 horizontalVel = new Vector3(currentVel.x, 0, currentVel.z);

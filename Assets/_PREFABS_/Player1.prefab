@@ -2115,6 +2115,7 @@ GameObject:
   - component: {fileID: 4061243089856759362}
   - component: {fileID: 7755142805804514707}
   - component: {fileID: 435328487496650130}
+  - component: {fileID: 3796743474270066251}
   - component: {fileID: 5401752439710392122}
   - component: {fileID: 7025646431992723550}
   - component: {fileID: 5225748196820303031}
@@ -2331,17 +2332,22 @@ MonoBehaviour:
   cannon: {fileID: 2746908290376024938}
   health: {fileID: 435328487496650130}
   grenadeLauncher: {fileID: 1481329118813977962}
+  movement: {fileID: 1882036456320694656}
   maxLevel_FireRate: 15
   maxLevel_AltFireRate: 15
   maxLevel_TargetRange: 15
   maxLevel_MaxHP: 12
   maxLevel_Damage: 15
   maxLevel_GrenadeSalvo: 10
+  maxLevel_Magnet: 10
+  maxLevel_MoveSpeed: 12
   fireRateMultPerLevel: 0.95
   altFireRateMultPerLevel: 0.95
   targetRangePerLevel: 10
   maxHPPerLevel: 15
   damageMultPerLevel: 1.05
+  magnetRangeMultPerLevel: 1.15
+  moveSpeedMultPerLevel: 1.08
   FireRateLevel:
     m_InternalValue: 0
   AltFireRateLevel:
@@ -2353,6 +2359,10 @@ MonoBehaviour:
   DamageLevel:
     m_InternalValue: 0
   GrenadeSalvoLevel:
+    m_InternalValue: 0
+  MagnetLevel:
+    m_InternalValue: 0
+  MoveSpeedLevel:
     m_InternalValue: 0
 --- !u!114 &4061243089856759362
 MonoBehaviour:
@@ -2405,6 +2415,18 @@ MonoBehaviour:
   iFrames: 0.4
   rollDR: 0.3
   armorFlat: 0
+--- !u!114 &3796743474270066251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a42b0c5230d73de4489b1afe60373aa9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
 --- !u!114 &5401752439710392122
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2419,9 +2441,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   level: 1
   xp: 0
-  xpToNext: 75
-  baseIncrease: 28
-  perLevelScale: 4
+  baseCost: 20
+  costMult: 1.12
+  _xpToNext: 20
 --- !u!114 &7025646431992723550
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2443,7 +2465,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 37cc4b9e68a85c042999d44391f05cd7, type: 3}
   m_Name: 

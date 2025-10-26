@@ -11,8 +11,10 @@ public static class UpgradeRoller
     public const int MaxHP        = 4;
     public const int Damage       = 5;
     public const int GrenadeSalvo = 6;
+    public const int Magnet       = 7;
+    public const int MoveSpeed    = 8;
 
-    private static readonly int[] pool = { FireRate, AltFire, Range, MaxHP, Damage, GrenadeSalvo };
+    private static readonly int[] pool = { FireRate, AltFire, Range, MaxHP, Damage, GrenadeSalvo, Magnet, MoveSpeed };
 
     // ======== Rarity-Konfig ========
     // Stacks, die eine Rarity gewährt (für "stapelnde" Upgrades)
@@ -59,7 +61,7 @@ public static class UpgradeRoller
     // Text-Badges (ersetzt "star")
     public static readonly Dictionary<Rarity, string> RarityBadge = new()
     {
-        { Rarity.Common,    ""     },
+        { Rarity.Common,    "(Common)"     },
         { Rarity.Rare,      "(Rare)"  },
         { Rarity.Epic,      "(Epic)" },
         { Rarity.Legendary, "(LEGENDARY)"},
@@ -137,6 +139,8 @@ public static class UpgradeRoller
         MaxHP        => UpgradeType.MaxHP,
         Damage       => UpgradeType.Damage,
         GrenadeSalvo => UpgradeType.GrenadeSalvo,
+        Magnet       => UpgradeType.Magnet,
+        MoveSpeed    => UpgradeType.MoveSpeed,
         _            => UpgradeType.MaxHP
     };
 
@@ -184,6 +188,8 @@ public static class UpgradeRoller
         MaxHP        => "upgrade.maxHP",
         Damage       => "upgrade.damage",
         GrenadeSalvo => "upgrade.grenadeSalvo",
+        Magnet       => "upgrade.magnet",
+        MoveSpeed    => "upgrade.moveSpeed",
         _            => "upgrade.generic"
     };
 
@@ -195,6 +201,8 @@ public static class UpgradeRoller
         MaxHP        => "Max HP",
         Damage       => "Damage",
         GrenadeSalvo => "Grenade Salvo",
+        Magnet       => "Magnet",
+        MoveSpeed   => "Move Speed",
         _            => "Upgrade"
     };
 

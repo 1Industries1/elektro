@@ -13,22 +13,23 @@ public enum EnemyClass { Normal, Elite, Boss }
 public static class OverclockLoot
 {
     // --- Basischancen je Kill ---
-    // Normal: 1% Dropchance
-    public const float NORMAL_ROLL = 0.02f;
+    // Normal: 3% Dropchance
+    public const float NORMAL_ROLL = 0.03f;
     // Elite:  40% Dropchance
-    public const float ELITE_ROLL  = 0.40f;
+    public const float ELITE_ROLL = 0.40f;
 
     // --- Typverteilungen bei erfolgreichem Roll ---
-    // Normal: 80% Instant, 20% Tactical
+    
+    // Normal: 35% Instant, 65% Tactical
     private static readonly (OverclockKind kind, float w)[] NormalDist = {
-        (OverclockKind.Instant, 0.8f),
-        (OverclockKind.Tactical, 0.2f)
+        (OverclockKind.Instant, 0.35f),
+        (OverclockKind.Tactical, 0.65f)
     };
 
-    // Elite: 60% Instant, 40% Tactical
+    // Elite: 40% Instant, 60% Tactical
     private static readonly (OverclockKind kind, float w)[] EliteDist = {
-        (OverclockKind.Instant, 0.6f),
-        (OverclockKind.Tactical, 0.4f)
+        (OverclockKind.Instant, 0.4f),
+        (OverclockKind.Tactical, 0.6f)
     };
 
     /// <summary>

@@ -9,6 +9,7 @@ public class PlayerUpgrades : NetworkBehaviour
     [SerializeField] private CannonController cannon;
     [SerializeField] private PlayerHealth health;
     [SerializeField] private GrenadeLauncherController grenadeLauncher;
+    [SerializeField] private PlayerMovement movement;
 
     [Header("Limits")]
     public int maxLevel_FireRate       = 10;
@@ -17,6 +18,8 @@ public class PlayerUpgrades : NetworkBehaviour
     public int maxLevel_MaxHP          = 12;
     public int maxLevel_Damage  = 15;
     public int maxLevel_GrenadeSalvo = 8;
+    public int maxLevel_Magnet         = 10;
+    public int maxLevel_MoveSpeed      = 12;
 
     [Header("Effect per level")]
     [Tooltip("FireRate sinkt multiplikativ pro Stufe (kleiner = schneller)")]
@@ -26,6 +29,8 @@ public class PlayerUpgrades : NetworkBehaviour
     public float maxHPPerLevel         = 15f;                  // +15 HP/Level
     [Range(1.01f, 1.5f)] public float damageMultPerLevel = 1.15f; // +15% Damage
     public const int GrenadePerLevel = 1;
+    [Range(1.01f, 1.5f)] public float magnetRangeMultPerLevel = 1.15f; // Magnet: Reichweite ×
+    [Range(1.01f, 1.5f)] public float moveSpeedMultPerLevel   = 1.08f; // Move: Speed ×
 
 
     // --- Networked Upgrade Level ---
@@ -35,6 +40,8 @@ public class PlayerUpgrades : NetworkBehaviour
     public NetworkVariable<int> MaxHPLevel          = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> DamageLevel         = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> GrenadeSalvoLevel   = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> MagnetLevel         = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> MoveSpeedLevel      = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     // Baseline-Werte (aus Komponenten gelesen)
     private float _baseFireRate;
@@ -42,6 +49,7 @@ public class PlayerUpgrades : NetworkBehaviour
     private float _baseTargetRange;
     private float _baseMaxHP;
     private int _baseGrenadeSalvo;
+    private float _baseMoveSpeed;
 
     private void Awake()
     {
@@ -53,18 +61,22 @@ public class PlayerUpgrades : NetworkBehaviour
     {
         if (cannon != null)
         {
-            _baseFireRate    = cannon.fireRate;
+            _baseFireRate = cannon.fireRate;
             _baseAltFireRate = cannon.altFireRate;
             _baseTargetRange = cannon.targetRange;
         }
+        
         if (health != null)
-        {
             _baseMaxHP = health.GetMaxHP();
-        }
+
         if (grenadeLauncher != null)
-        {
             _baseGrenadeSalvo = grenadeLauncher.salvoCount;
-        }
+
+        if (!movement) movement = GetComponent<PlayerMovement>();
+
+        if (movement != null)
+            _baseMoveSpeed = movement.moveSpeed;
+
         ApplyAllUpgrades();
 
         FireRateLevel.OnValueChanged      += (_, __) => ApplyFireRate();
@@ -72,7 +84,9 @@ public class PlayerUpgrades : NetworkBehaviour
         RangeLevel.OnValueChanged         += (_, __) => ApplyRange();
         MaxHPLevel.OnValueChanged         += (_, __) => ApplyMaxHP();
         DamageLevel.OnValueChanged        += (_, __) => { /* UI hook */ };
-        GrenadeSalvoLevel.OnValueChanged  += (_, __) => ApplyGrenadeSalvo();
+        GrenadeSalvoLevel.OnValueChanged += (_, __) => ApplyGrenadeSalvo();
+        MoveSpeedLevel.OnValueChanged     += (_, __) => ApplyMoveSpeed();
+        MagnetLevel.OnValueChanged        += (_, __) => { /* nur Getter, keine direkte Komponente */ };
     }
 
     // ==================== Public Infos ====================
@@ -85,6 +99,8 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.MaxHP         => MaxHPLevel.Value,
         UpgradeType.Damage        => DamageLevel.Value,
         UpgradeType.GrenadeSalvo  => GrenadeSalvoLevel.Value,
+        UpgradeType.Magnet        => MagnetLevel.Value,
+        UpgradeType.MoveSpeed     => MoveSpeedLevel.Value,
         _ => 0
     };
 
@@ -96,6 +112,8 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.MaxHP         => maxLevel_MaxHP,
         UpgradeType.Damage        => maxLevel_Damage,
         UpgradeType.GrenadeSalvo  => maxLevel_GrenadeSalvo,
+        UpgradeType.Magnet        => maxLevel_Magnet,
+        UpgradeType.MoveSpeed     => maxLevel_MoveSpeed,
         _ => 0
     };
 
@@ -130,6 +148,13 @@ public class PlayerUpgrades : NetworkBehaviour
                     return Mathf.Max(1, baseVal + GrenadePerLevel * GrenadeSalvoLevel.Value);
                 }
 
+            case UpgradeType.Magnet:
+                return Mathf.Pow(magnetRangeMultPerLevel, MagnetLevel.Value);
+     
+            case UpgradeType.MoveSpeed:
+                if (movement) return movement.moveSpeed;
+                return Mathf.Max(0.1f, _baseMoveSpeed * Mathf.Pow(moveSpeedMultPerLevel, MoveSpeedLevel.Value));
+
             default:
                 return 0f;
         }
@@ -137,6 +162,11 @@ public class PlayerUpgrades : NetworkBehaviour
 
     // Öffentliche Abfrage für GL
     public int GetGrenadeSalvoBonus() => GrenadePerLevel * GrenadeSalvoLevel.Value;
+
+
+    // Einheitlicher Multiplikator
+    public float GetDamageMultiplier() => Mathf.Pow(damageMultPerLevel, DamageLevel.Value);
+    public float GetMagnetRangeMult() => Mathf.Pow(magnetRangeMultPerLevel, MagnetLevel.Value);
 
 
     private void ApplyGrenadeSalvo()
@@ -175,8 +205,6 @@ public class PlayerUpgrades : NetworkBehaviour
         return new Vector2(baseDmg * 1f * mult, baseDmg * 3f * mult);
     }
 
-    // Einheitlicher Multiplikator
-    public float GetDamageMultiplier() => Mathf.Pow(damageMultPerLevel, DamageLevel.Value);
 
     public string GetCurrentDisplay(UpgradeType type)
     {
@@ -185,22 +213,72 @@ public class PlayerUpgrades : NetworkBehaviour
             case UpgradeType.FireRate:
             case UpgradeType.AltFireRate: return $"{GetCurrentValue(type):0.00}s";
             case UpgradeType.TargetRange: return $"{GetCurrentValue(type):0.#} m";
-            case UpgradeType.MaxHP:       return $"{GetCurrentValue(type):0.#} HP";
+            case UpgradeType.MaxHP: return $"{GetCurrentValue(type):0.#} HP";
 
             case UpgradeType.Damage:
-            {
-                Vector2 p = GetPrimaryDamageRangeCurrent();
-                Vector2 a = GetAltDamageRangeCurrent();
-                // kompakte Doppelanzeige
-                return $"P: {p.x:0.#}–{p.y:0.#} | A: {a.x:0.#}–{a.y:0.#}";
-            }
+                {
+                    Vector2 p = GetPrimaryDamageRangeCurrent();
+                    Vector2 a = GetAltDamageRangeCurrent();
+                    // kompakte Doppelanzeige
+                    return $"P: {p.x:0.#}–{p.y:0.#} | A: {a.x:0.#}–{a.y:0.#}";
+                }
             case UpgradeType.GrenadeSalvo:
                 return $"{(int)GetCurrentValue(type)}×";
+
+            case UpgradeType.Magnet:
+                return $"{GetCurrentValue(type):0.00}×";
+
+            case UpgradeType.MoveSpeed:
+                return $"{GetCurrentValue(type):0.##} m/s";
 
             default:
                 return GetCurrentValue(type).ToString("0.##");
         }
     }
+    
+    // Liefert den *effektiven* Wert so, als hätte das angegebene Stat genau 'level' Stufen.
+    // Nutzt die gespeicherten Baselines (_baseX) + deine per-Level Regeln.
+    public float GetCurrentValueAtLevel(UpgradeType type, int level)
+    {
+        level = Mathf.Max(0, level);
+
+        switch (type)
+        {
+            case UpgradeType.FireRate:
+                // kleiner = schneller (Sekunden/Schuss)
+                return Mathf.Max(0.01f, _baseFireRate * Mathf.Pow(fireRateMultPerLevel, level));
+
+            case UpgradeType.AltFireRate:
+                return Mathf.Max(0.1f, _baseAltFireRate * Mathf.Pow(altFireRateMultPerLevel, level));
+
+            case UpgradeType.TargetRange:
+                return Mathf.Max(0f, _baseTargetRange + level * targetRangePerLevel);
+
+            case UpgradeType.MaxHP:
+                return Mathf.Max(1f, _baseMaxHP + level * maxHPPerLevel);
+
+            case UpgradeType.Damage:
+                // hier ist der „Wert“ der reine Multiplikator (1.0 = Basis, >1 = mehr Schaden)
+                return Mathf.Pow(damageMultPerLevel, level);
+
+            case UpgradeType.GrenadeSalvo:
+                {
+                    int baseVal = (_baseGrenadeSalvo > 0)
+                        ? _baseGrenadeSalvo
+                        : (grenadeLauncher ? grenadeLauncher.salvoCount : 1);
+                    return Mathf.Max(1, baseVal + GrenadePerLevel * level);
+                }
+            
+            case UpgradeType.Magnet:
+                return Mathf.Pow(magnetRangeMultPerLevel, level);
+            case UpgradeType.MoveSpeed:
+                return Mathf.Max(0.1f, _baseMoveSpeed * Mathf.Pow(moveSpeedMultPerLevel, level));
+
+            default:
+                return 0f;
+        }
+    }
+
 
     // ==================== Vergabe (kostenlos) ====================
 
@@ -236,6 +314,8 @@ public class PlayerUpgrades : NetworkBehaviour
                 case UpgradeType.MaxHP:        MaxHPLevel.Value++;        break;
                 case UpgradeType.Damage:       DamageLevel.Value++;       break;
                 case UpgradeType.GrenadeSalvo: GrenadeSalvoLevel.Value++; break;
+                case UpgradeType.Magnet:       MagnetLevel.Value++;       break;
+                case UpgradeType.MoveSpeed:    MoveSpeedLevel.Value++;    break;
             }
         }
     }
@@ -249,6 +329,7 @@ public class PlayerUpgrades : NetworkBehaviour
         ApplyMaxHP();
         // Damage hat keine direkte Komponente zu setzen; Multiplier werden von der Waffe abgefragt
         ApplyGrenadeSalvo();
+        ApplyMoveSpeed();
     }
 
     private void ApplyFireRate()
@@ -286,6 +367,18 @@ public class PlayerUpgrades : NetworkBehaviour
         health.Server_SetMaxHP(newMax, keepRelativeRatio: true);
     }
 
+    private void ApplyMoveSpeed()
+    {
+        if (!movement) return;
+        int lvl = MoveSpeedLevel.Value;
+        float mult = Mathf.Pow(moveSpeedMultPerLevel, lvl);
+        movement.moveSpeed = Mathf.Max(0.1f, _baseMoveSpeed * mult);
+    }
+    
+    // Magnet: keine direkte Apply()-Routine, da Pickup dynamisch pro Spieler fragt (siehe unten)
+    
+    
+
 }
 
 public enum UpgradeType : int
@@ -295,5 +388,7 @@ public enum UpgradeType : int
     TargetRange = 2,
     MaxHP = 3,
     Damage = 4,
-    GrenadeSalvo = 5
+    GrenadeSalvo = 5,
+    Magnet = 6,
+    MoveSpeed = 7
 }

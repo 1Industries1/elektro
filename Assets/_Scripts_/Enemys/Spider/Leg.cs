@@ -11,44 +11,42 @@ namespace MimicSpace
         public Vector3 footPosition;
         public float maxLegDistance;
         public int legResolution;
-        //public GameObject legObject;
+
         public LineRenderer legLine;
         public int handlesCount = 8; // 8 (7 legs + 1 finalfoot)
 
-        public float legMinHeight;
-        public float legMaxHeight;
+        public float legMinHeight = 0.3f;
+        public float legMaxHeight = 1.1f;
         float legHeight;
         public Vector3[] handles;
-        public float handleOffsetMinRadius;
-        public float handleOffsetMaxRadius;
+        public float handleOffsetMinRadius = 0.05f;
+        public float handleOffsetMaxRadius = 0.25f;
         public Vector3[] handleOffsets;
-        public float finalFootDistance;
+        public float finalFootDistance = 0.3f;
 
-        public float growCoef;
+        public float growCoef = 5f;
         public float growTarget = 1;
 
-        [Range(0, 1f)]
-        public float progression;
+        [Range(0, 1f)] public float progression;
 
         bool isRemoved = false;
         bool canDie = false;
-        public float minDuration;
+        public float minDuration = 0.4f;
 
         [Header("Rotation")]
-        public float rotationSpeed;
-        public float minRotSpeed;
-        public float maxRotSpeed;
+        public float rotationSpeed = 30f;
+        public float minRotSpeed = 20f;
+        public float maxRotSpeed = 50f;
         float rotationSign = 1;
-        public float oscillationSpeed;
-        public float minOscillationSpeed;
-        public float maxOscillationSpeed;
+        public float oscillationSpeed = 40f;
+        public float minOscillationSpeed = 30f;
+        public float maxOscillationSpeed = 60f;
         float oscillationProgress;
 
         public Color myColor;
 
         public void Initialize(Vector3 footPosition, int legResolution, float maxLegDistance, float growCoef, Mimic myMimic, float lifeTime)
         {
-            myColor = new Color(Random.Range(0, 1f), Random.Range(0, 1f), Random.Range(0, 1f));
             this.footPosition = footPosition;
             this.legResolution = legResolution;
             this.maxLegDistance = maxLegDistance;
@@ -56,28 +54,32 @@ namespace MimicSpace
             this.myMimic = myMimic;
 
             this.legLine = GetComponent<LineRenderer>();
+            if (legLine != null)
+            {
+                legLine.useWorldSpace = true;
+                if (legLine.material == null)
+                    legLine.material = new Material(Shader.Find("Sprites/Default")); // Fallback sichtbar
+                if (legLine.widthMultiplier <= 0f)
+                    legLine.widthMultiplier = 0.06f;
+            }
+
             handles = new Vector3[handlesCount];
-
-            // We initialize a bunch of random offsets for many aspects of the legs so every leg part is unique
-            // This will make the leg look more organic
             handleOffsets = new Vector3[6];
-            handleOffsets[0] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
-            handleOffsets[1] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
-            handleOffsets[2] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
-            handleOffsets[3] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
-            handleOffsets[4] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
-            handleOffsets[5] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
+            for (int i = 0; i < 6; i++)
+                handleOffsets[i] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
 
-            // each leg part have the same foot position, butto make it look like "toes" the last handle (handles[7])
-            // is a bit offset for every leg part
+            // Zeh leicht versetzen, Raycast nur auf Boden
             Vector2 footOffset = Random.insideUnitCircle.normalized * finalFootDistance;
             RaycastHit hit;
-            Physics.Raycast(footPosition + Vector3.up * 5f + new Vector3(footOffset.x, 0, footOffset.y), -Vector3.up, out hit);
-            handles[7] = hit.point;
+            var start = footPosition + Vector3.up * 5f + new Vector3(footOffset.x, 0, footOffset.y);
+            if (Physics.Raycast(start, Vector3.down, out hit, 20f, myMimic.groundMask, QueryTriggerInteraction.Ignore))
+                handles[7] = hit.point;
+            else
+                handles[7] = footPosition;
 
             legHeight = Random.Range(legMinHeight, legMaxHeight);
-            rotationSpeed = Random.Range(minRotSpeed, maxRotSpeed); // * (Random.Range(0f, 1f) > 0.5f ? -1 : 1);
-            rotationSign = 1;//(Random.Range(0f, 1f) > 0.5f ? -1 : 1);
+            rotationSpeed = Random.Range(minRotSpeed, maxRotSpeed);
+            rotationSign = 1;
             oscillationSpeed = Random.Range(minOscillationSpeed, maxOscillationSpeed);
             oscillationProgress = 0;
 
@@ -87,8 +89,8 @@ namespace MimicSpace
             isRemoved = false;
             canDie = false;
             isDeployed = false;
-            StartCoroutine("WaitToDie");
-            StartCoroutine("WaitAndDie", lifeTime);
+            StartCoroutine(WaitToDie());
+            StartCoroutine(WaitAndDie(lifeTime));
             Sethandles();
         }
 
@@ -108,22 +110,33 @@ namespace MimicSpace
 
         private void Update()
         {
-            // The growTarget is set to 1 if the leg must grow, and 0 if it must retract
-            if (growTarget == 1 && Vector3.Distance(new Vector3(myMimic.legPlacerOrigin.x, 0, myMimic.legPlacerOrigin.z), new Vector3(footPosition.x, 0, footPosition.z)) > maxLegDistance && canDie && myMimic.deployedLegs > myMimic.minimumAnchoredParts)
-                growTarget = 0;
-            else if (growTarget == 1)
+            // 1) Abstand prüfen (zu weit weg -> einziehen, aber erst nach Mindestzeit)
+            if (growTarget == 1)
             {
-                // Check is the body is in line of sight from the foot position, and initiates the retractation if it isn't
-                RaycastHit hit;
-                if (Physics.Linecast(footPosition, transform.position, out hit))
-                {
+                float distXZ = Vector3.Distance(
+                    new Vector3(myMimic.legPlacerOrigin.x, 0, myMimic.legPlacerOrigin.z),
+                    new Vector3(footPosition.x, 0, footPosition.z));
+
+                if (distXZ > maxLegDistance && canDie && myMimic.deployedLegs > myMimic.minimumAnchoredParts)
                     growTarget = 0;
+                else
+                {
+                    // 2) Sichtlinie nur gegen Boden prüfen (kein Self-Hit)
+                    RaycastHit hit;
+                    if (Physics.Linecast(footPosition + Vector3.up * 0.05f,
+                                         transform.position + Vector3.up * 0.2f,
+                                         out hit, myMimic.groundMask, QueryTriggerInteraction.Ignore))
+                    {
+                        // Gelände zwischen Fuß und Körper -> einziehen
+                        growTarget = 0;
+                    }
                 }
             }
-            // progression defines the percentage of deployement (1 being fully deployed and 0 fully retracted)
+
+            // Growth / Retract
             progression = Mathf.Lerp(progression, growTarget, growCoef * Time.deltaTime);
 
-            // we signal the leg deployement to the Mimic for the leg spawn logic
+            // Deployment-Zählung
             if (!isDeployed && progression > 0.9f)
             {
                 myMimic.deployedLegs++;
@@ -134,6 +147,8 @@ namespace MimicSpace
                 myMimic.deployedLegs--;
                 isDeployed = false;
             }
+
+            // Recycle
             if (progression < 0.5f && growTarget == 0)
             {
                 if (!isRemoved)
@@ -141,49 +156,38 @@ namespace MimicSpace
                     GetComponentInParent<Mimic>().legCount--;
                     isRemoved = true;
                 }
-
                 if (progression < 0.05f)
                 {
-                    //StopAllCoroutines();
-                    legLine.positionCount = 0;
-                    myMimic.RecycleLeg(this.gameObject);
+                    if (legLine) legLine.positionCount = 0;
+                    myMimic.RecycleLeg(gameObject);
                     return;
                 }
-
             }
 
-            // We update the handle position defining the spline
+            // Kurven-Handles updaten & zeichnen
             Sethandles();
-
-            // Then sample the spline and assign the values to the line renderer
             Vector3[] points = GetSamplePoints((Vector3[])handles.Clone(), legResolution, progression);
-            legLine.positionCount = points.Length;
-            legLine.SetPositions(points);
+            if (legLine)
+            {
+                legLine.positionCount = points.Length;
+                legLine.SetPositions(points);
+            }
         }
 
         void Sethandles()
         {
-            // Start handle at body position
             handles[0] = transform.position;
-
-            // The foot position is moved upward,
-            // in combination with the Handles[7] offset it will look like an "ankle"
             handles[6] = footPosition + Vector3.up * 0.05f;
 
-            // we take a point 40% along the leg and raise it to make the highest part of the leg
             handles[2] = Vector3.Lerp(handles[0], handles[6], 0.4f);
             handles[2].y = handles[0].y + legHeight;
-
-            // then we interpolate the rest of the handles
             handles[1] = Vector3.Lerp(handles[0], handles[2], 0.5f);
             handles[3] = Vector3.Lerp(handles[2], handles[6], 0.25f);
             handles[4] = Vector3.Lerp(handles[2], handles[6], 0.5f);
             handles[5] = Vector3.Lerp(handles[2], handles[6], 0.75f);
 
-            // we rotate the handles offsets based on the leg axis to make them look alive
             RotateHandleOffset();
 
-            // and we apply the offsets to the handle position
             handles[1] += handleOffsets[0];
             handles[2] += handleOffsets[1];
             handles[3] += handleOffsets[2];
@@ -199,19 +203,17 @@ namespace MimicSpace
 
             float newAngle = rotationSpeed * Time.deltaTime * Mathf.Cos(oscillationProgress * Mathf.Deg2Rad) + 1f;
 
-            Vector3 axisRotation;
             for (int i = 1; i < 6; i++)
             {
-                axisRotation = (handles[i + 1] - handles[i - 1]) / 2f;
+                Vector3 axisRotation = (handles[i + 1] - handles[i - 1]) / 2f;
                 handleOffsets[i - 1] = Quaternion.AngleAxis(newAngle, rotationSign * axisRotation) * handleOffsets[i - 1];
             }
-
         }
 
         Vector3[] GetSamplePoints(Vector3[] curveHandles, int resolution, float t)
         {
             List<Vector3> segmentPos = new List<Vector3>();
-            float segmentLength = 1f / (float)resolution;
+            float segmentLength = 1f / resolution;
 
             for (float _t = 0; _t <= t; _t += segmentLength)
                 segmentPos.Add(GetPointOnCurve((Vector3[])curveHandles.Clone(), _t));
@@ -222,7 +224,6 @@ namespace MimicSpace
         Vector3 GetPointOnCurve(Vector3[] curveHandles, float t)
         {
             int currentPoints = curveHandles.Length;
-
             while (currentPoints > 1)
             {
                 for (int i = 0; i < currentPoints - 1; i++)

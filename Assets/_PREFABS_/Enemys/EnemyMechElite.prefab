@@ -1926,11 +1926,11 @@ MonoBehaviour:
   losMask:
     serializedVersion: 2
     m_Bits: 512
-  moveSpeed: 10
+  moveSpeed: 16
   accel: 6
   rotationSpeed: 4
   stopDistance: 50
-  resumeDistance: 80
+  resumeDistance: 65
   externalPullMaxSpeed: 12
   cannonPivot: {fileID: 6804363615348718046}
   muzzle: {fileID: 6804363615348718046}
@@ -1940,12 +1940,12 @@ MonoBehaviour:
   heavyBulletPrefab: {fileID: 4211810131274587892, guid: f28be79baba9aa6438566ec1e6e7f6a5, type: 3}
   fireRange: 110
   chargeTime: 0.2
-  fireCooldown: 0.5
+  fireCooldown: 1.2
   chargeFx: {fileID: 8988589322174755268, guid: 337f94315e250994a9ed0c362c91f466, type: 3}
   audioSource: {fileID: 6324071514731664225}
   chargeSfx: {fileID: 0}
   fireSfx: {fileID: 8300000, guid: a52a90cdb54d664479c4ae0f631f73af, type: 3}
-  baseHealth: 600
+  baseHealth: 500
   deathDespawnDelay: 3
   dmgNums: {fileID: 1063182142841119009}
   effects: {fileID: 2884406912444404820}
@@ -2022,12 +2022,12 @@ MonoBehaviour:
   - prefab: {fileID: 4447019598221353416, guid: 3f5ef3b492b1a9043aee199a411bccc3, type: 3}
     dropChance: 1
     countRange: {x: 45, y: 60}
-    spawnImpulse: 10
+    spawnImpulse: 5
   spawnRadius: 3
   groundMask:
     serializedVersion: 2
-    m_Bits: 4294967295
-  groundCheckDown: 2
+    m_Bits: 512
+  groundCheckDown: 5
 --- !u!114 &1063182142841119009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2085,8 +2085,8 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: a52a90cdb54d664479c4ae0f631f73af, type: 3}
-  m_PlayOnAwake: 1
-  m_Volume: 0.12
+  m_PlayOnAwake: 0
+  m_Volume: 0.08
   m_Pitch: 1
   Loop: 0
   Mute: 0

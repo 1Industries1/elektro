@@ -1,0 +1,42 @@
+Regelmäßig committen & pushen (Offsite-Backup):
+
+git status
+git add -A
+git commit -m "feat/fix/chore: kurz beschreiben"
+git push
+
+
+
+
+Meilensteine taggen (z. B. erste spielbare Version):
+
+git tag -a v0.1.0 -m "first playable"
+git push origin v0.1.0
+
+
+
+
+Experimentierst du? Mini-Branches nutzen:
+
+git checkout -b exp/neue-kamera
+# …arbeiten…
+git commit -m "feat: neue kamera"
+git checkout main
+git merge exp/neue-kamera
+git push
+
+
+
+
+Auf zwei Rechnern arbeiten (falls später relevant)
+
+Auf Rechner B:
+git clone https://github.com/1Industries1/elektro.git
+cd elektro
+# Arbeiten ...
+git add -A
+git commit -m "..."
+git push
+
+Auf Rechner A vor dem Weiterarbeiten einmal:
+git pull --rebase

@@ -226,7 +226,11 @@ public class Pickup : NetworkBehaviour
         foreach (var p in players)
         {
             float d2 = (p.transform.position - transform.position).sqrMagnitude;
-            if (d2 < radius * radius && d2 < best)
+            float mult = 1f;
+            var up = p.GetComponent<PlayerUpgrades>();
+            if (up != null) mult = Mathf.Max(0.1f, up.GetMagnetRangeMult());
+            float effR = radius * mult;
+            if (d2 < effR * effR && d2 < best)
             {
                 best = d2;
                 bestT = p.transform;
