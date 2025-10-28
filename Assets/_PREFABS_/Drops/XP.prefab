@@ -154,7 +154,7 @@ MonoBehaviour:
   amount: 3
   energyHandling: 1
   mode: 0
-  attractRadius: 58
+  attractRadius: 20
   collectDistance: 1
   baseSpeed: 18
   speedByDistance:

@@ -1015,9 +1015,10 @@ GameObject:
   - component: {fileID: 5583969127424937918}
   - component: {fileID: 2587026885058050897}
   - component: {fileID: 6768665473037096348}
-  - component: {fileID: 4533194453249348119}
   - component: {fileID: 694004598810752799}
+  - component: {fileID: 4533194453249348119}
   - component: {fileID: 9038014760461084183}
+  - component: {fileID: 8409553502743980558}
   - component: {fileID: 8194045560419369472}
   - component: {fileID: 622694244708683426}
   - component: {fileID: 4953538076136587905}
@@ -1096,18 +1097,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.8, y: 2.6, z: 1.8185959}
   m_Center: {x: 0, y: -0.25, z: -0.04311517}
---- !u!114 &4533194453249348119
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5059212516318057732}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0a3650060471c744c938951dc97d8c15, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &694004598810752799
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1131,6 +1120,18 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!114 &4533194453249348119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5059212516318057732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a3650060471c744c938951dc97d8c15, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &9038014760461084183
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1150,6 +1151,19 @@ MonoBehaviour:
   maxMoveSpeed: 18
   rotationSpeed: 6
   baseHealth: 25
+  dmgNums: {fileID: 8409553502743980558}
+--- !u!114 &8409553502743980558
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5059212516318057732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ca04619fb51f346a03a0f5aa6f0df6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDamageNumbers
 --- !u!114 &8194045560419369472
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1180,7 +1194,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c94edd04bb841284c834450ae08d4d7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PullReceiver
-  velocityDampingPerSec: 0.35
+  velocityDampingPerSec: 0.15
 --- !u!114 &4953538076136587905
 MonoBehaviour:
   m_ObjectHideFlags: 0

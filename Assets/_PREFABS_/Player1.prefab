@@ -2341,13 +2341,13 @@ MonoBehaviour:
   maxLevel_GrenadeSalvo: 10
   maxLevel_Magnet: 10
   maxLevel_MoveSpeed: 12
-  fireRateMultPerLevel: 0.95
-  altFireRateMultPerLevel: 0.95
+  fireRateMultPerLevel: 0.9
+  altFireRateMultPerLevel: 0.9
   targetRangePerLevel: 10
   maxHPPerLevel: 15
-  damageMultPerLevel: 1.05
+  damageMultPerLevel: 1.2
   magnetRangeMultPerLevel: 1.15
-  moveSpeedMultPerLevel: 1.08
+  moveSpeedMultPerLevel: 1.1
   FireRateLevel:
     m_InternalValue: 0
   AltFireRateLevel:

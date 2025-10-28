@@ -5112,7 +5112,7 @@ MonoBehaviour:
   chainHitVFX: {fileID: 0}
   finalExplosionRadiusMultiplier: 1.8
   finalExplosionDamageMultiplier: 1.75
-  explosionVFX: {fileID: 1000010823978654, guid: 3228a22491941734bb83ad691d17fcb9, type: 3}
+  explosionVFX: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
   explosionSound: {fileID: 8300000, guid: 9ea0e51bdc252384e8cdd476387c9ca6, type: 3}
 --- !u!96 &1904763662979679081
 TrailRenderer:

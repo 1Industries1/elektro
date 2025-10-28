@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 7218705188249124156}
   - component: {fileID: 8437091738040741502}
   - component: {fileID: 8357887114018345148}
+  - component: {fileID: 4752927243913064266}
   - component: {fileID: 8646995625217381518}
   - component: {fileID: 741727832254490159}
   - component: {fileID: 5878410231318725339}
@@ -144,7 +145,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 512
-  velocity: {x: 0.22097829, y: 0, z: -0.096296385}
+  velocity: {x: 0.5793102, y: 0, z: -0.2635598}
 --- !u!114 &8357887114018345148
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -177,6 +178,19 @@ MonoBehaviour:
   spitInaccuracy: 4
   spitWindup: 0.18
   baseHealth: 60
+  dmgNums: {fileID: 4752927243913064266}
+--- !u!114 &4752927243913064266
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3239788829411758996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ca04619fb51f346a03a0f5aa6f0df6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDamageNumbers
 --- !u!114 &8646995625217381518
 MonoBehaviour:
   m_ObjectHideFlags: 0

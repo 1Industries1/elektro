@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace MimicSpace
@@ -7,21 +6,24 @@ namespace MimicSpace
     public class Leg : MonoBehaviour
     {
         Mimic myMimic;
+
         public bool isDeployed = false;
         public Vector3 footPosition;
         public float maxLegDistance;
         public int legResolution;
 
         public LineRenderer legLine;
-        public int handlesCount = 8; // 8 (7 legs + 1 finalfoot)
+        public int handlesCount = 8; // 8 (7 control points + final foot)
 
         public float legMinHeight = 0.3f;
         public float legMaxHeight = 1.1f;
         float legHeight;
-        public Vector3[] handles;
+
+        public Vector3[] handles;         // Control points (size = handlesCount)
         public float handleOffsetMinRadius = 0.05f;
         public float handleOffsetMaxRadius = 0.25f;
-        public Vector3[] handleOffsets;
+        public Vector3[] handleOffsets;   // random offsets for nicer curvature (size = 6)
+
         public float finalFootDistance = 0.3f;
 
         public float growCoef = 5f;
@@ -45,30 +47,37 @@ namespace MimicSpace
 
         public Color myColor;
 
+        // ---------- Alloc-freie Puffer ----------
+        Vector3[] workHandles;   // Arbeitskopie für de Casteljau (Größe = handlesCount)
+        Vector3[] pointsArray;   // Ausgabepuffer für Kurvenpunkte (>= legResolution + 2)
+        int pointsCount;         // tatsächlich gefüllte Punkte
+
+        // ---------- Initialisierung ----------
         public void Initialize(Vector3 footPosition, int legResolution, float maxLegDistance, float growCoef, Mimic myMimic, float lifeTime)
         {
             this.footPosition = footPosition;
-            this.legResolution = legResolution;
+            this.legResolution = Mathf.Max(1, legResolution);
             this.maxLegDistance = maxLegDistance;
             this.growCoef = growCoef;
             this.myMimic = myMimic;
 
-            this.legLine = GetComponent<LineRenderer>();
+            legLine = GetComponent<LineRenderer>();
             if (legLine != null)
             {
                 legLine.useWorldSpace = true;
                 if (legLine.material == null)
-                    legLine.material = new Material(Shader.Find("Sprites/Default")); // Fallback sichtbar
+                    legLine.material = new Material(Shader.Find("Sprites/Default")); // einmalig, nicht pro Frame
                 if (legLine.widthMultiplier <= 0f)
                     legLine.widthMultiplier = 0.06f;
             }
 
+            // Control- und Offset-Arrays
             handles = new Vector3[handlesCount];
             handleOffsets = new Vector3[6];
             for (int i = 0; i < 6; i++)
                 handleOffsets[i] = Random.onUnitSphere * Random.Range(handleOffsetMinRadius, handleOffsetMaxRadius);
 
-            // Zeh leicht versetzen, Raycast nur auf Boden
+            // Finalen Fuß via Raycast auf den Boden setzen
             Vector2 footOffset = Random.insideUnitCircle.normalized * finalFootDistance;
             RaycastHit hit;
             var start = footPosition + Vector3.up * 5f + new Vector3(footOffset.x, 0, footOffset.y);
@@ -89,9 +98,25 @@ namespace MimicSpace
             isRemoved = false;
             canDie = false;
             isDeployed = false;
+
+            // Puffer anlegen
+            EnsureBuffers();
+
             StartCoroutine(WaitToDie());
             StartCoroutine(WaitAndDie(lifeTime));
             Sethandles();
+        }
+
+        void EnsureBuffers()
+        {
+            // Arbeitskopie für de Casteljau
+            if (workHandles == null || workHandles.Length != handlesCount)
+                workHandles = new Vector3[handlesCount];
+
+            // Ausgabepuffer: +2 (Endpunkt + Sicherheitsmarge)
+            int neededPoints = Mathf.Max(2, legResolution + 2);
+            if (pointsArray == null || pointsArray.Length < neededPoints)
+                pointsArray = new Vector3[neededPoints];
         }
 
         IEnumerator WaitToDie()
@@ -108,9 +133,13 @@ namespace MimicSpace
             growTarget = 0;
         }
 
-        private void Update()
+        // ---------- Laufzeit ----------
+        void Update()
         {
-            // 1) Abstand prüfen (zu weit weg -> einziehen, aber erst nach Mindestzeit)
+            // Wenn sich die Auflösung zur Laufzeit ändert, Puffer anpassen
+            EnsureBuffers();
+
+            // 1) Abstands-/Sichtlinienlogik
             if (growTarget == 1)
             {
                 float distXZ = Vector3.Distance(
@@ -118,10 +147,11 @@ namespace MimicSpace
                     new Vector3(footPosition.x, 0, footPosition.z));
 
                 if (distXZ > maxLegDistance && canDie && myMimic.deployedLegs > myMimic.minimumAnchoredParts)
+                {
                     growTarget = 0;
+                }
                 else
                 {
-                    // 2) Sichtlinie nur gegen Boden prüfen (kein Self-Hit)
                     RaycastHit hit;
                     if (Physics.Linecast(footPosition + Vector3.up * 0.05f,
                                          transform.position + Vector3.up * 0.2f,
@@ -133,7 +163,7 @@ namespace MimicSpace
                 }
             }
 
-            // Growth / Retract
+            // Wachstum / Einziehen
             progression = Mathf.Lerp(progression, growTarget, growCoef * Time.deltaTime);
 
             // Deployment-Zählung
@@ -164,16 +194,20 @@ namespace MimicSpace
                 }
             }
 
-            // Kurven-Handles updaten & zeichnen
+            // Kurven-Handles updaten & zeichnen (alloc-frei)
             Sethandles();
-            Vector3[] points = GetSamplePoints((Vector3[])handles.Clone(), legResolution, progression);
+            GetSamplePointsNonAlloc(handles, legResolution, progression, pointsArray, workHandles, out pointsCount);
+
             if (legLine)
             {
-                legLine.positionCount = points.Length;
-                legLine.SetPositions(points);
+                legLine.positionCount = pointsCount;
+                // SetPositions(Vector3[]) würde das gesamte Array setzen; wir setzen nur die gefüllten Elemente:
+                for (int i = 0; i < pointsCount; i++)
+                    legLine.SetPosition(i, pointsArray[i]);
             }
         }
 
+        // ---------- Control-Points ----------
         void Sethandles()
         {
             handles[0] = transform.position;
@@ -197,40 +231,56 @@ namespace MimicSpace
 
         void RotateHandleOffset()
         {
-            oscillationProgress += Time.deltaTime * oscillationSpeed;
-            if (oscillationProgress >= 360f)
-                oscillationProgress -= 360f;
-
+            oscillationProgress = Mathf.Repeat(oscillationProgress + Time.deltaTime * oscillationSpeed, 360f);
             float newAngle = rotationSpeed * Time.deltaTime * Mathf.Cos(oscillationProgress * Mathf.Deg2Rad) + 1f;
 
             for (int i = 1; i < 6; i++)
             {
-                Vector3 axisRotation = (handles[i + 1] - handles[i - 1]) / 2f;
+                Vector3 axisRotation = (handles[i + 1] - handles[i - 1]) * 0.5f;
                 handleOffsets[i - 1] = Quaternion.AngleAxis(newAngle, rotationSign * axisRotation) * handleOffsets[i - 1];
             }
         }
 
-        Vector3[] GetSamplePoints(Vector3[] curveHandles, int resolution, float t)
+        // ---------- Alloc-freies Sampling ----------
+        void GetSamplePointsNonAlloc(
+            Vector3[] sourceHandles,
+            int resolution,
+            float tEnd,
+            Vector3[] outPoints,
+            Vector3[] tempHandles,
+            out int outCount)
         {
-            List<Vector3> segmentPos = new List<Vector3>();
-            float segmentLength = 1f / resolution;
+            float step = 1f / Mathf.Max(1, resolution);
+            int idx = 0;
 
-            for (float _t = 0; _t <= t; _t += segmentLength)
-                segmentPos.Add(GetPointOnCurve((Vector3[])curveHandles.Clone(), _t));
-            segmentPos.Add(GetPointOnCurve(curveHandles, t));
-            return segmentPos.ToArray();
+            float t = 0f;
+            while (t <= tEnd && idx < outPoints.Length)
+            {
+                outPoints[idx++] = EvalCurveNonAlloc(sourceHandles, tempHandles, t);
+                t += step;
+            }
+
+            // Endpunkt exakt hinzufügen
+            if (idx < outPoints.Length)
+                outPoints[idx++] = EvalCurveNonAlloc(sourceHandles, tempHandles, tEnd);
+
+            outCount = idx;
         }
 
-        Vector3 GetPointOnCurve(Vector3[] curveHandles, float t)
+        Vector3 EvalCurveNonAlloc(Vector3[] source, Vector3[] work, float t)
         {
-            int currentPoints = curveHandles.Length;
-            while (currentPoints > 1)
+            // Quelle in Arbeitskopie kopieren (8 Elemente → günstig)
+            System.Array.Copy(source, work, source.Length);
+
+            int n = source.Length;
+            while (n > 1)
             {
-                for (int i = 0; i < currentPoints - 1; i++)
-                    curveHandles[i] = Vector3.Lerp(curveHandles[i], curveHandles[i + 1], t);
-                currentPoints--;
+                int last = n - 1;
+                for (int i = 0; i < last; i++)
+                    work[i] = Vector3.Lerp(work[i], work[i + 1], t);
+                n--;
             }
-            return curveHandles[0];
+            return work[0];
         }
     }
 }

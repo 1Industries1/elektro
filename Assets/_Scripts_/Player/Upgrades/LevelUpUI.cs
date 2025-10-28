@@ -29,11 +29,11 @@ public class LevelUpUI : MonoBehaviour
     public DamageRow damageRowPrefab;
 
     [Header("Behavior")]
-    public float  fadeTime   = 0.12f;
-    public bool   lockCursor = true;
-    public KeyCode pickKeyA  = KeyCode.Alpha1;
-    public KeyCode pickKeyB  = KeyCode.Alpha2;
-    public KeyCode pickKeyC  = KeyCode.Alpha3;
+    public float fadeTime = 0.12f;
+    public bool lockCursor = true;
+    public KeyCode pickKeyA = KeyCode.Alpha1;
+    public KeyCode pickKeyB = KeyCode.Alpha2;
+    public KeyCode pickKeyC = KeyCode.Alpha3;
 
     [Header("Slow Motion")]
     public bool enableSlowMo = true;
@@ -42,11 +42,11 @@ public class LevelUpUI : MonoBehaviour
     public float slowMoFadeOut = 0.2f;
 
     private int _slowHandle = 0;
-    
+
     [Header("SFX")]
     public AudioSource sfxSource;
     public AudioClip sfxPick;
-    
+
 
     // -------------------- Internals --------------------
     private readonly System.Collections.Generic.Dictionary<UpgradeType, StatRow> _rows
@@ -56,11 +56,11 @@ public class LevelUpUI : MonoBehaviour
 
 
     private int[] _choices;
-    private bool  _open;
-    private bool  _inputLocked;
-    private bool  _picked;
+    private bool _open;
+    private bool _inputLocked;
+    private bool _picked;
 
-    private Behaviour      _localControlToLock;
+    private Behaviour _localControlToLock;
     private PlayerUpgrades _upgrades;
 
     private bool _statsSubscribed;
@@ -81,6 +81,15 @@ public class LevelUpUI : MonoBehaviour
         if (panelGroup) panelGroup.alpha = 0f;
 
         //if (statsPanel) statsPanel.SetActive(false);
+    }
+
+    private void Start()
+    {
+        // Stats dauerhaft sichtbar & aktualisiert halten
+        if (statsPanel) statsPanel.SetActive(true);
+        FindLocalUpgradesCached();
+        SubscribeStats();
+        RefreshStats();
     }
 
     private void Update()
@@ -104,12 +113,13 @@ public class LevelUpUI : MonoBehaviour
     public void Show(int[] choices, bool lockInput = true)
     {
         _choices = choices;
-        _picked  = false;
-        _open    = true;
+        _picked = false;
+        _open = true;
         _previewType = null;
+        _previewStacks = null;
         FindLocalUpgradesCached();
 
-        if (title)    title.text    = "UPGRADES";
+        if (title) title.text = "UPGRADES";
         if (subtitle) subtitle.text = "Choose 1 of 3 upgrades";
 
         if (HasThreeChoices)
@@ -128,7 +138,7 @@ public class LevelUpUI : MonoBehaviour
         {
             Debug.LogWarning("[LevelUpUI] Show() called without 3 choices.");
         }
-        
+
         // SlowMo
         if (enableSlowMo && SlowMoManager.Instance != null && _slowHandle == 0)
             _slowHandle = SlowMoManager.Instance.BeginHold(slowMoScale, slowMoFadeIn);
@@ -141,10 +151,6 @@ public class LevelUpUI : MonoBehaviour
         StartCoroutine(FadeCanvas(panelGroup, 0f, 1f, fadeTime));
 
         RefreshStats();
-        if (statsPanel) statsPanel.SetActive(true);
-        SubscribeStats();
-
-        if (lockInput) LockLocalInput(true);
     }
 
     public void Hide(bool unlockInput = true)
@@ -157,14 +163,14 @@ public class LevelUpUI : MonoBehaviour
     // -------------------- Preview-API (von Choice-Items aufgerufen) --------------------
     public void ShowPreviewForChoice(int choiceId)
     {
-        _previewType   = UpgradeRoller.ResolveFromChoice(choiceId);
+        _previewType = UpgradeRoller.ResolveFromChoice(choiceId);
         _previewStacks = UpgradeRoller.StacksForChoice(choiceId);
         RefreshStats();
     }
 
     public void ClearPreview()
     {
-        _previewType   = null;
+        _previewType = null;
         _previewStacks = null;
         RefreshStats();
     }
@@ -196,21 +202,22 @@ public class LevelUpUI : MonoBehaviour
         if (_picked) return;
         _picked = true;
 
-        if (sfxSource && sfxPick)
-            sfxSource.PlayOneShot(sfxPick);
+        if (sfxSource && sfxPick) sfxSource.PlayOneShot(sfxPick);
 
-        var type   = UpgradeRoller.ResolveFromChoice(encodedId);
+        var type = UpgradeRoller.ResolveFromChoice(encodedId);
         int stacks = UpgradeRoller.StacksForChoice(encodedId);
 
         if (choiceA) choiceA.SetInteractable(false);
         if (choiceB) choiceB.SetInteractable(false);
         if (choiceC) choiceC.SetInteractable(false);
 
+        // Wichtig: Preview sofort abschalten, damit keine "Next"-Werte mehr angezeigt werden.
+        _previewType = null;
+        _previewStacks = null;
+
         var xp = FindLocalPlayerXP();
         if (xp != null)
         {
-            //xp.ChooseUpgradeServerRpc(id);
-
             // TODO: Deine PlayerXP sollte eine Methode annehmen, die encodedId (oder type + stacks) zum Server sendet.
             xp.ChooseUpgradeServerRpc(encodedId);
             RefreshStats();
@@ -218,10 +225,7 @@ public class LevelUpUI : MonoBehaviour
         else
         {
             var up = FindLocalUpgrades();
-            if (up != null)
-            {
-                up.GrantUpgradeServerRpc(type, stacks); // neue Überladung, siehe unten
-            }
+            if (up != null) up.GrantUpgradeServerRpc(type, stacks);
             Hide(true);
         }
     }
@@ -251,8 +255,10 @@ public class LevelUpUI : MonoBehaviour
         if (_upgrades == null) _upgrades = FindLocalUpgrades();
         if (!_upgrades || !statsContent) return;
 
+        bool allowPreview = _open && !_picked;
+
         // Helper für common pattern
-        void FillBasic(UpgradeType type, string uiName, float currVal, int lvl, int max, Func<int,float> predictAtLevel, Func<float,string> fmt)
+        void FillBasic(UpgradeType type, string uiName, float currVal, int lvl, int max, Func<int, float> predictAtLevel, Func<float, string> fmt)
         {
             var row = GetOrCreateRow(type, uiName);
             if (!row) return;
@@ -266,12 +272,7 @@ public class LevelUpUI : MonoBehaviour
                 float nextVal = _upgrades.GetCurrentValueAtLevel(type, lvl + stacks);
                 nextStr = fmt(nextVal) + $"   (Lv {lvl + stacks}/{max})";
             }
-            else
-            {
-                nextStr = null; // kein Preview
-            }
 
-            // Optionaler Fortschritt (0..1) für Balken
             float prog = (max > 0) ? (lvl / (float)max) : -1f;
 
             row.Set(
@@ -287,12 +288,9 @@ public class LevelUpUI : MonoBehaviour
             int lvl = _upgrades.GetLevel(UpgradeType.FireRate);
             int max = _upgrades.GetMaxLevel(UpgradeType.FireRate);
             float curr = _upgrades.GetCurrentValue(UpgradeType.FireRate);
-            FillBasic(
-                UpgradeType.FireRate, "Fire Rate",
-                curr, lvl, max,
-                l => _upgrades.GetCurrentValueAtLevel(UpgradeType.FireRate, l),
-                v => FormatValue(UpgradeType.FireRate, v)
-            );
+            FillBasic(UpgradeType.FireRate, "Fire Rate", curr, lvl, max,
+                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.FireRate, l),
+                      v => FormatValue(UpgradeType.FireRate, v));
         }
 
         // --- Alt Fire Rate ---
@@ -300,12 +298,9 @@ public class LevelUpUI : MonoBehaviour
             int lvl = _upgrades.GetLevel(UpgradeType.AltFireRate);
             int max = _upgrades.GetMaxLevel(UpgradeType.AltFireRate);
             float curr = _upgrades.GetCurrentValue(UpgradeType.AltFireRate);
-            FillBasic(
-                UpgradeType.AltFireRate, "Alt Fire",
-                curr, lvl, max,
-                l => _upgrades.GetCurrentValueAtLevel(UpgradeType.AltFireRate, l),
-                v => FormatValue(UpgradeType.AltFireRate, v)
-            );
+            FillBasic(UpgradeType.AltFireRate, "Alt Fire", curr, lvl, max,
+                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.AltFireRate, l),
+                      v => FormatValue(UpgradeType.AltFireRate, v));
         }
 
         // --- Target Range ---
@@ -313,12 +308,9 @@ public class LevelUpUI : MonoBehaviour
             int lvl = _upgrades.GetLevel(UpgradeType.TargetRange);
             int max = _upgrades.GetMaxLevel(UpgradeType.TargetRange);
             float curr = _upgrades.GetCurrentValue(UpgradeType.TargetRange);
-            FillBasic(
-                UpgradeType.TargetRange, "Target Range",
-                curr, lvl, max,
-                l => _upgrades.GetCurrentValueAtLevel(UpgradeType.TargetRange, l),
-                v => FormatValue(UpgradeType.TargetRange, v)
-            );
+            FillBasic(UpgradeType.TargetRange, "Target Range", curr, lvl, max,
+                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.TargetRange, l),
+                      v => FormatValue(UpgradeType.TargetRange, v));
         }
 
         // --- Max HP ---
@@ -326,12 +318,9 @@ public class LevelUpUI : MonoBehaviour
             int lvl = _upgrades.GetLevel(UpgradeType.MaxHP);
             int max = _upgrades.GetMaxLevel(UpgradeType.MaxHP);
             float curr = _upgrades.GetCurrentValue(UpgradeType.MaxHP);
-            FillBasic(
-                UpgradeType.MaxHP, "Max HP",
-                curr, lvl, max,
-                l => _upgrades.GetCurrentValueAtLevel(UpgradeType.MaxHP, l),
-                v => FormatValue(UpgradeType.MaxHP, v)
-            );
+            FillBasic(UpgradeType.MaxHP, "Max HP", curr, lvl, max,
+                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.MaxHP, l),
+                      v => FormatValue(UpgradeType.MaxHP, v));
         }
 
         // --- Grenade Salvo ---
@@ -339,12 +328,9 @@ public class LevelUpUI : MonoBehaviour
             int lvl = _upgrades.GetLevel(UpgradeType.GrenadeSalvo);
             int max = _upgrades.GetMaxLevel(UpgradeType.GrenadeSalvo);
             float curr = _upgrades.GetCurrentValue(UpgradeType.GrenadeSalvo);
-            FillBasic(
-                UpgradeType.GrenadeSalvo, "GL Salvo",
-                curr, lvl, max,
-                l => _upgrades.GetCurrentValueAtLevel(UpgradeType.GrenadeSalvo, l),
-                v => FormatValue(UpgradeType.GrenadeSalvo, v)
-            );
+            FillBasic(UpgradeType.GrenadeSalvo, "GL Salvo", curr, lvl, max,
+                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.GrenadeSalvo, l),
+                      v => FormatValue(UpgradeType.GrenadeSalvo, v));
         }
 
         // --- Magnet ---
@@ -355,9 +341,8 @@ public class LevelUpUI : MonoBehaviour
             var row = GetOrCreateRow(UpgradeType.Magnet, "Magnet");
             if (row)
             {
-                bool preview = _previewType.HasValue && _previewType.Value == UpgradeType.Magnet && lvl < max;
                 string nextStr = null;
-                if (preview)
+                if (allowPreview && _previewType.HasValue && _previewType.Value == UpgradeType.Magnet && lvl < max)
                 {
                     int stacks = Mathf.Clamp(_previewStacks ?? 1, 1, max - lvl);
                     float nextVal = _upgrades.GetCurrentValueAtLevel(UpgradeType.Magnet, lvl + stacks);
@@ -366,8 +351,7 @@ public class LevelUpUI : MonoBehaviour
                 float prog = (max > 0) ? (lvl / (float)max) : -1f;
                 row.Set("Magnet",
                     $"{FormatValue(UpgradeType.Magnet, curr)}   {(lvl >= max ? "(MAX)" : $"(Lv {lvl}/{max})")}",
-                    nextStr,
-                    prog);
+                    nextStr, prog);
             }
         }
 
@@ -379,9 +363,8 @@ public class LevelUpUI : MonoBehaviour
             var row = GetOrCreateRow(UpgradeType.MoveSpeed, "Move Speed");
             if (row)
             {
-                bool preview = _previewType.HasValue && _previewType.Value == UpgradeType.MoveSpeed && lvl < max;
                 string nextStr = null;
-                if (preview)
+                if (allowPreview && _previewType.HasValue && _previewType.Value == UpgradeType.MoveSpeed && lvl < max)
                 {
                     int stacks = Mathf.Clamp(_previewStacks ?? 1, 1, max - lvl);
                     float nextVal = _upgrades.GetCurrentValueAtLevel(UpgradeType.MoveSpeed, lvl + stacks);
@@ -390,23 +373,21 @@ public class LevelUpUI : MonoBehaviour
                 float prog = (max > 0) ? (lvl / (float)max) : -1f;
                 row.Set("Move Speed",
                     $"{FormatValue(UpgradeType.MoveSpeed, curr)}   {(lvl >= max ? "(MAX)" : $"(Lv {lvl}/{max})")}",
-                    nextStr,
-                    prog);
+                    nextStr, prog);
             }
         }
 
-        // --- Damage (Sonderfall mit 2 Zeilen) ---
+        // --- Damage (zweizeilig) ---
         {
             int lvl = _upgrades.GetLevel(UpgradeType.Damage);
             int max = _upgrades.GetMaxLevel(UpgradeType.Damage);
-            bool previewThis = _previewType.HasValue && _previewType.Value == UpgradeType.Damage && lvl < max;
+            bool previewThis = allowPreview && _previewType.HasValue && _previewType.Value == UpgradeType.Damage && lvl < max;
             int stacks = previewThis ? Mathf.Clamp(_previewStacks ?? 1, 1, max - lvl) : 0;
 
             Vector2 primNow = _upgrades.GetPrimaryDamageRangeCurrent();
             Vector2 altNow = _upgrades.GetAltDamageRangeCurrent();
 
             string header = $"Damage   {(lvl >= max ? "(MAX)" : $"(Lv {lvl}/{max})")}";
-
             string prim = $"{primNow.x:0.#}–{primNow.y:0.#}";
             string alt = $"{altNow.x:0.#}–{altNow.y:0.#}";
 
@@ -422,24 +403,25 @@ public class LevelUpUI : MonoBehaviour
             var dmgRow = GetOrCreateDamageRow();
             if (dmgRow) dmgRow.Set(header, $"Cannon  {prim}", primNext, $"Blaster {alt}", altNext);
         }
-        
-        
     }
 
-    
+
+
+
+
     private float PredictNextValueWithStacks(UpgradeType type, int stacks)
     {
         // Wir rechnen vom aktuellen Effektivwert aus.
         float curr = _upgrades.GetCurrentValue(type);
         switch (type)
         {
-            case UpgradeType.FireRate:    return Mathf.Max(0.01f, curr * Mathf.Pow(_upgrades.fireRateMultPerLevel, stacks));
-            case UpgradeType.AltFireRate: return Mathf.Max(0.1f,  curr * Mathf.Pow(_upgrades.altFireRateMultPerLevel, stacks));
-            case UpgradeType.TargetRange: return Mathf.Max(0f,    curr + stacks * _upgrades.targetRangePerLevel);
-            case UpgradeType.MaxHP:       return Mathf.Max(1f,    curr + stacks * _upgrades.maxHPPerLevel);
-            case UpgradeType.Damage:      return Mathf.Max(1f,    curr * Mathf.Pow(_upgrades.damageMultPerLevel, stacks));
-            case UpgradeType.GrenadeSalvo:return Mathf.Max(1f,    curr + PlayerUpgrades.GrenadePerLevel * stacks);
-            default:                      return curr;
+            case UpgradeType.FireRate: return Mathf.Max(0.01f, curr * Mathf.Pow(_upgrades.fireRateMultPerLevel, stacks));
+            case UpgradeType.AltFireRate: return Mathf.Max(0.1f, curr * Mathf.Pow(_upgrades.altFireRateMultPerLevel, stacks));
+            case UpgradeType.TargetRange: return Mathf.Max(0f, curr + stacks * _upgrades.targetRangePerLevel);
+            case UpgradeType.MaxHP: return Mathf.Max(1f, curr + stacks * _upgrades.maxHPPerLevel);
+            case UpgradeType.Damage: return Mathf.Max(1f, curr * Mathf.Pow(_upgrades.damageMultPerLevel, stacks));
+            case UpgradeType.GrenadeSalvo: return Mathf.Max(1f, curr + PlayerUpgrades.GrenadePerLevel * stacks);
+            default: return curr;
         }
     }
 
@@ -452,12 +434,12 @@ public class LevelUpUI : MonoBehaviour
             case UpgradeType.FireRate:
             case UpgradeType.AltFireRate: return $"{v:0.00}s";
             case UpgradeType.TargetRange: return $"{v:0.#} m";
-            case UpgradeType.MaxHP:       return $"{v:0.#} HP";
-            case UpgradeType.Damage:      return $"{v:0.00}×";
+            case UpgradeType.MaxHP: return $"{v:0.#} HP";
+            case UpgradeType.Damage: return $"{v:0.00}×";
             case UpgradeType.GrenadeSalvo: return $"{v:0}×";
-            case UpgradeType.Magnet:      return $"{v:0.00}×";
-            case UpgradeType.MoveSpeed:   return $"{v:0.##} m/s";
-            default:                      return v.ToString("0.##");
+            case UpgradeType.Magnet: return $"{v:0.00}×";
+            case UpgradeType.MoveSpeed: return $"{v:0.##} m/s";
+            default: return v.ToString("0.##");
         }
     }
 
@@ -467,14 +449,14 @@ public class LevelUpUI : MonoBehaviour
         if (_upgrades == null) _upgrades = FindLocalUpgrades();
         if (_upgrades == null) return;
 
-        _upgrades.FireRateLevel     .OnValueChanged += OnAnyStatChanged;
-        _upgrades.AltFireRateLevel  .OnValueChanged += OnAnyStatChanged;
-        _upgrades.RangeLevel        .OnValueChanged += OnAnyStatChanged;
-        _upgrades.MaxHPLevel        .OnValueChanged += OnAnyStatChanged;
-        _upgrades.DamageLevel       .OnValueChanged += OnAnyStatChanged;
-        _upgrades.GrenadeSalvoLevel .OnValueChanged += OnAnyStatChanged;
-        _upgrades.MagnetLevel       .OnValueChanged += OnAnyStatChanged;
-        _upgrades.MoveSpeedLevel    .OnValueChanged += OnAnyStatChanged;
+        _upgrades.FireRateLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.AltFireRateLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.RangeLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.MaxHPLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.DamageLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.GrenadeSalvoLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.MagnetLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.MoveSpeedLevel.OnValueChanged += OnAnyStatChanged;
         _statsSubscribed = true;
     }
 
@@ -482,14 +464,14 @@ public class LevelUpUI : MonoBehaviour
     {
         if (!_statsSubscribed || _upgrades == null) return;
 
-        _upgrades.FireRateLevel     .OnValueChanged -= OnAnyStatChanged;
-        _upgrades.AltFireRateLevel  .OnValueChanged -= OnAnyStatChanged;
-        _upgrades.RangeLevel        .OnValueChanged -= OnAnyStatChanged;
-        _upgrades.MaxHPLevel        .OnValueChanged -= OnAnyStatChanged;
-        _upgrades.DamageLevel       .OnValueChanged -= OnAnyStatChanged;
-        _upgrades.GrenadeSalvoLevel .OnValueChanged -= OnAnyStatChanged;
-        _upgrades.MagnetLevel       .OnValueChanged -= OnAnyStatChanged;
-        _upgrades.MoveSpeedLevel    .OnValueChanged -= OnAnyStatChanged;
+        _upgrades.FireRateLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.AltFireRateLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.RangeLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.MaxHPLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.DamageLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.GrenadeSalvoLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.MagnetLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.MoveSpeedLevel.OnValueChanged -= OnAnyStatChanged;
         _statsSubscribed = false;
     }
 
@@ -519,15 +501,13 @@ public class LevelUpUI : MonoBehaviour
         yield return FadeCanvas(panelGroup, panelGroup ? panelGroup.alpha : 1f, 0f, fadeTime);
         if (panel) panel.SetActive(false);
         if (unlock) LockLocalInput(false);
-        
+
         if (_slowHandle != 0 && SlowMoManager.Instance != null)
         {
             SlowMoManager.Instance.EndHold(_slowHandle, slowMoFadeOut);
             _slowHandle = 0;
         }
 
-        UnsubscribeStats();
-        //if (statsPanel) statsPanel.SetActive(false);
         _previewType = null;
     }
 
@@ -561,9 +541,9 @@ public class LevelUpUI : MonoBehaviour
         // Stelle sicher, dass wir _upgrades haben
         var up = FindLocalUpgradesCached();
 
-        var type   = UpgradeRoller.ResolveFromChoice(encodedId);
+        var type = UpgradeRoller.ResolveFromChoice(encodedId);
         int stacks = UpgradeRoller.StacksForChoice(encodedId);
-        string tag = stacks switch { 1=>"(Common)", 2=>"(Rare)", 3=>"(Epic)", 4=>"(Legendary)", _=>"" };
+        string tag = stacks switch { 1 => "(Common)", 2 => "(Rare)", 3 => "(Epic)", 4 => "(Legendary)", _ => "" };
 
         // Falls kein PlayerUpgrades gefunden wurde (Edge-Case, z.B. sehr frühe UI-Init),
         // liefere eine neutrale Fallback-Beschreibung.
@@ -571,12 +551,12 @@ public class LevelUpUI : MonoBehaviour
         {
             return type switch
             {
-                UpgradeType.FireRate      => $"+{PctFromTimeMult(0.85f, stacks):0.#}% fire rate {tag}",
-                UpgradeType.AltFireRate   => $"+{PctFromTimeMult(0.85f, stacks):0.#}% blaster fire rate {tag}",
-                UpgradeType.TargetRange   => $"+{10f * stacks:0.#} m target range {tag}",
-                UpgradeType.MaxHP         => $"+{15f * stacks:0.#} max HP {tag}",
-                UpgradeType.Damage        => $"+{PctFromDamageMult(1.15f, stacks):0.#}% damage {tag}",
-                UpgradeType.GrenadeSalvo  => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo {tag}",
+                UpgradeType.FireRate => $"+{PctFromTimeMult(0.85f, stacks):0.#}% fire rate {tag}",
+                UpgradeType.AltFireRate => $"+{PctFromTimeMult(0.85f, stacks):0.#}% blaster fire rate {tag}",
+                UpgradeType.TargetRange => $"+{10f * stacks:0.#} m target range {tag}",
+                UpgradeType.MaxHP => $"+{15f * stacks:0.#} max HP {tag}",
+                UpgradeType.Damage => $"+{PctFromDamageMult(1.15f, stacks):0.#}% damage {tag}",
+                UpgradeType.GrenadeSalvo => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo {tag}",
                 _ => $"Upgrade {tag}"
             };
         }
@@ -584,14 +564,14 @@ public class LevelUpUI : MonoBehaviour
         // Dynamisch aus den tatsächlich eingestellten Werten
         return type switch
         {
-            UpgradeType.FireRate      => $"+{PctFromTimeMult(up.fireRateMultPerLevel, stacks):0.#}% fire rate",
-            UpgradeType.AltFireRate   => $"+{PctFromTimeMult(up.altFireRateMultPerLevel, stacks):0.#}% blaster fire rate",
-            UpgradeType.TargetRange   => $"+{up.targetRangePerLevel * stacks:0.#} m target range",
-            UpgradeType.MaxHP         => $"+{up.maxHPPerLevel * stacks:0.#} max HP",
-            UpgradeType.Damage        => $"+{PctFromDamageMult(up.damageMultPerLevel, stacks):0.#}% damage",
-            UpgradeType.GrenadeSalvo  => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo",
-            UpgradeType.Magnet        => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacks):0.#}% magnet range",
-            UpgradeType.MoveSpeed     => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel, stacks):0.#}% move speed",
+            UpgradeType.FireRate => $"+{PctFromTimeMult(up.fireRateMultPerLevel, stacks):0.#}% fire rate",
+            UpgradeType.AltFireRate => $"+{PctFromTimeMult(up.altFireRateMultPerLevel, stacks):0.#}% blaster fire rate",
+            UpgradeType.TargetRange => $"+{up.targetRangePerLevel * stacks:0.#} m target range",
+            UpgradeType.MaxHP => $"+{up.maxHPPerLevel * stacks:0.#} max HP",
+            UpgradeType.Damage => $"+{PctFromDamageMult(up.damageMultPerLevel, stacks):0.#}% damage",
+            UpgradeType.GrenadeSalvo => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo",
+            UpgradeType.Magnet => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacks):0.#}% magnet range",
+            UpgradeType.MoveSpeed => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel, stacks):0.#}% move speed",
             _ => $"Upgrade"
         };
     }

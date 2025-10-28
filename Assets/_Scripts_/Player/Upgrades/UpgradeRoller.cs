@@ -52,8 +52,8 @@ public static class UpgradeRoller
     // Farbcodes für Rarities (entspricht bisherigen Hexwerten)
     public static readonly Dictionary<Rarity, Color> RarityColors = new()
     {
-        { Rarity.Common,    Hex("#000000FF") },
-        { Rarity.Rare,      Hex("#0071AAFF") },
+        { Rarity.Common,    Hex("#000000ff") },
+        { Rarity.Rare,      Hex("#2c80eeff") },
         { Rarity.Epic,      Hex("#952BFFFF") },
         { Rarity.Legendary, Hex("#FCC653FF") },
     };
@@ -61,10 +61,10 @@ public static class UpgradeRoller
     // Text-Badges (ersetzt "star")
     public static readonly Dictionary<Rarity, string> RarityBadge = new()
     {
-        { Rarity.Common,    "(Common)"     },
-        { Rarity.Rare,      "(Rare)"  },
-        { Rarity.Epic,      "(Epic)" },
-        { Rarity.Legendary, "(LEGENDARY)"},
+        { Rarity.Common,    "Common"     },
+        { Rarity.Rare,      "Rare"  },
+        { Rarity.Epic,      "Epic" },
+        { Rarity.Legendary, "LEGENDARY"},
     };
 
     // Optional: Icons pro Rarity (Designer-Asset)
@@ -202,12 +202,12 @@ public static class UpgradeRoller
         Damage       => "Damage",
         GrenadeSalvo => "Grenade Salvo",
         Magnet       => "Magnet",
-        MoveSpeed   => "Move Speed",
+        MoveSpeed    => "Move Speed",
         _            => "Upgrade"
     };
 
-    // ======== (Optional) Legacy-Kompat: Label + ColorTag ========
-    // Falls noch irgendwo im Projekt gebraucht (z. B. alte UI-Pfade).
+
+    // Falls noch irgendwo im Projekt gebraucht (z. B. alte UI-Pfade) -> PlayerXP verwendet das noch
     public static string Label(int choiceId)
     {
         var baseId = ChoiceCodec.BaseId(choiceId);
@@ -224,7 +224,7 @@ public static class UpgradeRoller
         // Behalte bisherige Hexfarben exakt bei.
         string hex = r switch
         {
-            Rarity.Common    => "#000000ff",
+            Rarity.Common    => "#ffffffff",
             Rarity.Rare      => "#0071aaff",
             Rarity.Epic      => "#952bffff",
             Rarity.Legendary => "#fcc653ff",

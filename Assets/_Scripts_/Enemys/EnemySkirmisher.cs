@@ -31,7 +31,6 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
     [SerializeField] private float detectionRange = 40f;
     [SerializeField] private float loseTargetRange = 55f;
     [SerializeField] private float preferredDistance = 12f;
-    [SerializeField] private float losHeightOffset = 0.6f;
     [SerializeField] private LayerMask losMask; // Hindernisse / Level
 
     [Header("Movement")]
@@ -67,7 +66,6 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
     [Header("Health")]
     [SerializeField] private float baseHealth = 5f;
 
-    [Header("VFX")]
     [SerializeField] private EnemyDamageNumbers dmgNums;
 
     // networked health (server-authoritativ)
@@ -93,6 +91,7 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
         controller = GetComponent<EnemyController>();
         pull = GetComponent<PullReceiver>();
         lootDropper = GetComponent<EnemyLootDropper>();
+        dmgNums = GetComponent<EnemyDamageNumbers>();
 
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
     }

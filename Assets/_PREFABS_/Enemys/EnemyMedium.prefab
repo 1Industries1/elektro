@@ -376,6 +376,7 @@ GameObject:
   - component: {fileID: 1522036757684437610}
   - component: {fileID: 2913323573280078055}
   - component: {fileID: 2480006557204120096}
+  - component: {fileID: 7452236802911736379}
   - component: {fileID: -2398430874698207531}
   - component: {fileID: 9223212118158675686}
   - component: {fileID: 5782244146976485846}
@@ -429,7 +430,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 1
-  m_Constraints: 0
+  m_Constraints: 80
   m_CollisionDetection: 1
 --- !u!136 &7864375055206474013
 CapsuleCollider:
@@ -662,6 +663,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hitEffectPrefab: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
   deathEffectPrefab: {fileID: 6396558596094104492, guid: a0783f2030ad1c7419cad37adf854bd5, type: 3}
+--- !u!114 &7452236802911736379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7018259160673714555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91ebfe5239340a84d8d63f82f42f1022, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TouchDamage
+  dps: 10
+  tickInterval: 0.25
+  playerMask:
+    serializedVersion: 2
+    m_Bits: 128
 --- !u!114 &-2398430874698207531
 MonoBehaviour:
   m_ObjectHideFlags: 0

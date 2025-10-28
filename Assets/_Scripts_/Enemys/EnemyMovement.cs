@@ -19,6 +19,7 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
     [SerializeField] private float maxMoveSpeed = 7f;
     [SerializeField] private float rotationSpeed = 3f;
     [SerializeField] private float baseHealth = 1f;
+    [SerializeField] private EnemyDamageNumbers dmgNums;
 
     private float moveSpeed;
     private Transform target;
@@ -33,6 +34,7 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
     {
         rb = GetComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        dmgNums = GetComponent<EnemyDamageNumbers>();
     }
 
     public override void OnNetworkSpawn()
@@ -105,10 +107,16 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
     public void TakeDamage(float amount, ulong attackerId, Vector3 hitPoint)
     {
         if (!IsServer) return;
+
         lastHitByClientId = attackerId;
         health.Value -= amount;
 
-        // Effekt auf allen Clients an der Einschlagstelle abspielen
+        // Damage Number nur für den Angreifer
+        if (dmgNums != null)
+            dmgNums.ShowForAttackerOnly(amount, hitPoint, attackerId, isCrit: false);
+        else
+            DamagePopupRelay.Instance?.ShowForAttackerOnly_Server(amount, hitPoint, attackerId, isCrit: false); // Fallback
+
         GetComponent<EnemyEffects>()?.PlayHitEffectClientRpc(hitPoint);
     }
 

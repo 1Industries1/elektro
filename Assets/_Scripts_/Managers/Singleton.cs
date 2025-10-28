@@ -5,26 +5,29 @@ using UnityEngine;
 public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
 {
     private static T instance;
+    private static bool applicationIsQuitting;
 
     public static T Instance
     {
         get
         {
+            if (applicationIsQuitting) return null;
+
             if (instance == null)
             {
-                instance = FindObjectOfType<T>();
+                instance = FindFirstObjectByType<T>(); // or FindAnyObjectByType<T>() if you prefer
 
                 if (instance == null)
                 {
-                    GameObject singletonObject = new GameObject(typeof(T).Name);
+                    var singletonObject = new GameObject(typeof(T).Name);
                     instance = singletonObject.AddComponent<T>();
+                    DontDestroyOnLoad(singletonObject);
                 }
             }
             return instance;
         }
     }
-    
-    // Verhindert die Zerstörung des Managers beim Laden einer neuen Szene
+
     protected virtual void Awake()
     {
         if (instance == null)
@@ -36,5 +39,15 @@ public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    protected virtual void OnApplicationQuit()
+    {
+        applicationIsQuitting = true;
+    }
+
+    protected virtual void OnDestroy()
+    {
+        if (instance == this) instance = null;
     }
 }

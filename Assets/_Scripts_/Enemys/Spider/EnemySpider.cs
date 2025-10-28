@@ -40,6 +40,7 @@ public class EnemySpider : NetworkBehaviour, IEnemy
 
     [Header("Health")]
     [SerializeField] private float baseHealth = 5f;
+    [SerializeField] private EnemyDamageNumbers dmgNums;
 
     private readonly NetworkVariable<float> health =
         new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -61,6 +62,7 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         rb = GetComponent<Rigidbody>();
         controller = GetComponent<EnemyController>();
         effects = GetComponent<EnemyEffects>();
+        dmgNums = GetComponent<EnemyDamageNumbers>();
 
         if (!visualsRoot) visualsRoot = transform;
 
@@ -225,6 +227,16 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         if (!IsServer || isDead) return;
         lastHitByClientId = attackerId;
         health.Value -= amount;
+
+        // Damage Popup
+        if (dmgNums != null)
+        {
+            // ALLE Spieler sehen DMG Popups
+            //dmgNums.ShowForAllClients(amount, hitPoint, isCrit: false);
+
+            // Nur der Angreifer sieht die Zahl
+            dmgNums.ShowForAttackerOnly(amount, hitPoint, attackerId, isCrit: false);
+        }
 
         effects?.PlayHitEffectClientRpc(hitPoint);
     }

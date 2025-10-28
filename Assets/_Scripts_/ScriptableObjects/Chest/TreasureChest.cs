@@ -26,9 +26,17 @@ public class TreasureChest : MonoBehaviour
     [SerializeField] private float reopenCooldown = 2f;
     [SerializeField] private string playerTag = "Player";
 
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;  // Quelle am selben GameObject
+    [SerializeField] private AudioClip holdLoopClip;   // Sound, der während des Haltens looped
+    [SerializeField] private AudioClip openClip;       // Einmaliger Sound beim Öffnen
+    [SerializeField][Range(0f, 1f)] private float holdLoopBaseVolume = 0.25f;
+    [SerializeField] private bool modulateHoldByProgress = true; // Lautstärke/Pitch nach Fortschritt
+
+
     [Header("Slow Motion (Chest)")]
     public bool chestSlowMo = true;
-    [Range(0.05f,1f)] public float chestSlowScale = 0.05f;
+    [Range(0.05f, 1f)] public float chestSlowScale = 0.05f;
     public float chestSlowFadeIn = 0.35f;
     public float chestSlowFadeOut = 1.2f;
     public float chestSlowDelay = 2f;
@@ -85,6 +93,9 @@ public class TreasureChest : MonoBehaviour
             holdCircle.fillAmount = 0f;
             holdCircle.gameObject.SetActive(false);
         }
+
+        if (audioSource == null && (holdLoopClip != null || openClip != null))
+            audioSource = gameObject.AddComponent<AudioSource>();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -98,6 +109,8 @@ public class TreasureChest : MonoBehaviour
             recipient = p;
 
         if (holdCircle) holdCircle.gameObject.SetActive(true);
+
+        TryStartHoldLoop();
     }
 
     private void OnTriggerExit(Collider other)
@@ -114,6 +127,8 @@ public class TreasureChest : MonoBehaviour
         // Spieler verlässt Bereich -> Empfänger vergessen
         if (other.TryGetComponent(out PlayerInventory p) && p == recipient)
             recipient = null;
+
+        StopHoldLoop();
     }
 
     private void Update()
@@ -135,7 +150,15 @@ public class TreasureChest : MonoBehaviour
         float t = holdDuration <= 0f ? 1f : Mathf.Clamp01(holdTimer / Mathf.Max(0.0001f, holdDuration));
         if (holdCircle) holdCircle.fillAmount = t;
         OnProgress?.Invoke(t);
+
+        // Audio-Feedback an Fortschritt koppeln
+        if (modulateHoldByProgress && audioSource != null && audioSource.clip == holdLoopClip && audioSource.isPlaying)
+        {
+            audioSource.volume = holdLoopBaseVolume * Mathf.Lerp(0.6f, 1f, t);
+            audioSource.pitch = Mathf.Lerp(0.9f, 1.1f, t);
+        }
     }
+
 
     private void OpenChest()
     {
@@ -153,8 +176,13 @@ public class TreasureChest : MonoBehaviour
             animator.SetTrigger(openTriggerHash);
 
         // Optional: Collider deaktivieren, wenn nur einmal nutzbar
-        var col = GetComponent<Collider>();
-        if (col && singleUse) col.enabled = false;
+        //var col = GetComponent<Collider>();
+        //if (col && singleUse) col.enabled = false;
+
+        // --- AUDIO: Hold-Loop aus, Open-SFX an
+        StopHoldLoop();
+        if (audioSource != null && openClip != null)
+            audioSource.PlayOneShot(openClip);
 
         // Drops vergeben
         GiveRewards(recipient);
@@ -203,6 +231,30 @@ public class TreasureChest : MonoBehaviour
     // ==========================
     // --- Drop-Helfer
     // ==========================
+
+    private void TryStartHoldLoop()
+    {
+        if (audioSource == null || holdLoopClip == null) return;
+
+        // Nur starten, wenn noch nicht läuft bzw. anderer Clip aktiv ist
+        if (!audioSource.isPlaying || audioSource.clip != holdLoopClip)
+        {
+            audioSource.clip = holdLoopClip;
+            audioSource.loop = true;
+            audioSource.volume = holdLoopBaseVolume;
+            audioSource.pitch = 1f;
+            audioSource.Play();
+        }
+    }
+
+    private void StopHoldLoop()
+    {
+        if (audioSource == null) return;
+        if (audioSource.clip == holdLoopClip)
+            audioSource.Stop();
+    }
+
+
     public TreasureChestDropProfile GetCurrentDropProfile()
     {
         if (dropProfiles == null || dropProfiles.Length == 0) return null;
