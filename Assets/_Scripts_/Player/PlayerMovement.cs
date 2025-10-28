@@ -120,7 +120,6 @@ public class PlayerMovement : NetworkBehaviour
     private float nextDashAllowedTime;
     private int airDashesLeft;
     private Vector3 dashDir;
-    private bool invulnerable;
 
     // Audio
     private Coroutine footstepRoutine;
@@ -267,7 +266,6 @@ public class PlayerMovement : NetworkBehaviour
             if (dashElapsed >= dashDuration)
             {
                 isDashing = false;
-                invulnerable = false;
 
                 // weiches Ausrollen (nur horizontal)
                 Vector3 vel = rb.linearVelocity;
@@ -735,7 +733,6 @@ public class PlayerMovement : NetworkBehaviour
 
         isDashing = true;
         dashElapsed = 0f;
-        invulnerable = true;
         nextDashAllowedTime = Time.time + dashCooldown;
 
         Vector3 rbVel = rb.linearVelocity;

@@ -7,30 +7,33 @@ using System.Collections;
 public class PlayerSlowReceiver : NetworkBehaviour
 {
     private float slowMul = 1f;
+    private float slowUntil = 0f;
     private Coroutine slowCo;
 
     public float CurrentMultiplier => slowMul;
 
     // Server-side API
-    public void ApplySlow(float mul, float duration)
+    public void ApplyOrRefreshSlow(float mul, float duration)
     {
         if (!IsServer) return;
-        if (slowCo != null) StopCoroutine(slowCo);
-        slowCo = StartCoroutine(SlowRoutine(Mathf.Clamp(mul, 0.3f, 1f), Mathf.Max(0.05f, duration)));
+        mul = Mathf.Clamp(mul, 0.3f, 1f);
+        duration = Mathf.Max(0.05f, duration);
+
+        // stärkeren (kleineren) Mul bevorzugen & Dauer verlängern
+        slowMul = Mathf.Min(slowMul, mul);
+        slowUntil = Mathf.Max(slowUntil, Time.time + duration);
+
+        if (slowCo == null) slowCo = StartCoroutine(SlowRoutine());
     }
 
-    private IEnumerator SlowRoutine(float mul, float dur)
+    private IEnumerator SlowRoutine()
     {
-        SetMultiplierClientRpc(mul);
-        yield return new WaitForSeconds(dur);
+        SetMultiplierClientRpc(slowMul);
+        while (Time.time < slowUntil) yield return null;
+        slowMul = 1f;
         SetMultiplierClientRpc(1f);
         slowCo = null;
     }
 
-    [ClientRpc]
-    private void SetMultiplierClientRpc(float mul)
-    {
-        slowMul = mul;
-        // TODO: hier optional UI/Icon/VFX toggeln
-    }
+    [ClientRpc] private void SetMultiplierClientRpc(float mul){ slowMul = mul; }
 }

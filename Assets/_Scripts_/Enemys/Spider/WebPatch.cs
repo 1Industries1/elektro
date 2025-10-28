@@ -1,18 +1,21 @@
-// WebPatch.cs
+// WebPatch.cs (nur relevante Ausschnitte)
 using UnityEngine;
 using Unity.Netcode;
 using System.Collections.Generic;
+using UnityEngine.Rendering.Universal;
 
 [DisallowMultipleComponent]
 public class WebPatch : NetworkBehaviour
 {
     [SerializeField] private float radius = 3f;
-    [SerializeField] private float duration = 2.5f;
+    [SerializeField] private float duration = 4.0f;      // etwas länger, da Streifen
     [SerializeField] private float slowMultiplier = 0.65f;
+    [SerializeField] private float refreshStep = 0.2f;   // alle 0.2s wird Slow erneuert
     [SerializeField] private GameObject vfxRoot;
+    [SerializeField] DecalProjector decal;
 
     private float endTime;
-    private readonly HashSet<ulong> slowed = new();
+    private readonly Dictionary<ulong, float> nextRefresh = new();
 
     public override void OnNetworkSpawn()
     {
@@ -34,18 +37,20 @@ public class WebPatch : NetworkBehaviour
         }
     }
 
-    void OnTriggerEnter(Collider other)
+    // <<< NEU: kontinuierliches Verlängern
+    void OnTriggerStay(Collider other)
     {
         if (!IsServer) return;
 
         if (other.TryGetComponent<NetworkObject>(out var no) && no.IsPlayerObject)
         {
-            if (slowed.Contains(no.OwnerClientId)) return;
-
-            if (other.TryGetComponent<PlayerSlowReceiver>(out var recv))
+            ulong id = no.OwnerClientId;
+            if (!nextRefresh.TryGetValue(id, out float t) || Time.time >= t)
             {
-                recv.ApplySlow(slowMultiplier, 1.5f);
-                slowed.Add(no.OwnerClientId);
+                if (other.TryGetComponent<PlayerSlowReceiver>(out var recv))
+                    recv.ApplyOrRefreshSlow(slowMultiplier, refreshStep + 0.05f);
+
+                nextRefresh[id] = Time.time + refreshStep;
             }
         }
     }
@@ -57,16 +62,9 @@ public class WebPatch : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void UpdateVfxScaleClientRpc(float r)
+    void UpdateVfxScaleClientRpc(float r)
     {
-        if (vfxRoot != null) vfxRoot.transform.localScale = new Vector3(r*2f, 1f, r*2f);
+        if (decal != null)
+            decal.size = new Vector3(r * 2f, 3.5f, r * 2f);
     }
-
-#if UNITY_EDITOR
-    void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(0.3f, 1f, 1f, 0.35f);
-        Gizmos.DrawSphere(transform.position + Vector3.up * 0.05f, radius);
-    }
-#endif
 }

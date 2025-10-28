@@ -126,7 +126,6 @@ public class PlayerHealth : NetworkBehaviour
         if (IsOwner)
         {
             PlayerHUD.Instance?.OnLocalPlayerHitHP(dmg, cur, max);
-            LocalBatteryFX.Instance?.SetBatteryState(cur, max, false); // optional: falls du vorhandene FX wiederverwenden willst
         }
     }
 

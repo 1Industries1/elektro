@@ -1472,7 +1472,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &6656739555995357333
 Transform:
   m_ObjectHideFlags: 0
@@ -1481,14 +1481,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6877170251567002664}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: -0.30909312, y: -0, z: -0, w: 0.9510318}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2342097674755619982}
   m_Father: {fileID: 3963026483496299984}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -36.009, y: 0, z: 0}
 --- !u!114 &2603605539006418897
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1515,7 +1515,7 @@ MonoBehaviour:
   minWidth: 80
   maxWidth: 120
   corridorLength: 150
-  lockToOwnerForward: 1
+  lockToOwnerForward: 0
   leftLine: {fileID: 0}
   rightLine: {fileID: 0}
   lineWidth: 0
@@ -1545,13 +1545,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7011924526486487808}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: -0.6601956, y: -0, z: -0, w: 0.75109375}
   m_LocalPosition: {x: -0.1679371, y: -0.13037902, z: 1.2636182}
   m_LocalScale: {x: 0.8983464, y: 0.5575467, z: 0.5818847}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 6656739555995357333}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -82.63, y: 0, z: 0}
 --- !u!1 &7364241556965581723
 GameObject:
   m_ObjectHideFlags: 0
@@ -2181,13 +2181,13 @@ MonoBehaviour:
   GlobalObjectIdHash: 2222620978
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
-  SynchronizeTransform: 1
+  SynchronizeTransform: 0
   ActiveSceneSynchronization: 0
   SceneMigrationSynchronization: 1
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
-  AutoObjectParentSync: 1
-  SyncOwnerTransformWhenParented: 1
+  AutoObjectParentSync: 0
+  SyncOwnerTransformWhenParented: 0
   AllowOwnerToParent: 0
 --- !u!114 &7166551182607951162
 MonoBehaviour:
@@ -2245,7 +2245,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b3195d173adbb747b85346ff0ff1fab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 18
+  moveSpeed: 15
   acceleration: 5
   deceleration: 5
   airControl: 0.5
@@ -2441,9 +2441,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   level: 1
   xp: 0
-  baseCost: 20
+  baseCost: 35
   costMult: 1.12
-  _xpToNext: 20
+  _xpToNext: 35
 --- !u!114 &7025646431992723550
 MonoBehaviour:
   m_ObjectHideFlags: 0

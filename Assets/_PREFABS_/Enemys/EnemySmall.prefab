@@ -536,7 +536,7 @@ MonoBehaviour:
   pullMaxSpeed: 10
   detectionRange: 120
   loseTargetRange: 180
-  preferredDistance: 65
+  preferredDistance: 40
   losHeightOffset: 5
   losMask:
     serializedVersion: 2
@@ -545,7 +545,7 @@ MonoBehaviour:
   strafeSpeed: 10
   rotationSpeed: 8
   distanceTolerance: 6
-  dashSpeed: 30
+  dashSpeed: 50
   dashWindup: 0.35
   dashDuration: 0.6
   dashCooldown: 1.5
@@ -556,10 +556,10 @@ MonoBehaviour:
   targetHeightOffset: 0.9
   bulletPrefab: {fileID: 4211810131274587892, guid: 083d75882754f8741ad9210a4fb08cfb, type: 3}
   bulletSpawn: {fileID: 1092511943301943110}
-  shootRange: 75
+  shootRange: 50
   burstCount: 2
   burstInterval: 0.5
-  inaccuracyAngle: 4
+  inaccuracyAngle: 3
   audioSource: {fileID: 9223212118158675686}
   shootSfx: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
   baseHealth: 40

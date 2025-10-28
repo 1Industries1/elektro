@@ -1,3 +1,5 @@
+in: C:\Users\Sinan\SpaceCanone>
+
 Regelmäßig committen & pushen (Offsite-Backup):
 
 git status

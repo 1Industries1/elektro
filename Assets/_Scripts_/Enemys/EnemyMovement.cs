@@ -132,7 +132,7 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
         GetComponent<EnemyEffects>()?.PlayDeathEffectClientRpc(transform.position);
         GetComponent<EnemyDropper>().HandleDeath();
 
-        Debug.Log($"[EnemyMovement] Enemy died. LastHitByClientId={lastHitByClientId}");
+        //Debug.Log($"[EnemyMovement] Enemy died. LastHitByClientId={lastHitByClientId}");
 
         if (IsServer)
             GetComponent<NetworkObject>().Despawn(true);

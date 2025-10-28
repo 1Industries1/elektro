@@ -18,7 +18,6 @@ GameObject:
   - component: {fileID: 741727832254490159}
   - component: {fileID: 5878410231318725339}
   - component: {fileID: 3756944905186256086}
-  - component: {fileID: 4780143916243733113}
   - component: {fileID: 7159653341870442381}
   - component: {fileID: 8995838984740351076}
   - component: {fileID: 1643311104596497111}
@@ -145,7 +144,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 512
-  velocity: {x: 0.40671954, y: 0, z: 0.55981624}
+  velocity: {x: 0.22097829, y: 0, z: -0.096296385}
 --- !u!114 &8357887114018345148
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -177,7 +176,7 @@ MonoBehaviour:
   spitCooldown: 2.5
   spitInaccuracy: 4
   spitWindup: 0.18
-  baseHealth: 350
+  baseHealth: 60
 --- !u!114 &8646995625217381518
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -241,20 +240,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   groundCheckDown: 2
---- !u!114 &4780143916243733113
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3239788829411758996}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98b35dcae859a7d46a3054790314da7a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  hitEffectPrefab: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
-  deathEffectPrefab: {fileID: 6396558596094104492, guid: a0783f2030ad1c7419cad37adf854bd5, type: 3}
 --- !u!114 &7159653341870442381
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -275,7 +260,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3239788829411758996}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 25
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -313,9 +298,9 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.3
-  m_Height: 0.3
-  m_Direction: 2
+  m_Radius: 0.4
+  m_Height: 1
+  m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!82 &2786668251087331907
 AudioSource:
@@ -329,7 +314,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0

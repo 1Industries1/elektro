@@ -1146,10 +1146,10 @@ MonoBehaviour:
   lastHitByClientId: 0
   detectionRange: 9999999
   attackRange: 2
-  minMoveSpeed: 22
-  maxMoveSpeed: 32
-  rotationSpeed: 3
-  baseHealth: 20
+  minMoveSpeed: 12
+  maxMoveSpeed: 18
+  rotationSpeed: 6
+  baseHealth: 25
 --- !u!114 &8194045560419369472
 MonoBehaviour:
   m_ObjectHideFlags: 0

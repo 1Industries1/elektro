@@ -36,9 +36,12 @@ public class LevelUpUI : MonoBehaviour
     public KeyCode pickKeyC  = KeyCode.Alpha3;
 
     [Header("Slow Motion")]
-    public bool  enableSlowMo      = true;
+    public bool enableSlowMo = true;
     [Range(0.05f, 1f)] public float slowMoScale = 0.2f;
-    public bool scaleFixedDeltaTime = true;
+    public float slowMoFadeIn = 0.12f;
+    public float slowMoFadeOut = 0.2f;
+
+    private int _slowHandle = 0;
     
     [Header("SFX")]
     public AudioSource sfxSource;
@@ -51,9 +54,6 @@ public class LevelUpUI : MonoBehaviour
 
     private DamageRow _damageRow;
 
-    private float _prevTimeScale = 1f;
-    private float _prevFixedDelta = 0.02f;
-    private bool  _slowApplied;
 
     private int[] _choices;
     private bool  _open;
@@ -80,9 +80,6 @@ public class LevelUpUI : MonoBehaviour
         if (panel) panel.SetActive(false);
         if (panelGroup) panelGroup.alpha = 0f;
 
-        _prevTimeScale  = Time.timeScale;
-        _prevFixedDelta = Time.fixedDeltaTime;
-
         //if (statsPanel) statsPanel.SetActive(false);
     }
 
@@ -98,7 +95,6 @@ public class LevelUpUI : MonoBehaviour
     private void OnDisable()
     {
         _open = false;
-        ApplySlowMo(false);
         UnsubscribeStats();
         //if (statsPanel) statsPanel.SetActive(false);
         _previewType = null;
@@ -118,7 +114,7 @@ public class LevelUpUI : MonoBehaviour
 
         if (HasThreeChoices)
         {
-            Func<string,string> L = null; // oder dein Localization-Wrapper
+            Func<string, string> L = null; // oder dein Localization-Wrapper
 
             choiceA.Bind(choices[0], UpgradeDescription(choices[0]), OnPick, L);
             choiceB.Bind(choices[1], UpgradeDescription(choices[1]), OnPick, L);
@@ -132,6 +128,10 @@ public class LevelUpUI : MonoBehaviour
         {
             Debug.LogWarning("[LevelUpUI] Show() called without 3 choices.");
         }
+        
+        // SlowMo
+        if (enableSlowMo && SlowMoManager.Instance != null && _slowHandle == 0)
+            _slowHandle = SlowMoManager.Instance.BeginHold(slowMoScale, slowMoFadeIn);
 
         if (btnReroll) btnReroll.gameObject.SetActive(false);
         if (btnBanish) btnBanish.gameObject.SetActive(false);
@@ -145,7 +145,6 @@ public class LevelUpUI : MonoBehaviour
         SubscribeStats();
 
         if (lockInput) LockLocalInput(true);
-        ApplySlowMo(true);
     }
 
     public void Hide(bool unlockInput = true)
@@ -500,33 +499,6 @@ public class LevelUpUI : MonoBehaviour
     }
 
     // -------------------- FX / Input Lock --------------------
-    private void ApplySlowMo(bool on)
-    {
-        if (!enableSlowMo) return;
-
-        if (on)
-        {
-            if (_slowApplied) return;
-            _prevTimeScale  = Time.timeScale;
-            _prevFixedDelta = Time.fixedDeltaTime;
-
-            Time.timeScale = Mathf.Clamp(slowMoScale, 0.05f, 1f);
-            if (scaleFixedDeltaTime)
-                Time.fixedDeltaTime = _prevFixedDelta * Time.timeScale;
-
-            _slowApplied = true;
-        }
-        else
-        {
-            if (!_slowApplied) return;
-
-            Time.timeScale = _prevTimeScale;
-            if (scaleFixedDeltaTime)
-                Time.fixedDeltaTime = _prevFixedDelta;
-
-            _slowApplied = false;
-        }
-    }
 
     private IEnumerator FadeCanvas(CanvasGroup cg, float a, float b, float type)
     {
@@ -547,7 +519,13 @@ public class LevelUpUI : MonoBehaviour
         yield return FadeCanvas(panelGroup, panelGroup ? panelGroup.alpha : 1f, 0f, fadeTime);
         if (panel) panel.SetActive(false);
         if (unlock) LockLocalInput(false);
-        ApplySlowMo(false);
+        
+        if (_slowHandle != 0 && SlowMoManager.Instance != null)
+        {
+            SlowMoManager.Instance.EndHold(_slowHandle, slowMoFadeOut);
+            _slowHandle = 0;
+        }
+
         UnsubscribeStats();
         //if (statsPanel) statsPanel.SetActive(false);
         _previewType = null;

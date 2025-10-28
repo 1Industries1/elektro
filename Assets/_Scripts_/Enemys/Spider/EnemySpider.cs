@@ -11,6 +11,7 @@ public class EnemySpider : NetworkBehaviour, IEnemy
 {
     private Rigidbody rb;
     private EnemyController controller;
+    private EnemyEffects effects;
 
     [Header("Visual/Anim")]
     [SerializeField] private Mimic mimic;
@@ -59,6 +60,7 @@ public class EnemySpider : NetworkBehaviour, IEnemy
     {
         rb = GetComponent<Rigidbody>();
         controller = GetComponent<EnemyController>();
+        effects = GetComponent<EnemyEffects>();
 
         if (!visualsRoot) visualsRoot = transform;
 
@@ -223,7 +225,8 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         if (!IsServer || isDead) return;
         lastHitByClientId = attackerId;
         health.Value -= amount;
-        // hier optional: Hit-VFX
+
+        effects?.PlayHitEffectClientRpc(hitPoint);
     }
 
     public float GetBaseHealth() => baseHealth;
@@ -242,6 +245,12 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         OnEnemyDied?.Invoke(this);
 
         if (IsServer)
+        {
+            // Death-VFX an Position schicken, dann despawnen
+            Vector3 pos = transform.position;
+            effects?.PlayDeathEffectClientRpc(pos);
+
             GetComponent<NetworkObject>().Despawn(true);
+        }
     }
 }
