@@ -1,0 +1,279 @@
+{
+  "meta": {
+    "version": "1.0",
+    "notes": "Vampire-survivors-like 3D tripod bot — weapons, passives, evolutions"
+  },
+  "globals": {
+    "weapon_power_scalar_name": "WK",
+    "crit": {
+      "base_chance": 0.05,
+      "multiplier": 2.0
+    },
+    "evolution_rule": {
+      "weapon_level_required": 8,
+      "require_matching_passive": true,
+      "max_evolutions_per_run": 3,
+      "chest_roll_chance": {
+        "basic": 0.10,
+        "elite": 0.50,
+        "boss": 1.00
+      }
+    },
+    "passive_effects_per_level": {
+      "AttackRange": {
+        "projectile_lifetime_multiplier": 0.15,
+        "homing_acquire_radius_multiplier": 0.15
+      },
+      "MoveSpeed": {
+        "move_speed_multiplier": 0.06
+      },
+      "Magnet": {
+        "loot_magnet_bonus_meters": 1.0
+      },
+      "MaxHP": {
+        "max_hp_bonus": 20
+      },
+      "Damage": {
+        "weapon_power_multiplier": 0.10
+      },
+      "CritChance": {
+        "crit_chance_bonus": 0.03
+      }
+    }
+  },
+  "weapons": [
+    {
+      "id": "cannon",
+      "name": "Cannon",
+      "role": "Sustained DPS / light pierce",
+      "baseline": {
+        "level": 1,
+        "damage": 12,
+        "fire_rate_per_sec": 6.0,
+        "projectile_speed": "high",
+        "pierce": 0,
+        "range_m": 20
+      },
+      "levels": [
+        { "level": 2, "damage_multiplier": 0.15 },
+        { "level": 3, "fire_rate_multiplier": 0.20 },
+        { "level": 4, "pierce_add": 1 },
+        { "level": 5, "projectile_speed_multiplier": 0.20 },
+        { "level": 6, "special": "Twin Barrel", "effective_dps_multiplier": 0.25 },
+        { "level": 7, "crit_chance_add": 0.05 },
+        { "level": 8, "damage_multiplier": 0.20 }
+      ],
+      "evolution": {
+        "requires_passive": "FireRate Cannon",
+        "name": "Gatling Cannon",
+        "changes": {
+          "burst_fire": { "shots": 3, "cycle": "burst" },
+          "fire_rate_multiplier": 0.40,
+          "pierce_add": 1,
+          "on_hit_debuff": { "armor_reduction": 0.10, "duration_s": 2.0, "max_stacks": 3 }
+        }
+      }
+    },
+    {
+      "id": "blaster",
+      "name": "Blaster",
+      "role": "Line clear / heavy hit",
+      "baseline": {
+        "level": 1,
+        "damage": 40,
+        "fire_rate_per_sec": 1.2,
+        "pierce": 4,
+        "knockback": "strong",
+        "range_m": 28
+      },
+      "levels": [
+        { "level": 2, "damage_multiplier": 0.20 },
+        { "level": 3, "projectile_size_multiplier": 0.15 },
+        { "level": 4, "fire_rate_multiplier": 0.10 },
+        { "level": 5, "pierce_add": 2 },
+        { "level": 6, "special": "Impact Explosion", "aoe_radius_m": 2.5, "aoe_damage_multiplier": 0.50, "on_last_pierce": true },
+        { "level": 7, "crit_chance_add": 0.10 },
+        { "level": 8, "damage_multiplier": 0.25 }
+      ],
+      "evolution": {
+        "requires_passive": "FireRate Blaster",
+        "name": "Rail Blaster",
+        "changes": {
+          "projectile_type": "fast_ray",
+          "pierce_set": 20,
+          "damage_multiplier": 0.35,
+          "on_hit_debuff": { "armor_break_chance": 0.15, "armor_reduction": 0.20, "duration_s": 3.0 }
+        }
+      }
+    },
+    {
+      "id": "grenades",
+      "name": "Grenades",
+      "role": "AOE homing grenades",
+      "baseline": {
+        "level": 1,
+        "explosion_damage": 25,
+        "fire_rate_per_sec": 1.8,
+        "explosion_radius_m": 2.2,
+        "homing_turn_rate": "light",
+        "grenades_per_fire": 1
+      },
+      "levels": [
+        { "level": 2, "explosion_damage_multiplier": 0.20 },
+        { "level": 3, "explosion_radius_add_m": 0.4 },
+        { "level": 4, "homing_turn_rate_multiplier": 0.15 },
+        { "level": 5, "fire_rate_multiplier": 0.10 },
+        { "level": 6, "special": "Shrapnel", "shards": 6, "shard_damage": 6, "shard_range_m": 1.6 },
+        { "level": 7, "explosion_damage_multiplier": 0.20 },
+        { "level": 8, "explosion_radius_add_m": 0.6 }
+      ],
+      "evolution": {
+        "requires_passive": "GrenadeProjectile+",
+        "name": "Cluster Bombs",
+        "changes": {
+          "cluster_children": 4,
+          "child_damage_multiplier": 0.60,
+          "child_radius_m": 1.6,
+          "burn": { "dps": 10, "duration_s": 2.0 }
+        }
+      }
+    },
+    {
+      "id": "missiles",
+      "name": "Missiles",
+      "role": "Reliable tracking / splash / debuff",
+      "baseline": {
+        "level": 1,
+        "damage": 18,
+        "fire_rate_per_sec": 2.5,
+        "homing_turn_rate": "strong",
+        "splash_radius_m": 1.5,
+        "salvo_size": 1
+      },
+      "levels": [
+        { "level": 2, "damage_multiplier": 0.15 },
+        { "level": 3, "fire_rate_multiplier": 0.15 },
+        { "level": 4, "splash_radius_add_m": 0.3 },
+        { "level": 5, "homing_turn_rate_multiplier": 0.20 },
+        { "level": 6, "special": "Salvo", "salvo_size_set": 2, "intra_salvo_spread_s": 0.15 },
+        { "level": 7, "crit_chance_add": 0.10 },
+        { "level": 8, "damage_multiplier": 0.25 }
+      ],
+      "evolution": {
+        "requires_passive": "MissileProjectile+",
+        "name": "Swarm Missiles",
+        "changes": {
+          "micro_missiles_per_rocket": 3,
+          "micro_damage_multiplier": 0.50,
+          "micro_splash_radius_m": 1.2,
+          "on_hit_debuff": { "vulnerable_multiplier": 0.15, "duration_s": 2.0, "max_stacks": 2 }
+        }
+      }
+    },
+    {
+      "id": "close_combat",
+      "name": "Close Combat",
+      "role": "Melee control / corridor making",
+      "baseline": {
+        "level": 1,
+        "damage": 30,
+        "fire_rate_per_sec": 1.6,
+        "arc_degrees": 90,
+        "range_m": 2.0,
+        "knockback": "light"
+      },
+      "levels": [
+        { "level": 2, "damage_multiplier": 0.20 },
+        { "level": 3, "range_add_m": 0.5 },
+        { "level": 4, "fire_rate_multiplier": 0.15 },
+        { "level": 5, "arc_add_degrees": 30 },
+        { "level": 6, "special": "Whirl Finish", "every_nth_hit": 3, "spin_aoe_degrees": 360, "spin_damage_multiplier": 1.0 },
+        { "level": 7, "lifesteal_on_hit": 0.08 },
+        { "level": 8, "damage_multiplier": 0.25 }
+      ],
+      "evolution": {
+        "requires_passive": "Damage",
+        "requires_passive_min_level": 2,
+        "name": "Whirlwind Core",
+        "changes": {
+          "auto_whirl_interval_s": 5.0,
+          "auto_whirl_duration_s": 2.0,
+          "ticks_per_sec": 6,
+          "tick_damage_multiplier_of_base": 0.25,
+          "inherits_lifesteal": true
+        }
+      }
+    }
+  ],
+  "passives": [
+    {
+      "id": "firerate_cannon",
+      "name": "FireRate Cannon",
+      "effect_per_level": { "cannon_fire_rate_multiplier": 0.12 },
+      "caps": null,
+      "is_evo_key_for": ["cannon"]
+    },
+    {
+      "id": "firingrate_blaster",
+      "name": "FireRate Blaster",
+      "effect_per_level": { "blaster_fire_rate_multiplier": 0.10 },
+      "caps": null,
+      "is_evo_key_for": ["blaster"]
+    },
+    {
+      "id": "grenade_projectile_plus",
+      "name": "GrenadeProjectile+",
+      "effect_per_level": { "grenades_per_fire_add": 1 },
+      "caps": { "grenades_per_fire_add_max": 3 },
+      "is_evo_key_for": ["grenades"]
+    },
+    {
+      "id": "missile_projectile_plus",
+      "name": "MissileProjectile+",
+      "effect_per_level": { "rockets_per_salvo_add": 1 },
+      "caps": { "rockets_per_salvo_add_max": 3 },
+      "is_evo_key_for": ["missiles"]
+    },
+    {
+      "id": "damage",
+      "name": "Damage",
+      "effect_per_level": { "weapon_power_multiplier": 0.10 },
+      "caps": null,
+      "is_evo_key_for": ["close_combat"],
+      "evo_min_level": { "close_combat": 2 }
+    },
+    {
+      "id": "critchance",
+      "name": "CritChance",
+      "effect_per_level": { "crit_chance_add": 0.03 },
+      "caps": null
+    },
+    {
+      "id": "attackrange",
+      "name": "AttackRange",
+      "effect_per_level": {
+        "projectile_lifetime_multiplier": 0.15,
+        "homing_acquire_radius_multiplier": 0.15
+      },
+      "caps": null
+    },
+    {
+      "id": "maxhp",
+      "name": "MaxHP",
+      "effect_per_level": { "max_hp_bonus": 20 },
+      "caps": null
+    },
+    {
+      "id": "magnet",
+      "name": "Magnet",
+      "effect_per_level": { "loot_magnet_bonus_meters": 1.0 },
+      "caps": null
+    },
+    {
+      "id": "movespeed",
+      "name": "MoveSpeed",
+      "effect_per_level": { "move_speed_multiplier": 0.06 },
+      "caps": null
+    }
+  ]
+}

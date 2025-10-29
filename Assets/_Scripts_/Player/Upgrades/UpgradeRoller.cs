@@ -228,7 +228,7 @@ public static class UpgradeRoller
             Rarity.Rare      => "#0071aaff",
             Rarity.Epic      => "#952bffff",
             Rarity.Legendary => "#fcc653ff",
-            _ => "#000000ff"
+            _ => "#ffffffff"
         };
         return $"<color={hex}>";
     }

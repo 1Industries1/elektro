@@ -5,89 +5,47 @@ using Unity.Netcode;
 
 public class CannonController : NetworkBehaviour
 {
-    [Header("Bullet Settings")]
-    public NetworkObject bulletPrefab;
-    public NetworkObject altBulletPrefab;
+    [Header("Weapon Data")]
+    public WeaponDefinition weaponDef; // Cannon.asset
+    [SerializeField] private OverclockRuntime overclocks;
+
+    [Header("Bullet Settings (fallback)")]
+    public NetworkObject bulletPrefab;       // falls weaponDef.bulletPrefab leer ist
     public Transform bulletSpawnPoint;
-    public float fireRate = 0.5f;
-    public float altFireRate = 1.5f;
-
-    public float inaccuracyAngle = 5f;
-    public float altInaccuracyAngle = 1f;
-
-    [Header("Charge Shot Settings")]
-    public float chargeTime = 3f;
-
-    [Header("Damage")]
-    public Vector2 primaryDamageRange = new Vector2(20f, 40f);
-    public float altBaseDamage = 120f;
-
-    [Header("Damage Multipliers")]
-    [Tooltip("Schadensfaktor während Roll_Anim (LSHIFT gehalten). < 1 für Nerf beim Rollen.")]
-    public float damageWhileRolling = 0.5f;
-    [Tooltip("Schadensfaktor wenn NICHT gerollt wird. > 1 für Buff im Stand/Lauf.")]
-    public float damageWhileNotRolling = 1.5f;
+    public float inaccuracyAngle = 1f;
 
 
     [Header("Audio Settings")]
     public AudioSource audioSource;
     public AudioClip fireSFX;
-    public AudioClip altFireSFX;
-    public AudioClip chargeLoopSFX;
     private float _lastFireSfxTime;
     [SerializeField] private float fireSfxMinInterval = 0.05f;
 
-
     [Header("Interpolation")]
     public float rotationLerpRate = 15f;
-
-
-    [Header("Upgrades")]
-    [SerializeField] private OverclockRuntime overclocks;
-
+    public Quaternion AimRotation => transform.rotation;
 
     // ==== AUTO SHOOT ====
     [Header("Auto Shoot")]
-    
-    public bool autoShootEnabled = true;
-    public float targetRange = 30f;
+    public float targetRange = 20f;
     public float retargetInterval = 0.15f;
-    [Range(0f, 1f)] public float minDotToShoot = 0.95f; // wie "genau" wir hinzeigen müssen
+    [Range(0f, 1f)] public float minDotToShoot = 0.95f; 
     public LayerMask enemyLayer;
-    public LayerMask lineOfSightMask; // alles, was Sicht blockiert (Wände etc.)
+    public LayerMask lineOfSightMask; 
     public string eliteTag = "Elite";
 
+    public Transform CurrentTarget => currentTarget;
+    public Vector3 AimOrigin => bulletSpawnPoint ? bulletSpawnPoint.position : transform.position;
 
     [Header("Aim Lead (Vorhalt)")]
     public bool useAimLead = true;
     public float primaryBulletSpeedHint = 35f; // m/s
-    public float altBulletSpeedHint = 25f;     // m/s
-
-
-    private PlayerMovement _ownerMovement; // Cache
-    private PlayerHealth _health;
-    private PlayerUpgrades _upgrades;
-
-
-    [Header("Alt Fire: Automatik-Logik")]
-    public bool autoAltFire = true;
-    public float clusterRadius = 4f;
-    public int clusterCountThreshold = 3;
-    
 
     [Header("Fire Rate Jitter")]
-    [Range(0f, 0.5f)] public float fireRateJitterPct = 0.08f;   // ±8% um fireRate
-    [Range(0f, 0.5f)] public float altFireRateJitterPct = 0.05f; // ±5% um altFireRate
-
+    [Range(0f, 0.5f)] public float fireRateJitterPct = 0.08f;   // ±8% um cd
     private float nextFireTime = 0f;
-    private float nextAltFireTime = 0f;
-    private float chargeStartTime;
-    private bool isCharging = false;
-    private AudioSource chargeAudioSource;
 
-    // nur noch für manuell (falls autoShootEnabled=false)
     private float fireButtonHoldTime = 0f;
-    private Vector3 targetPoint;
 
     // Auto-Target Cache
     private Transform currentTarget;
@@ -101,19 +59,12 @@ public class CannonController : NetworkBehaviour
 
     // Server: Anti-Exploit Cooldown-Tracking
     private readonly Dictionary<ulong, float> _lastPrimaryFire = new();
-    private readonly Dictionary<ulong, float> _lastAltFire = new();
 
-    private void Start()
-    {
-        if (chargeLoopSFX != null)
-        {
-            chargeAudioSource = gameObject.AddComponent<AudioSource>();
-            chargeAudioSource.clip = chargeLoopSFX;
-            chargeAudioSource.loop = true;
-            chargeAudioSource.playOnAwake = false;
-            chargeAudioSource.volume = 0.75f;
-        }
-    }
+    // Runtime / Owner
+    private PlayerMovement _ownerMovement;
+    private PlayerHealth _health;
+    private PlayerUpgrades _upgrades;
+    private WeaponRuntime _runtime;
 
     public override void OnNetworkSpawn()
     {
@@ -121,27 +72,26 @@ public class CannonController : NetworkBehaviour
         _ownerMovement = GetComponentInParent<PlayerMovement>();
         _upgrades = GetComponentInParent<PlayerUpgrades>();
         if (!overclocks) overclocks = GetComponentInParent<OverclockRuntime>();
+
+        // Serverseitig WeaponRuntime aufsetzen
+        if (IsServer && weaponDef != null)
+        {
+            _runtime = new WeaponRuntime(weaponDef, 1);
+            if (_upgrades) _upgrades.ApplyTo(_runtime);
+            // sync optionale Zielweite aus Definition
+            targetRange = weaponDef.rangeMeters > 0 ? weaponDef.rangeMeters : targetRange;
+            primaryBulletSpeedHint = weaponDef.projectileSpeed > 0 ? weaponDef.projectileSpeed : primaryBulletSpeedHint;
+        }
     }
 
     private void Update()
     {
         if (!IsOwner)
         {
-            // Remote: nur Rotation glätten
             transform.rotation = Quaternion.Slerp(transform.rotation, NetworkRotation.Value, Time.deltaTime * rotationLerpRate);
             return;
         }
-
-        if (autoShootEnabled)
-        {
-            AutoAimAndFire();
-        }
-        else
-        {
-            // Fallback: manuelles Zielen/Schießen
-            AimWithMouse();
-            HandleFiringManual();
-        }
+        AutoAimAndFire();
     }
 
     // ===================== AUTO AIM / AUTO FIRE =====================
@@ -159,7 +109,7 @@ public class CannonController : NetworkBehaviour
         if (currentTarget != null)
         {
             Vector3 aimPos = PredictAimPoint(currentTarget, useAimLead ? primaryBulletSpeedHint : 0f);
-            Vector3 dir = aimPos - transform.position; // <<< geändert: dir.y NICHT nullen
+            Vector3 dir = aimPos - transform.position;
             if (dir.sqrMagnitude > 0.0001f)
             {
                 var targetRot = Quaternion.LookRotation(dir.normalized, Vector3.up);
@@ -168,11 +118,11 @@ public class CannonController : NetworkBehaviour
             }
         }
 
-        // 3) Primärschuss automatisch abfeuern (Client setzt Cooldown mit Jitter, Server prüft)
-        if (currentTarget != null)
+        // 3) Primärschuss automatisch abfeuern
+        if (currentTarget != null && _runtime != null)
         {
             Vector3 forward  = transform.forward;
-            Vector3 toTarget = (currentTarget.position - transform.position).normalized; // <<< geändert: kein XZ-Projection
+            Vector3 toTarget = (currentTarget.position - transform.position).normalized;
             float dot = Vector3.Dot(forward, toTarget);
 
             bool cdReady = Time.time >= nextFireTime;
@@ -182,8 +132,10 @@ public class CannonController : NetworkBehaviour
             if (cdReady && okDot && los)
             {
                 fireButtonHoldTime += Time.deltaTime; // simuliert „halten“ für Streuung
-                float effPrimary = overclocks ? overclocks.GetEffectiveFireRateSeconds(fireRate) : fireRate;
-                float cd = NextCooldown(effPrimary, fireRateJitterPct);
+                float baseCd = _runtime.GetCooldownSeconds();
+                // Overclocks können Sekunden-pro-Schuss verändern:
+                if (overclocks) baseCd = overclocks.GetEffectiveFireRateSeconds(baseCd);
+                float cd = NextCooldown(baseCd, fireRateJitterPct);
                 nextFireTime = Time.time + cd;
                 RequestFireServerRpc(bulletSpawnPoint.position, bulletSpawnPoint.rotation, fireButtonHoldTime, cd);
             }
@@ -196,63 +148,6 @@ public class CannonController : NetworkBehaviour
         {
             fireButtonHoldTime = 0f;
         }
-
-        // 4) Alt-Fire (Charged) automatisch verwenden?
-        if (autoAltFire && Time.time >= nextAltFireTime)
-        {
-            bool shouldAltFire = false;
-
-            if (currentTarget != null && !string.IsNullOrEmpty(eliteTag) && currentTarget.CompareTag(eliteTag))
-                shouldAltFire = true;
-
-            if (!shouldAltFire && currentTarget != null)
-            {
-                int c = CountEnemiesInSphere(currentTarget.position, clusterRadius);
-                if (c >= clusterCountThreshold) shouldAltFire = true;
-            }
-
-            if (shouldAltFire)
-                StartCoroutine(AutoChargeAndRelease());
-        }
-    }
-
-    private System.Collections.IEnumerator AutoChargeAndRelease()
-    {
-        if (isCharging) yield break;
-
-        isCharging = true;
-        chargeStartTime = Time.time;
-
-        if (chargeAudioSource != null && !chargeAudioSource.isPlaying)
-            chargeAudioSource.Play();
-
-        float desiredHold = Mathf.Clamp(chargeTime * 0.6f, 0.4f, 1.2f);
-        float endTime = Time.time + desiredHold;
-
-        // Während des Aufladens Ziel nachführen
-        while (Time.time < endTime && IsOwner)
-        {
-            if (currentTarget == null) break;
-            Vector3 aimPos = PredictAimPoint(currentTarget, useAimLead ? altBulletSpeedHint : 0f);
-            Vector3 dir = aimPos - transform.position; // <<< geändert: dir.y NICHT nullen
-            if (dir.sqrMagnitude > 0.0001f)
-            {
-                Quaternion targetRot = Quaternion.LookRotation(dir.normalized, Vector3.up);
-                transform.rotation = targetRot;
-                NetworkRotation.Value = targetRot;
-            }
-            yield return null;
-        }
-
-        float heldTime = Time.time - chargeStartTime;
-        float altCd = NextCooldown(altFireRate, altFireRateJitterPct);
-        RequestChargedShotServerRpc(bulletSpawnPoint.position, bulletSpawnPoint.rotation, heldTime, altCd);
-
-        nextAltFireTime = Time.time + altCd;
-        isCharging = false;
-
-        if (chargeAudioSource != null && chargeAudioSource.isPlaying)
-            chargeAudioSource.Stop();
     }
 
     private Transform AcquireTarget()
@@ -292,12 +187,6 @@ public class CannonController : NetworkBehaviour
         return !Physics.Raycast(origin, dir.normalized, dist, lineOfSightMask, QueryTriggerInteraction.Ignore);
     }
 
-    private int CountEnemiesInSphere(Vector3 center, float radius)
-    {
-        Collider[] hits = Physics.OverlapSphere(center, radius, enemyLayer, QueryTriggerInteraction.Ignore);
-        return hits != null ? hits.Length : 0;
-    }
-
     private Vector3 PredictAimPoint(Transform target, float projectileSpeed)
     {
         Vector3 targetPos = target.position + Vector3.up * 0.6f;
@@ -317,90 +206,22 @@ public class CannonController : NetworkBehaviour
         return targetPos + v * t;
     }
 
-    // ===================== MANUAL (Fallback) =====================
-
-    private void AimWithMouse()
+    public bool TryAimTowards(Vector3 worldPos)
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Vector3 dir = worldPos - transform.position;
+        if (dir.sqrMagnitude <= 0.0001f) return false;
 
-        // Erst auf Geometrie zielen (echtes 3D-Zielen)
-        if (Physics.Raycast(ray, out RaycastHit hit, 500f, ~0, QueryTriggerInteraction.Ignore))
-        {
-            targetPoint = hit.point;
-            Vector3 direction = targetPoint - transform.position; // <<< geändert: y NICHT nullen
-            if (direction.sqrMagnitude > 0.01f)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
-                transform.rotation = targetRotation;
-                NetworkRotation.Value = targetRotation;
-            }
-            return;
-        }
-
-        // Fallback: Ebene (falls nichts getroffen)
-        Plane fallbackPlane = new Plane(Vector3.up, new Vector3(0, 2, 0));
-        if (fallbackPlane.Raycast(ray, out float distance))
-        {
-            targetPoint = ray.GetPoint(distance);
-            Vector3 direction = targetPoint - transform.position; // ebenfalls 3D
-            if (direction.sqrMagnitude > 0.01f)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
-                transform.rotation = targetRotation;
-                NetworkRotation.Value = targetRotation;
-            }
-        }
+        var targetRot = Quaternion.LookRotation(dir.normalized, Vector3.up);
+        transform.rotation = targetRot;
+        NetworkRotation.Value = targetRot;
+        return true;
     }
 
-    private void HandleFiringManual()
+    private float NextCooldown(float baseSecondsPerShot, float jitterPct)
     {
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-
-        // Primär
-        if (Input.GetMouseButton(0))
-        {
-            fireButtonHoldTime += Time.deltaTime;
-            if (Time.time >= nextFireTime)
-            {
-                float cd = NextCooldown(fireRate, fireRateJitterPct);
-                nextFireTime = Time.time + cd;
-                RequestFireServerRpc(bulletSpawnPoint.position, bulletSpawnPoint.rotation, fireButtonHoldTime, cd);
-            }
-        }
-        else if (Input.GetMouseButtonUp(0))
-        {
-            fireButtonHoldTime = 0f;
-        }
-
-        // Charged
-        if (Input.GetMouseButtonDown(1) && Time.time >= nextAltFireTime)
-        {
-            chargeStartTime = Time.time;
-            isCharging = true;
-            if (chargeAudioSource != null && !chargeAudioSource.isPlaying)
-                chargeAudioSource.Play();
-        }
-        if (Input.GetMouseButtonUp(1) && isCharging)
-        {
-            float heldTime = Time.time - chargeStartTime;
-            float altCd = NextCooldown(altFireRate, altFireRateJitterPct);
-            RequestChargedShotServerRpc(bulletSpawnPoint.position, bulletSpawnPoint.rotation, heldTime, altCd);
-
-            nextAltFireTime = Time.time + altCd;
-            isCharging = false;
-
-            if (chargeAudioSource != null && chargeAudioSource.isPlaying)
-                chargeAudioSource.Stop();
-        }
-    }
-
-    // ===================== Utils =====================
-
-    private float NextCooldown(float baseRate, float jitterPct)
-    {
-        if (jitterPct <= 0f) return Mathf.Max(0.01f, baseRate);
+        if (jitterPct <= 0f) return Mathf.Max(0.01f, baseSecondsPerShot);
         float r = Random.Range(-jitterPct, jitterPct); // symmetrisch um 0
-        return Mathf.Max(0.01f, baseRate * (1f + r));
+        return Mathf.Max(0.01f, baseSecondsPerShot * (1f + r));
     }
 
     // ===================== SERVER RPCs =====================
@@ -409,64 +230,40 @@ public class CannonController : NetworkBehaviour
     private void RequestFireServerRpc(Vector3 position, Quaternion rotation, float holdTime, float clientCooldown)
     {
         if (_health != null && _health.IsDead()) return;
+        if (_runtime == null) return;
 
         float now = Time.time;
 
         _lastPrimaryFire.TryGetValue(OwnerClientId, out float last);
 
         // Erlaubte Cooldown-Grenzen (serverseitig)
-        float baseCd = Mathf.Max(0.01f, overclocks ? overclocks.GetEffectiveFireRateSeconds(fireRate) : fireRate);
+        float baseCd = Mathf.Max(0.01f, _runtime.GetCooldownSeconds());
+        if (overclocks) baseCd = overclocks.GetEffectiveFireRateSeconds(baseCd);
         float minCd = Mathf.Max(0.01f, baseCd * (1f - fireRateJitterPct));
         float maxCd = Mathf.Max(0.01f, baseCd * (1f + fireRateJitterPct));
 
-        // Validierung gegen Ausreißer / Manipulation
+        // Validierung
         if (clientCooldown < minCd || clientCooldown > maxCd) return;
-
-        // Taktprüfung
         if (now - last < clientCooldown) return;
 
         _lastPrimaryFire[OwnerClientId] = now;
 
         float dynamicInaccuracy = inaccuracyAngle + Mathf.Clamp(holdTime * 1f, 0f, 15f);
         FireCannon(position, rotation, dynamicInaccuracy);
-        
-    }
-
-    [ServerRpc]
-    private void RequestChargedShotServerRpc(Vector3 position, Quaternion rotation, float heldTime, float clientCooldown)
-    {
-        float now = Time.time;
-        _lastAltFire.TryGetValue(OwnerClientId, out float last);
-
-        float baseCd = Mathf.Max(0.01f, altFireRate);
-        float minCd = Mathf.Max(0.01f, baseCd * (1f - altFireRateJitterPct));
-        float maxCd = Mathf.Max(0.01f, baseCd * (1f + altFireRateJitterPct));
-
-        if (clientCooldown < minCd || clientCooldown > maxCd) return;
-        if (now - last < clientCooldown) return;
-
-        float chargePercent = Mathf.Clamp01(heldTime / chargeTime);
-
-
-        _lastAltFire[OwnerClientId] = now;
-        FireChargedShot(position, rotation, chargePercent);
     }
 
     // ===================== SERVER-only Projektil-Spawn =====================
 
     private float GetRollDamageMultiplier()
     {
-        // Fallback 1.0f, falls nichts gefunden
         if (_ownerMovement == null) _ownerMovement = GetComponentInParent<PlayerMovement>();
         if (_ownerMovement == null) return 1f;
-
-        return _ownerMovement.ServerRollHeld ? damageWhileRolling : damageWhileNotRolling;
+        return _ownerMovement.ServerRollHeld ? 0.5f : 1.5f; // wie in deinem alten Script
     }
 
-    
     private void FireCannon(Vector3 position, Quaternion rotation, float inaccuracy)
     {
-        // Konische Streuung um die Vorwärtsrichtung (inkl. Pitch)
+        // Streuung
         Vector3 baseFwd = rotation * Vector3.forward;
         Vector3 upAxis  = rotation * Vector3.up;
         Vector3 rightAxis = rotation * Vector3.right;
@@ -477,21 +274,38 @@ public class CannonController : NetworkBehaviour
         Vector3 deviatedDir = Quaternion.AngleAxis(yaw, upAxis) * (Quaternion.AngleAxis(pitch, rightAxis) * baseFwd);
         Quaternion fireRotation = Quaternion.LookRotation(deviatedDir.normalized, upAxis);
 
-        NetworkObject bulletNetObj = Instantiate(bulletPrefab, position, fireRotation);
+        // Prefab aus Definition bevorzugen
+        NetworkObject prefab = weaponDef && weaponDef.bulletPrefab ? weaponDef.bulletPrefab : bulletPrefab;
+        NetworkObject bulletNetObj = Instantiate(prefab, position, fireRotation);
         bulletNetObj.Spawn(true);
 
-        BulletController bullet = bulletNetObj.GetComponent<BulletController>();
+        var bullet = bulletNetObj.GetComponent<BulletController>();
 
-        // === NEU: Schaden serverseitig berechnen (Würfel + Roll-Skalierung) ===
-        float baseDamage = Random.Range(primaryDamageRange.x, primaryDamageRange.y);
-        float dmgScale   = GetRollDamageMultiplier();   // 0.8 beim Rollen / 1.15 nicht Rollen
-        float upgradeMult = _upgrades ? _upgrades.GetDamageMultiplier() : 1f;
-        float ocDmg = overclocks ? overclocks.GetDamageMult() : 1f;
-        float finalDamage = baseDamage * dmgScale * upgradeMult * ocDmg;
+        // Schaden serverseitig
+        float dmgScale   = GetRollDamageMultiplier()
+                         * (_upgrades ? _upgrades.GetDamageMultiplier() : 1f)
+                         * (overclocks ? overclocks.GetDamageMult() : 1f);
 
-        bullet.Init(fireRotation * Vector3.forward, bullet.speed, finalDamage, OwnerClientId);
+        // vor erstem Pierce
+        float baseDmgNP = _runtime.ComputeDamageNonPierced(applyCrit: true);
+        // nach >=1x Pierce (Pierce Mastery)
+        float baseDmgP  = _runtime.ComputeDamagePierced(applyCrit: true);
 
-        PlayFireSoundClientRpc(false, Random.Range(0.8f, 1.8f));
+        float finalNonPierced = baseDmgNP * dmgScale;
+        float finalPierced    = baseDmgP  * dmgScale;
+
+        int pierceCount = Mathf.Max(0, _runtime.pierce);
+
+        bullet.Init(
+            direction: fireRotation * Vector3.forward,
+            newSpeed: _runtime.projectileSpeed,
+            dmgNonPierced: finalNonPierced,
+            dmgAfterPierced: finalPierced,
+            pierceCount: pierceCount,
+            ownerId: OwnerClientId
+        );
+
+        PlayFireSoundClientRpc(Random.Range(0.8f, 1.8f));
 
         var clientParams = new ClientRpcParams {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
@@ -499,61 +313,20 @@ public class CannonController : NetworkBehaviour
         DoCameraShakeClientRpc(0.1f, 0.15f, clientParams);
     }
 
-    private void FireChargedShot(Vector3 position, Quaternion rotation, float chargePercent)
-    {
-        // Konische Streuung auch für Alt-Fire
-        Vector3 baseFwd = rotation * Vector3.forward;
-        Vector3 upAxis  = rotation * Vector3.up;
-        Vector3 rightAxis = rotation * Vector3.right;
-
-        float yaw  = Random.Range(-altInaccuracyAngle, altInaccuracyAngle);
-        float pitch = Random.Range(-altInaccuracyAngle, altInaccuracyAngle);
-
-        Vector3 deviatedDir = Quaternion.AngleAxis(yaw, upAxis) * (Quaternion.AngleAxis(pitch, rightAxis) * baseFwd);
-        Quaternion fireRotation = Quaternion.LookRotation(deviatedDir.normalized, upAxis);
-
-        NetworkObject bulletNetObj = Instantiate(altBulletPrefab, position, fireRotation);
-        bulletNetObj.Spawn(true);
-
-        AltBulletController bullet = bulletNetObj.GetComponent<AltBulletController>();
-
-        float chargeScale = Mathf.Lerp(1f, 3f, chargePercent);
-        float dmgScale = GetRollDamageMultiplier();
-        float upgradeMult = _upgrades ? _upgrades.GetDamageMultiplier() : 1f;
-
-        float scaledDamage = altBaseDamage * chargeScale * dmgScale * upgradeMult;
-
-        // Speed-Skalierung kann so bleiben, sie basiert auf dem Prefab-Speed:
-        float scaledSpeed  = bullet.speed * Mathf.Lerp(1f, 3.5f, chargePercent);
-
-        bullet.Init(fireRotation * Vector3.forward, scaledSpeed, scaledDamage, OwnerClientId, chargePercent);
-
-        PlayFireSoundClientRpc(true, Random.Range(0.7f, 1.2f));
-
-        var clientParams = new ClientRpcParams {
-            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
-        };
-        DoCameraShakeClientRpc(1.2f, 0.25f, clientParams);
-    }
-
     // ===================== CLIENT RPCs =====================
     [ClientRpc]
-    private void PlayFireSoundClientRpc(bool isAlt, float pitch)
+    private void PlayFireSoundClientRpc(float pitch)
     {
         if (audioSource == null) return;
-        AudioClip clip = isAlt ? altFireSFX : fireSFX;
+        AudioClip clip = fireSFX;
         if (clip == null) return;
 
-        // Throttle: bei sehr hoher Rate nicht jeden Schuss abspielen
-        if (!isAlt) // nur Primärfeuer drosseln
-        {
-            float now = Time.time;
-            if (now - _lastFireSfxTime < fireSfxMinInterval) return;
-            _lastFireSfxTime = now;
-        }
-
+        float now = Time.time;
+        if (now - _lastFireSfxTime < fireSfxMinInterval) return;
+        _lastFireSfxTime = now;
+        
         audioSource.pitch = pitch;
-        audioSource.PlayOneShot(clip, 1f); // volumeScale kann >1 sein, wenn du willst
+        audioSource.PlayOneShot(clip, 1f);
     }
 
     [ClientRpc]

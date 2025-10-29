@@ -377,32 +377,34 @@ public class LevelUpUI : MonoBehaviour
             }
         }
 
-        // --- Damage (zweizeilig) ---
+        // --- Damage (als globaler Multiplikator) ---
         {
             int lvl = _upgrades.GetLevel(UpgradeType.Damage);
             int max = _upgrades.GetMaxLevel(UpgradeType.Damage);
+
+            float currMult = _upgrades.GetCurrentValue(UpgradeType.Damage); // z.B. 1.15^lvl
             bool previewThis = allowPreview && _previewType.HasValue && _previewType.Value == UpgradeType.Damage && lvl < max;
             int stacks = previewThis ? Mathf.Clamp(_previewStacks ?? 1, 1, max - lvl) : 0;
 
-            Vector2 primNow = _upgrades.GetPrimaryDamageRangeCurrent();
-            Vector2 altNow = _upgrades.GetAltDamageRangeCurrent();
+            string header = $"Damage {(lvl >= max ? "(MAX)" : $"(Lv {lvl}/{max})")}";
+            string currTxt = $"{currMult:0.00}×";
 
-            string header = $"Damage   {(lvl >= max ? "(MAX)" : $"(Lv {lvl}/{max})")}";
-            string prim = $"{primNow.x:0.#}–{primNow.y:0.#}";
-            string alt = $"{altNow.x:0.#}–{altNow.y:0.#}";
-
-            string primNext = null, altNext = null;
+            string nextTxt = null;
             if (previewThis)
             {
-                Vector2 primN = _upgrades.GetPrimaryDamageRangeAtLevel(lvl + stacks);
-                Vector2 altN = _upgrades.GetAltDamageRangeAtLevel(lvl + stacks);
-                primNext = $"{primN.x:0.#}–{primN.y:0.#}   (Lv {lvl + stacks}/{max})";
-                altNext = $"{altN.x:0.#}–{altN.y:0.#}   (Lv {lvl + stacks}/{max})";
+                float nextMult = _upgrades.GetCurrentValueAtLevel(UpgradeType.Damage, lvl + stacks);
+                nextTxt = $"{nextMult:0.00}×   (Lv {lvl + stacks}/{max})";
             }
 
             var dmgRow = GetOrCreateDamageRow();
-            if (dmgRow) dmgRow.Set(header, $"Cannon  {prim}", primNext, $"Blaster {alt}", altNext);
+            if (dmgRow)
+            {
+                // Wir nutzen das bestehende 2-Spalten-Layout:
+                // linke Spalte = aktueller Mult, linke Next = Vorschau; rechte Spalte leer.
+                dmgRow.Set(header, $"Multiplier {currTxt}", nextTxt, "", null);
+            }
         }
+        
     }
 
 

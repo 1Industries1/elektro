@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ca412dda5f0ade449e7d21f2154383c, type: 3}
+  m_Name: Cannon
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
+  id: 1
+  displayName: Cannon
+  tags: 103
+  bulletPrefab: {fileID: -928037741104161360, guid: 5155f2aa90e192f46b39019e462048db, type: 3}
+  projectileSpeed: 150
+  rangeMeters: 120
+  projectileSize: 1
+  knockback: 0
+  baseDamage: 30
+  shotsPerSecond: 2
+  basePierce: 0
+  baseCritChance: 0
+  baseCritMult: 1.5
+  steps:
+  - name: L2
+    type: 0
+    value: 0.15
+    intValue: 0
+  - name: L3
+    type: 1
+    value: 0.2
+    intValue: 0
+  - name: L4
+    type: 2
+    value: 0
+    intValue: 1
+  - name: L5
+    type: 1
+    value: 0.2
+    intValue: 0
+  - name: L6
+    type: 6
+    value: 0.2
+    intValue: 0
+  - name: L7
+    type: 1
+    value: 0.2
+    intValue: 0
+  - name: L7
+    type: 1
+    value: 0.2
+    intValue: 0

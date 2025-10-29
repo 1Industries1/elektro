@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ca412dda5f0ade449e7d21f2154383c, type: 3}
+  m_Name: Blaster
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
+  id: 2
+  displayName: Blaster
+  tags: 23
+  bulletPrefab: {fileID: 1476586629750628589, guid: d940d4f0ac4a3ca46a9a99935586aef0, type: 3}
+  projectileSpeed: 65
+  rangeMeters: 120
+  projectileSize: 1
+  knockback: 5
+  baseDamage: 100
+  shotsPerSecond: 0.25
+  basePierce: 4
+  baseCritChance: 0
+  baseCritMult: 1.5
+  steps:
+  - name: L2
+    type: 0
+    value: 0.2
+    intValue: 0
+  - name: L3
+    type: 3
+    value: 0.2
+    intValue: 0
+  - name: L4
+    type: 1
+    value: 0.2
+    intValue: 0
+  - name: L5
+    type: 2
+    value: 0
+    intValue: 2
+  - name: L6
+    type: 7
+    value: 0.2
+    intValue: 0
+  - name: L7
+    type: 0
+    value: 0.2
+    intValue: 0
+  - name: L8
+    type: 3
+    value: 0.2
+    intValue: 0

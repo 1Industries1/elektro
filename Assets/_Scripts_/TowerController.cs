@@ -110,7 +110,7 @@ public class TowerController : NetworkBehaviour
             if (bullet != null)
             {
                 Vector3 shootDir = (enemyPosition - spawnPoint.position).normalized;
-                bullet.Init(shootDir, bullet.speed, bullet.damage, 0); // 0 = Server als Owner
+                //bullet.Init(shootDir, bullet.speed, 1, 0); // 0 = Server als Owner
             }
         }
 

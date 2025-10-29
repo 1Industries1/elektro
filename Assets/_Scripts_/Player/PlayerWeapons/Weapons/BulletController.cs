@@ -5,59 +5,65 @@ using Unity.Netcode.Components;
 [RequireComponent(typeof(NetworkObject))]
 [RequireComponent(typeof(NetworkTransform))]
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Collider))]
 public class BulletController : NetworkBehaviour
 {
     [Header("Base")]
     public float speed = 20f;
     public float lifetime = 5f;
-    public float damage; // <-- wird vom Shooter gesetzt
 
-    [Header("Ricochet")]
-    [Tooltip("Wie stark die Kugelgeschwindigkeit nach dem Abpraller erhalten bleibt (0..1).")]
+    [Header("Ricochet (non-enemy surfaces)")]
     [Range(0f, 1f)] public float bounciness = 0.7f;
-    [Tooltip("Maximale Anzahl Abpraller, bevor die Kugel verschwindet.")]
     public int maxBounces = 3;
-    [Tooltip("Kollisions-Layer, auf denen abgeprallt werden darf (z.B. Walls).")]
     public LayerMask bounceLayers = ~0;
-    [Tooltip("Mindestgeschwindigkeit nach Abprall; darunter Despawn.")]
     public float minSpeedAfterBounce = 4f;
-    [Tooltip("Kleine Trennung nach Abprall, um Sofort-Rekollision zu vermeiden.")]
     public float separationEpsilon = 0.01f;
 
+    // Pierce / Damage
+    private int maxPierces = 0;
+    private int piercesDone = 0;
+    private bool piercedOnce = false;
+
+    private float damageNonPierced;   // vor erstem Durchdringen
+    private float damageAfterPierced; // nach >=1x Durchdringen
+
     private Rigidbody rb;
+    private Collider myCol;
     private float spawnTime;
     private ulong shooterClientId;
-    private int bounceCount;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic; // wichtig bei schnellen Projektilen
+        myCol = GetComponent<Collider>();
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.interpolation = RigidbodyInterpolation.None; // Server sim only
     }
 
     public override void OnNetworkSpawn()
     {
-        rb.isKinematic = false; // Physik nur auf dem Server
+        if (IsServer) spawnTime = Time.time;
     }
 
     private void Update()
     {
         if (!IsServer) return;
-
         if (Time.time - spawnTime > lifetime)
             NetworkObject.Despawn();
     }
 
-    public void Init(Vector3 direction, float newSpeed, float newDamage, ulong ownerId)
+    // Neue Init, pierce-aware
+    public void Init(Vector3 direction, float newSpeed, float dmgNonPierced, float dmgAfterPierced, int pierceCount, ulong ownerId)
     {
         if (!IsServer) return;
 
         speed = newSpeed;
-        damage = newDamage;
-        spawnTime = Time.time;
+        damageNonPierced = dmgNonPierced;
+        damageAfterPierced = dmgAfterPierced;
+        maxPierces = Mathf.Max(0, pierceCount);
+        piercesDone = 0;
+        piercedOnce = false;
         shooterClientId = ownerId;
-        bounceCount = 0;
 
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
@@ -71,28 +77,39 @@ public class BulletController : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // 1) Enemy getroffen -> Schaden + Despawn
+        // Enemy getroffen
         if (collision.gameObject.CompareTag("Enemy"))
         {
+            float useDmg = piercedOnce ? damageAfterPierced : damageNonPierced;
             var enemy = collision.gameObject.GetComponent<IEnemy>();
             if (enemy != null)
             {
                 var hitPoint = collision.GetContact(0).point;
-                enemy.TakeDamage(damage, shooterClientId, hitPoint);
+                enemy.TakeDamage(useDmg, shooterClientId, hitPoint);
                 HitmarkerClientRpc(shooterClientId);
             }
+
+            if (piercesDone < maxPierces)
+            {
+                // Durchdringen: Projektil fliegt weiter, Kollision mit diesem Collider ignorieren
+                piercesDone++;
+                piercedOnce = true;
+                Physics.IgnoreCollision(myCol, collision.collider, true);
+                rb.position += transform.forward * 0.05f;
+                return;
+            }
+
             NetworkObject.Despawn();
             return;
         }
 
-        // 2) Darf auf diesem Layer abprallen?
+        // Kein Enemy → Bounce-Logik (Wände etc.)
         if (((1 << collision.gameObject.layer) & bounceLayers) == 0)
         {
             NetworkObject.Despawn();
             return;
         }
 
-        // 3) Abprallen
         var contact = collision.GetContact(0);
         Vector3 inVel = rb.linearVelocity;
         if (inVel.sqrMagnitude <= 0.0001f)
@@ -102,28 +119,18 @@ public class BulletController : NetworkBehaviour
         }
 
         Vector3 reflected = Vector3.Reflect(inVel, contact.normal);
-
-        // Energie dämpfen
         reflected *= bounciness;
 
-        // Zu langsam? -> Despawn
-        if (reflected.magnitude < minSpeedAfterBounce || bounceCount + 1 > maxBounces)
+        if (reflected.magnitude < minSpeedAfterBounce || (maxBounces >= 0 && --maxBounces < 0))
         {
             NetworkObject.Despawn();
             return;
         }
 
-        // Bounce anwenden
-        bounceCount++;
         rb.linearVelocity = reflected;
-
-        // Kleine Positionsverschiebung weg von der Oberfläche, um Doppel-Kollision zu vermeiden
         rb.position += contact.normal * separationEpsilon;
-
-        // Optional: Ausrichtung an Flugrichtung
         transform.forward = rb.linearVelocity.normalized;
 
-        // VFX/SFX für Clients
         RicochetClientRpc(contact.point, contact.normal);
     }
 
@@ -137,13 +144,6 @@ public class BulletController : NetworkBehaviour
     [ClientRpc]
     private void RicochetClientRpc(Vector3 point, Vector3 normal)
     {
-        // TODO: Funken/Staub & Sound abspielen (nur visuell/Audio, keine Logik)
-        // z.B. ParticleSystemManager.SpawnRicochet(point, normal);
-    }
-
-    public override void OnNetworkDespawn()
-    {
-        rb.linearVelocity = Vector3.zero;
-        rb.isKinematic = true;
+        // TODO: VFX/SFX
     }
 }
