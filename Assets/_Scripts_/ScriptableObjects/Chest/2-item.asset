@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2c958b48f8ed7f4e8623f76c498b873, type: 3}
+  m_Name: 2-item
+  m_EditorClassIdentifier: Assembly-CSharp::TreasureChestDropProfile
+  profileName: 2-item
+  luckScaling: 1
+  baseDropChance: 40
+  animDuration: 2.5
+  noOfItems: 2
+  beamColors:
+  - {r: 0.4011555, g: 0, b: 0.4056604, a: 0.6}
+  delayTime: 0
+  delayedBeams: 0
+  hasCurvedBeams: 0
+  curveBeamsSpawnTime: 0
+  hasFireworks: 0
+  fireworksDelay: 1
+  maxCoins: 0
+  minCoins: 0
+  openingSound: {fileID: 8300000, guid: e8da1eb8e05b8794196b4ab61bb4e6a3, type: 3}

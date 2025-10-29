@@ -7,6 +7,7 @@ public class CannonController : NetworkBehaviour
 {
     [Header("Weapon Data")]
     public WeaponDefinition weaponDef; // Cannon.asset
+    private PlayerWeapons _playerWeapons;
     [SerializeField] private OverclockRuntime overclocks;
 
     [Header("Bullet Settings (fallback)")]
@@ -73,14 +74,61 @@ public class CannonController : NetworkBehaviour
         _upgrades = GetComponentInParent<PlayerUpgrades>();
         if (!overclocks) overclocks = GetComponentInParent<OverclockRuntime>();
 
-        // Serverseitig WeaponRuntime aufsetzen
-        if (IsServer && weaponDef != null)
+        // PlayerWeapons suchen & anbinden
+        _playerWeapons = GetComponentInParent<PlayerWeapons>();
+        if (_playerWeapons != null)
         {
+            _playerWeapons.RuntimesRebuilt += OnWeaponsRebuilt;
+        }
+
+        // Lokale Runtime initial aufbauen (Server + Owner + Zuschauer ok, da read-only)
+        BuildLocalRuntime();
+
+        // Hints (Range/Speed) aus Definition (oder Runtime) setzen
+        ApplyRangeAndSpeedHints();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (_playerWeapons != null)
+            _playerWeapons.RuntimesRebuilt -= OnWeaponsRebuilt;
+    }
+    
+    private void OnWeaponsRebuilt()
+    {
+        // Level hat sich geändert -> lokale Runtime neu holen/rekonstruieren
+        BuildLocalRuntime();
+        ApplyRangeAndSpeedHints();
+    }
+
+    private void BuildLocalRuntime()
+    {
+        // Wenn PlayerWeapons existiert, nimm deren Runtime (Level-synchron)
+        if (_playerWeapons != null && _playerWeapons.CannonRuntime != null)
+        {
+            // Eigenes Exemplar, damit wir nicht aus Versehen Referenzen teilen
+            _runtime = new WeaponRuntime(_playerWeapons.cannonDef, _playerWeapons.cannonLevel.Value);
+            if (_upgrades)  _upgrades.ApplyTo(_runtime);
+            // Overclocks wirken bei Schussberechnung dynamisch (GetEffectiveFireRateSeconds), dmgMult additiv hier optional
+        }
+        else if (weaponDef != null)
+        {
+            // Fallback (z. B. im Editor ohne PlayerWeapons)
             _runtime = new WeaponRuntime(weaponDef, 1);
             if (_upgrades) _upgrades.ApplyTo(_runtime);
-            // sync optionale Zielweite aus Definition
+        }
+    }
+
+    private void ApplyRangeAndSpeedHints()
+    {
+        // Zielweite aus Definition; Geschwindigkeits-Hint aus Runtime (falls Level sie ändert)
+        if (weaponDef != null)
+        {
             targetRange = weaponDef.rangeMeters > 0 ? weaponDef.rangeMeters : targetRange;
-            primaryBulletSpeedHint = weaponDef.projectileSpeed > 0 ? weaponDef.projectileSpeed : primaryBulletSpeedHint;
+        }
+        if (_runtime != null)
+        {
+            primaryBulletSpeedHint = _runtime.projectileSpeed > 0 ? _runtime.projectileSpeed : primaryBulletSpeedHint;
         }
     }
 

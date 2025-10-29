@@ -62,6 +62,10 @@ public class LevelUpUI : MonoBehaviour
 
     private Behaviour _localControlToLock;
     private PlayerUpgrades _upgrades;
+    private PlayerWeapons _weapons;
+    private bool _weaponsSubscribed;
+    private readonly System.Collections.Generic.Dictionary<string, StatRow> _rowsCustom
+        = new System.Collections.Generic.Dictionary<string, StatRow>();
 
     private bool _statsSubscribed;
 
@@ -89,6 +93,10 @@ public class LevelUpUI : MonoBehaviour
         if (statsPanel) statsPanel.SetActive(true);
         FindLocalUpgradesCached();
         SubscribeStats();
+
+        _weapons = FindLocalWeapons();
+        SubscribeWeaponStats();
+
         RefreshStats();
     }
 
@@ -105,9 +113,49 @@ public class LevelUpUI : MonoBehaviour
     {
         _open = false;
         UnsubscribeStats();
-        //if (statsPanel) statsPanel.SetActive(false);
+        UnsubscribeWeaponStats();
         _previewType = null;
     }
+
+    private void SubscribeWeaponStats()
+    {
+        if (_weaponsSubscribed || _weapons == null) return;
+
+        // NetworkVariables der Levels
+        _weapons.cannonLevel.OnValueChanged  += OnAnyWeaponStatChanged;
+        _weapons.blasterLevel.OnValueChanged += OnAnyWeaponStatChanged;
+
+        // Runtime-Rebuild-Event (wenn Levels neu angewendet wurden)
+        _weapons.RuntimesRebuilt += OnWeaponsRebuiltUI;
+
+        _weaponsSubscribed = true;
+    }
+
+    private void UnsubscribeWeaponStats()
+    {
+        if (!_weaponsSubscribed || _weapons == null) return;
+
+        _weapons.cannonLevel.OnValueChanged -= OnAnyWeaponStatChanged;
+        _weapons.blasterLevel.OnValueChanged -= OnAnyWeaponStatChanged;
+        _weapons.RuntimesRebuilt -= OnWeaponsRebuiltUI;
+
+        _weaponsSubscribed = false;
+    }
+    
+    private void RefreshStatsIfVisible()
+    {
+        // refresht auch außerhalb des LevelUp-Overlays,
+        // aber nur wenn die Sidebar wirklich sichtbar ist
+        if (statsPanel && statsPanel.activeInHierarchy)
+            RefreshStats();
+    }
+
+    private void OnWeaponsRebuiltUI() => RefreshStatsIfVisible();
+
+    private void OnAnyWeaponStatChanged(int _, int __) => RefreshStatsIfVisible();
+
+    private void OnAnyStatChanged(int _, int __) => RefreshStatsIfVisible();
+
 
     // -------------------- Public API --------------------
     public void Show(int[] choices, bool lockInput = true)
@@ -151,6 +199,8 @@ public class LevelUpUI : MonoBehaviour
         StartCoroutine(FadeCanvas(panelGroup, 0f, 1f, fadeTime));
 
         RefreshStats();
+        _weapons ??= FindLocalWeapons();
+        SubscribeWeaponStats();
     }
 
     public void Hide(bool unlockInput = true)
@@ -249,6 +299,27 @@ public class LevelUpUI : MonoBehaviour
         return up;
     }
 
+    private PlayerWeapons FindLocalWeapons()
+    {
+        var nm = NetworkManager.Singleton;
+        if (!nm || !nm.IsClient) return null;
+        var local = nm.SpawnManager?.GetLocalPlayerObject();
+        if (!local) return null;
+        var pw = local.GetComponent<PlayerWeapons>();
+        if (!pw) pw = local.GetComponentInChildren<PlayerWeapons>(true);
+        return pw;
+    }
+
+    private StatRow GetOrCreateCustomRow(string key, string defaultLabel)
+    {
+        if (_rowsCustom.TryGetValue(key, out var row) && row) return row;
+        if (!statRowPrefab || !statsContent) return null;
+        row = Instantiate(statRowPrefab, statsContent);
+        row.name = key;
+        _rowsCustom[key] = row;
+        return row;
+    }
+
     // -------------------- Stats Sidebar --------------------
     private void RefreshStats()
     {
@@ -281,36 +352,6 @@ public class LevelUpUI : MonoBehaviour
                 nextStr,
                 prog
             );
-        }
-
-        // --- Fire Rate ---
-        {
-            int lvl = _upgrades.GetLevel(UpgradeType.FireRate);
-            int max = _upgrades.GetMaxLevel(UpgradeType.FireRate);
-            float curr = _upgrades.GetCurrentValue(UpgradeType.FireRate);
-            FillBasic(UpgradeType.FireRate, "Fire Rate", curr, lvl, max,
-                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.FireRate, l),
-                      v => FormatValue(UpgradeType.FireRate, v));
-        }
-
-        // --- Alt Fire Rate ---
-        {
-            int lvl = _upgrades.GetLevel(UpgradeType.AltFireRate);
-            int max = _upgrades.GetMaxLevel(UpgradeType.AltFireRate);
-            float curr = _upgrades.GetCurrentValue(UpgradeType.AltFireRate);
-            FillBasic(UpgradeType.AltFireRate, "Alt Fire", curr, lvl, max,
-                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.AltFireRate, l),
-                      v => FormatValue(UpgradeType.AltFireRate, v));
-        }
-
-        // --- Target Range ---
-        {
-            int lvl = _upgrades.GetLevel(UpgradeType.TargetRange);
-            int max = _upgrades.GetMaxLevel(UpgradeType.TargetRange);
-            float curr = _upgrades.GetCurrentValue(UpgradeType.TargetRange);
-            FillBasic(UpgradeType.TargetRange, "Target Range", curr, lvl, max,
-                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.TargetRange, l),
-                      v => FormatValue(UpgradeType.TargetRange, v));
         }
 
         // --- Max HP ---
@@ -377,33 +418,58 @@ public class LevelUpUI : MonoBehaviour
             }
         }
 
-        // --- Damage (als globaler Multiplikator) ---
+        // --- WEAPON LEVEL ROWS (Cannon / Blaster) ---
+        _weapons ??= FindLocalWeapons();
+        if (_weapons != null)
         {
-            int lvl = _upgrades.GetLevel(UpgradeType.Damage);
-            int max = _upgrades.GetMaxLevel(UpgradeType.Damage);
-
-            float currMult = _upgrades.GetCurrentValue(UpgradeType.Damage); // z.B. 1.15^lvl
-            bool previewThis = allowPreview && _previewType.HasValue && _previewType.Value == UpgradeType.Damage && lvl < max;
-            int stacks = previewThis ? Mathf.Clamp(_previewStacks ?? 1, 1, max - lvl) : 0;
-
-            string header = $"Damage {(lvl >= max ? "(MAX)" : $"(Lv {lvl}/{max})")}";
-            string currTxt = $"{currMult:0.00}×";
-
-            string nextTxt = null;
-            if (previewThis)
+            // Cannon
             {
-                float nextMult = _upgrades.GetCurrentValueAtLevel(UpgradeType.Damage, lvl + stacks);
-                nextTxt = $"{nextMult:0.00}×   (Lv {lvl + stacks}/{max})";
+                var def = _weapons.cannonDef;
+                int lvl = _weapons.cannonLevel.Value;
+                int max = 1 + (def?.steps?.Length ?? 0);
+                var row = GetOrCreateCustomRow("Weapon_Cannon", def ? def.displayName : "Cannon");
+                if (row)
+                {
+                    string label = def ? def.displayName : "Cannon";
+                    // Optional: DPS/FireRate aus Runtime (falls vorhanden)
+                    var rt = _weapons.CannonRuntime;
+                    string extra = rt != null
+                        ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond):0.#}  |  {rt.shotsPerSecond:0.##}/s"
+                        : null;
+
+                    row.Set(
+                        label,
+                        $"Lv {lvl}/{max}" + (string.IsNullOrEmpty(extra) ? "" : $"   ({extra})"),
+                        null,
+                        max > 0 ? (lvl / (float)max) : -1f
+                    );
+                }
             }
 
-            var dmgRow = GetOrCreateDamageRow();
-            if (dmgRow)
+            // Blaster
             {
-                // Wir nutzen das bestehende 2-Spalten-Layout:
-                // linke Spalte = aktueller Mult, linke Next = Vorschau; rechte Spalte leer.
-                dmgRow.Set(header, $"Multiplier {currTxt}", nextTxt, "", null);
+                var def = _weapons.blasterDef;
+                int lvl = _weapons.blasterLevel.Value;
+                int max = 1 + (def?.steps?.Length ?? 0);
+                var row = GetOrCreateCustomRow("Weapon_Blaster", def ? def.displayName : "Blaster");
+                if (row)
+                {
+                    string label = def ? def.displayName : "Blaster";
+                    var rt = _weapons.BlasterRuntime;
+                    string extra = rt != null
+                        ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond):0.#}  |  {rt.shotsPerSecond:0.##}/s"
+                        : null;
+
+                    row.Set(
+                        label,
+                        $"Lv {lvl}/{max}" + (string.IsNullOrEmpty(extra) ? "" : $"   ({extra})"),
+                        null,
+                        max > 0 ? (lvl / (float)max) : -1f
+                    );
+                }
             }
         }
+
         
     }
 
@@ -417,11 +483,7 @@ public class LevelUpUI : MonoBehaviour
         float curr = _upgrades.GetCurrentValue(type);
         switch (type)
         {
-            case UpgradeType.FireRate: return Mathf.Max(0.01f, curr * Mathf.Pow(_upgrades.fireRateMultPerLevel, stacks));
-            case UpgradeType.AltFireRate: return Mathf.Max(0.1f, curr * Mathf.Pow(_upgrades.altFireRateMultPerLevel, stacks));
-            case UpgradeType.TargetRange: return Mathf.Max(0f, curr + stacks * _upgrades.targetRangePerLevel);
             case UpgradeType.MaxHP: return Mathf.Max(1f, curr + stacks * _upgrades.maxHPPerLevel);
-            case UpgradeType.Damage: return Mathf.Max(1f, curr * Mathf.Pow(_upgrades.damageMultPerLevel, stacks));
             case UpgradeType.GrenadeSalvo: return Mathf.Max(1f, curr + PlayerUpgrades.GrenadePerLevel * stacks);
             default: return curr;
         }
@@ -433,11 +495,7 @@ public class LevelUpUI : MonoBehaviour
     {
         switch (type)
         {
-            case UpgradeType.FireRate:
-            case UpgradeType.AltFireRate: return $"{v:0.00}s";
-            case UpgradeType.TargetRange: return $"{v:0.#} m";
             case UpgradeType.MaxHP: return $"{v:0.#} HP";
-            case UpgradeType.Damage: return $"{v:0.00}×";
             case UpgradeType.GrenadeSalvo: return $"{v:0}×";
             case UpgradeType.Magnet: return $"{v:0.00}×";
             case UpgradeType.MoveSpeed: return $"{v:0.##} m/s";
@@ -451,14 +509,10 @@ public class LevelUpUI : MonoBehaviour
         if (_upgrades == null) _upgrades = FindLocalUpgrades();
         if (_upgrades == null) return;
 
-        _upgrades.FireRateLevel.OnValueChanged += OnAnyStatChanged;
-        _upgrades.AltFireRateLevel.OnValueChanged += OnAnyStatChanged;
-        _upgrades.RangeLevel.OnValueChanged += OnAnyStatChanged;
-        _upgrades.MaxHPLevel.OnValueChanged += OnAnyStatChanged;
-        _upgrades.DamageLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.MaxHPLevel.OnValueChanged        += OnAnyStatChanged;
         _upgrades.GrenadeSalvoLevel.OnValueChanged += OnAnyStatChanged;
-        _upgrades.MagnetLevel.OnValueChanged += OnAnyStatChanged;
-        _upgrades.MoveSpeedLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.MagnetLevel.OnValueChanged       += OnAnyStatChanged;
+        _upgrades.MoveSpeedLevel.OnValueChanged    += OnAnyStatChanged;
         _statsSubscribed = true;
     }
 
@@ -466,20 +520,11 @@ public class LevelUpUI : MonoBehaviour
     {
         if (!_statsSubscribed || _upgrades == null) return;
 
-        _upgrades.FireRateLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.AltFireRateLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.RangeLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.MaxHPLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.DamageLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.MaxHPLevel.OnValueChanged        -= OnAnyStatChanged;
         _upgrades.GrenadeSalvoLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.MagnetLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.MoveSpeedLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.MagnetLevel.OnValueChanged       -= OnAnyStatChanged;
+        _upgrades.MoveSpeedLevel.OnValueChanged    -= OnAnyStatChanged;
         _statsSubscribed = false;
-    }
-
-    private void OnAnyStatChanged(int _, int __)
-    {
-        if (_open) RefreshStats();
     }
 
     // -------------------- FX / Input Lock --------------------
@@ -553,11 +598,7 @@ public class LevelUpUI : MonoBehaviour
         {
             return type switch
             {
-                UpgradeType.FireRate => $"+{PctFromTimeMult(0.85f, stacks):0.#}% fire rate {tag}",
-                UpgradeType.AltFireRate => $"+{PctFromTimeMult(0.85f, stacks):0.#}% blaster fire rate {tag}",
-                UpgradeType.TargetRange => $"+{10f * stacks:0.#} m target range {tag}",
                 UpgradeType.MaxHP => $"+{15f * stacks:0.#} max HP {tag}",
-                UpgradeType.Damage => $"+{PctFromDamageMult(1.15f, stacks):0.#}% damage {tag}",
                 UpgradeType.GrenadeSalvo => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo {tag}",
                 _ => $"Upgrade {tag}"
             };
@@ -566,11 +607,7 @@ public class LevelUpUI : MonoBehaviour
         // Dynamisch aus den tatsächlich eingestellten Werten
         return type switch
         {
-            UpgradeType.FireRate => $"+{PctFromTimeMult(up.fireRateMultPerLevel, stacks):0.#}% fire rate",
-            UpgradeType.AltFireRate => $"+{PctFromTimeMult(up.altFireRateMultPerLevel, stacks):0.#}% blaster fire rate",
-            UpgradeType.TargetRange => $"+{up.targetRangePerLevel * stacks:0.#} m target range",
             UpgradeType.MaxHP => $"+{up.maxHPPerLevel * stacks:0.#} max HP",
-            UpgradeType.Damage => $"+{PctFromDamageMult(up.damageMultPerLevel, stacks):0.#}% damage",
             UpgradeType.GrenadeSalvo => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo",
             UpgradeType.Magnet => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacks):0.#}% magnet range",
             UpgradeType.MoveSpeed => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel, stacks):0.#}% move speed",
@@ -613,5 +650,6 @@ public class LevelUpUI : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
+        UnsubscribeWeaponStats();
     }
 }

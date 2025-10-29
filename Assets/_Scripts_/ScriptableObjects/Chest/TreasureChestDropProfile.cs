@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "TreasureChestDropProfile", menuName = "Test/Treasure Chest Drop Profile")]
+[CreateAssetMenu(fileName = "TreasureChestDropProfile", menuName = "Game/Chest Drop Profile")]
 public class TreasureChestDropProfile : ScriptableObject
 {
     [Header("General Settings")]
@@ -20,8 +20,8 @@ public class TreasureChestDropProfile : ScriptableObject
     public float curveBeamsSpawnTime = 0f;
 
     [Header("Optional Fireworks")]
-    public bool hasFireworks = false;          // FIX: added to match UIChestManager usage
-    public float fireworksDelay = 1.0f;        // FIX: added to match UIChestManager usage
+    public bool hasFireworks = false;
+    public float fireworksDelay = 1.0f;
 
     [Header("Coins")]
     public float maxCoins = 0f;

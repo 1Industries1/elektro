@@ -5,16 +5,12 @@ using UnityEngine;
 public static class UpgradeRoller
 {
     // ======== Basis-IDs (stabil) ========
-    public const int FireRate     = 1;
-    public const int AltFire      = 2;
-    public const int Range        = 3;
     public const int MaxHP        = 4;
-    public const int Damage       = 5;
     public const int GrenadeSalvo = 6;
     public const int Magnet       = 7;
     public const int MoveSpeed    = 8;
 
-    private static readonly int[] pool = { FireRate, AltFire, Range, MaxHP, Damage, GrenadeSalvo, Magnet, MoveSpeed };
+    private static readonly int[] pool = { MaxHP, GrenadeSalvo, Magnet, MoveSpeed };
 
     // ======== Rarity-Konfig ========
     // Stacks, die eine Rarity gewährt (für "stapelnde" Upgrades)
@@ -133,11 +129,7 @@ public static class UpgradeRoller
     // ======== Mapping / Hilfen ========
     public static UpgradeType Resolve(int baseId) => baseId switch
     {
-        FireRate     => UpgradeType.FireRate,
-        AltFire      => UpgradeType.AltFireRate,
-        Range        => UpgradeType.TargetRange,
         MaxHP        => UpgradeType.MaxHP,
-        Damage       => UpgradeType.Damage,
         GrenadeSalvo => UpgradeType.GrenadeSalvo,
         Magnet       => UpgradeType.Magnet,
         MoveSpeed    => UpgradeType.MoveSpeed,
@@ -182,11 +174,7 @@ public static class UpgradeRoller
 
     public static string UpgradeKey(int baseId) => baseId switch
     {
-        FireRate     => "upgrade.fireRate",
-        AltFire      => "upgrade.altFireRate",
-        Range        => "upgrade.targetRange",
         MaxHP        => "upgrade.maxHP",
-        Damage       => "upgrade.damage",
         GrenadeSalvo => "upgrade.grenadeSalvo",
         Magnet       => "upgrade.magnet",
         MoveSpeed    => "upgrade.moveSpeed",
@@ -195,11 +183,7 @@ public static class UpgradeRoller
 
     public static string UpgradeNameFallback(int baseId) => baseId switch
     {
-        FireRate     => "Fire Rate",
-        AltFire      => "Fire Rate Blaster",
-        Range        => "Attack Range",
         MaxHP        => "Max HP",
-        Damage       => "Damage",
         GrenadeSalvo => "Grenade Salvo",
         Magnet       => "Magnet",
         MoveSpeed    => "Move Speed",

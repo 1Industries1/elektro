@@ -8,7 +8,6 @@ public class UIChestManager : MonoBehaviour
 {
     public static UIChestManager instance;
 
-    // Keine externen Wallet/Collector-Refs mehr
     private TreasureChest currentChest;
     private TreasureChestDropProfile dropProfile;
 
@@ -67,24 +66,33 @@ public class UIChestManager : MonoBehaviour
     // Activate ohne Coins-Empfänger
     public static void Activate(TreasureChest chest)
     {
-        if (!instance)
-        {
-            Debug.LogWarning("No treasure chest UI GameObject found.");
-            return;
-        }
-
+        if (!instance) { Debug.LogWarning("No treasure chest UI GameObject found."); return; }
         instance.currentChest = chest;
         instance.dropProfile = chest != null ? chest.GetCurrentDropProfile() : null;
-
-        //GameManager.instance.ChangeState(GameManager.GameState.TreasureChest);
         instance.gameObject.SetActive(true);
+
+        // Optional: Direkt starten (dann brauchst du den Begin()-Call in der Chest nicht mehr)
+        instance.Begin();
     }
 
     public static void NotifyItemReceived(Sprite icon)
     {
-        if (instance) instance.icons.Add(icon);
-        else Debug.LogWarning("No instance of UIChestManager exists. Unable to update Treasure Chest UI.");
+        if (!instance) { Debug.LogWarning("No UIChestManager instance."); return; }
+        instance.icons.Add(icon);
+        instance.TryFillSpriteSlots();
     }
+
+    private void TryFillSpriteSlots()
+    {
+        int count = Mathf.Min(instance.items.Count, instance.icons.Count);
+        for (int i = 0; i < count; i++)
+        {
+            var id = items[i];
+            if (id.spriteImage && id.spriteImage.sprite == null)
+                id.spriteImage.sprite = icons[i];
+        }
+    }
+
 
     private IEnumerator FlashWhite(Image image, int times, float flashDuration = 0.2f)
     {
@@ -198,9 +206,15 @@ public class UIChestManager : MonoBehaviour
     {
         if (index < 0 || index >= items.Count) return;
         var id = items[index];
+
+        // Fallback: Icon nachziehen, falls beim Setup noch leer war
+        if (id.spriteImage && (id.spriteImage.sprite == null) && index < icons.Count)
+            id.spriteImage.sprite = icons[index];
+
         if (id.weaponBeam) id.weaponBeam.SetActive(false);
         if (id.sprite) id.sprite.SetActive(true);
     }
+
 
     public IEnumerator Open()
     {
@@ -329,9 +343,10 @@ public class UIChestManager : MonoBehaviour
 
         isAnimating = false;
 
-        // Chest informieren -> beendet SlowMo über SlowMoManager
         if (currentChest != null)
         {
+            currentChest.ConfirmOpenRevealDoneServerRpc();
+
             currentChest.OnChestUIClose();
             currentChest = null;
         }

@@ -27,6 +27,9 @@ public class WeaponDefinition : ScriptableObject {
     public string displayName;
     public WeaponTag tags;
 
+    [Header("UI")]
+    public Sprite uiIcon; // Icon, das im Kisten-UI angezeigt wird
+
     [Header("Prefabs/Physik")]
     public NetworkObject bulletPrefab;
     public float projectileSpeed = 30f;

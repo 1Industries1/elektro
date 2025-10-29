@@ -30,7 +30,6 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
     [Header("Perception")]
     [SerializeField] private float detectionRange = 55f;
     [SerializeField] private float loseTargetRange = 70f;
-    [SerializeField] private float losHeightOffset = 0.9f;
     [SerializeField] private LayerMask losMask; // Hindernisse
 
     [Header("Movement (heavy)")]

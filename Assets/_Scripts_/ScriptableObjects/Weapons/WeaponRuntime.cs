@@ -5,6 +5,10 @@ public sealed class WeaponRuntime {
     public WeaponDefinition def { get; }
     public int level { get; private set; }
 
+    public int MaxLevel => 1 + (def.steps?.Length ?? 0);
+    public bool CanLevelUp() => level < MaxLevel;
+    public void LevelUp() => SetLevel(level + 1);
+
     // Effektive Werte
     public WeaponTag tags;
     public float damagePerShot;

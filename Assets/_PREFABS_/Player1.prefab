@@ -2289,20 +2289,20 @@ GameObject:
   - component: {fileID: 3963026483496299984}
   - component: {fileID: 6937276174275915804}
   - component: {fileID: 2437930798575218387}
+  - component: {fileID: 550442866370291592}
   - component: {fileID: 7166551182607951162}
   - component: {fileID: 7004618678821039836}
+  - component: {fileID: 7025646431992723550}
   - component: {fileID: 1882036456320694656}
+  - component: {fileID: 8157122480171432841}
   - component: {fileID: 4238535403307873137}
   - component: {fileID: 4061243089856759362}
   - component: {fileID: 7755142805804514707}
   - component: {fileID: 435328487496650130}
   - component: {fileID: 3796743474270066251}
   - component: {fileID: 5401752439710392122}
-  - component: {fileID: 7025646431992723550}
   - component: {fileID: 5225748196820303031}
-  - component: {fileID: 2793725271664348057}
   - component: {fileID: 1721424987350788081}
-  - component: {fileID: 550442866370291592}
   - component: {fileID: 2153557514503330659}
   - component: {fileID: 6799519995716292581}
   - component: {fileID: 2383196843190636918}
@@ -2371,6 +2371,18 @@ MonoBehaviour:
   AutoObjectParentSync: 0
   SyncOwnerTransformWhenParented: 0
   AllowOwnerToParent: 0
+--- !u!114 &550442866370291592
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &7166551182607951162
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2415,6 +2427,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _hud: {fileID: 8776001213006559624}
+--- !u!114 &7025646431992723550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35a1468d2dd71dd43b10d567be68cc29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CurrentKills:
+    m_InternalValue: 0
 --- !u!114 &1882036456320694656
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2431,7 +2457,7 @@ MonoBehaviour:
   acceleration: 5
   deceleration: 5
   airControl: 0.5
-  jumpForce: 10
+  jumpForce: 8
   dashForce: 100
   dashDuration: 0.3
   dashCooldown: 0.6
@@ -2462,7 +2488,7 @@ MonoBehaviour:
     m_RotationOrder: 4
   dashGravityFactor: 0.15
   keepVerticalVelocityOnDash: 1
-  dashEndHorizontalDamping: 0.85
+  dashEndHorizontalDamping: 0.5
   groundLayer:
     serializedVersion: 2
     m_Bits: 512
@@ -2499,6 +2525,24 @@ MonoBehaviour:
   rollLoopClip: {fileID: 8300000, guid: 2736670c1aa7fb34fadb9986d21a8c23, type: 3}
   rollLoopVolume: 2
   overclocks: {fileID: 4061243089856759362}
+--- !u!114 &8157122480171432841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6834a98213c0b74cae8e7af4a327b97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  cannonDef: {fileID: 11400000, guid: 28e276fe833bd01438dbee70425a98de, type: 2}
+  blasterDef: {fileID: 11400000, guid: 89494c543718e894f9552a76859a58e1, type: 2}
+  cannonLevel:
+    m_InternalValue: 1
+  blasterLevel:
+    m_InternalValue: 1
 --- !u!114 &4238535403307873137
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2516,31 +2560,15 @@ MonoBehaviour:
   health: {fileID: 435328487496650130}
   grenadeLauncher: {fileID: 1481329118813977962}
   movement: {fileID: 1882036456320694656}
-  maxLevel_FireRate: 15
-  maxLevel_AltFireRate: 15
-  maxLevel_TargetRange: 15
   maxLevel_MaxHP: 12
-  maxLevel_Damage: 15
   maxLevel_GrenadeSalvo: 10
   maxLevel_Magnet: 10
   maxLevel_MoveSpeed: 12
-  fireRateMultPerLevel: 0.9
-  altFireRateMultPerLevel: 0.9
-  targetRangePerLevel: 10
   maxHPPerLevel: 15
-  damageMultPerLevel: 1.2
   magnetRangeMultPerLevel: 1.15
   moveSpeedMultPerLevel: 1.1
   startingMasteries: []
-  FireRateLevel:
-    m_InternalValue: 0
-  AltFireRateLevel:
-    m_InternalValue: 0
-  RangeLevel:
-    m_InternalValue: 0
   MaxHPLevel:
-    m_InternalValue: 0
-  DamageLevel:
     m_InternalValue: 0
   GrenadeSalvoLevel:
     m_InternalValue: 0
@@ -2625,23 +2653,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   level: 1
   xp: 0
-  baseCost: 35
-  costMult: 1.12
-  _xpToNext: 35
---- !u!114 &7025646431992723550
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 35a1468d2dd71dd43b10d567be68cc29, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  CurrentKills:
-    m_InternalValue: 0
+  baseCost: 65
+  costMult: 1.2
+  _xpToNext: 65
 --- !u!114 &5225748196820303031
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2659,152 +2673,6 @@ MonoBehaviour:
   - {fileID: 0}
   inputScripts:
   - {fileID: 2437930798575218387}
---- !u!96 &2793725271664348057
-TrailRenderer:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 0
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 0
-  m_LightProbeUsage: 0
-  m_ReflectionProbeUsage: 0
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: a73c98a9b2338524fbaef2cfd39d4b54, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_Time: 1
-  m_PreviewTimeScale: 1
-  m_Parameters:
-    serializedVersion: 3
-    widthMultiplier: 1
-    widthCurve:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0.33333334
-        outWeight: 0.33333334
-      - serializedVersion: 3
-        time: 0.24550821
-        value: 0.056810785
-        inSlope: 0.6819818
-        outSlope: 0.6819818
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0.12242868
-      - serializedVersion: 3
-        time: 0.42132348
-        value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 0.6596141
-        value: 0.04165187
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 0.94531924
-        value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    colorGradient:
-      serializedVersion: 2
-      key0: {r: 0.062745094, g: 0.883017, b: 1, a: 1}
-      key1: {r: 0.1981132, g: 0, b: 0, a: 0}
-      key2: {r: 0.42700002, g: 0, b: 0, a: 0}
-      key3: {r: 0, g: 0, b: 0, a: 0}
-      key4: {r: 0, g: 0, b: 0, a: 0}
-      key5: {r: 0, g: 0, b: 0, a: 0}
-      key6: {r: 0, g: 0, b: 0, a: 0}
-      key7: {r: 0, g: 0, b: 0, a: 0}
-      ctime0: 0
-      ctime1: 65535
-      ctime2: 61680
-      ctime3: 0
-      ctime4: 0
-      ctime5: 0
-      ctime6: 0
-      ctime7: 0
-      atime0: 0
-      atime1: 65535
-      atime2: 0
-      atime3: 0
-      atime4: 0
-      atime5: 0
-      atime6: 0
-      atime7: 0
-      m_Mode: 0
-      m_ColorSpace: 0
-      m_NumColorKeys: 2
-      m_NumAlphaKeys: 2
-    numCornerVertices: 0
-    numCapVertices: 0
-    alignment: 0
-    textureMode: 0
-    textureScale: {x: 1, y: 1}
-    shadowBias: 0.5
-    generateLightingData: 0
-  m_MinVertexDistance: 0.1
-  m_MaskInteraction: 0
-  m_Autodestruct: 0
-  m_Emitting: 1
-  m_ApplyActiveColorSpace: 1
 --- !u!135 &1721424987350788081
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -2826,18 +2694,6 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 1.1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &550442866370291592
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!54 &2153557514503330659
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2878,7 +2734,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 35d545c020a43684eb8ed29ed62b1635, type: 3}
   m_PlayOnAwake: 0
-  m_Volume: 0.35
+  m_Volume: 0.25
   m_Pitch: 1
   Loop: 0
   Mute: 0

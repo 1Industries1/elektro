@@ -56,7 +56,6 @@ public class GrenadeProjectile : NetworkBehaviour
     private Rigidbody _rb;
     private float _spawnTime;
     private bool _exploded;
-    private bool _boosting;
     private float _boostEndTime;
     private float _lastVy;
     private ulong _shooter;
@@ -133,7 +132,6 @@ public class GrenadeProjectile : NetworkBehaviour
         yield return new WaitForSeconds(boostDelay);
         if (_exploded) yield break;
 
-        _boosting = true;
         _boostEndTime = Time.time + boostDuration;
 
         while (!_exploded && Time.time < _boostEndTime)
@@ -144,7 +142,6 @@ public class GrenadeProjectile : NetworkBehaviour
 
             yield return new WaitForFixedUpdate();
         }
-        _boosting = false;
     }
 
     private void FixedUpdate()

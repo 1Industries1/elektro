@@ -1,11 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(Collider))]
-public class TreasureChest : MonoBehaviour
+public class TreasureChest : NetworkBehaviour
 {
     // ==========================
     // --- ChestInteraction-Teil
@@ -32,6 +33,14 @@ public class TreasureChest : MonoBehaviour
     [SerializeField] private AudioClip openClip;       // Einmaliger Sound beim Öffnen
     [SerializeField][Range(0f, 1f)] private float holdLoopBaseVolume = 0.25f;
     [SerializeField] private bool modulateHoldByProgress = true; // Lautstärke/Pitch nach Fortschritt
+
+
+    public NetworkVariable<bool> Opened = new(false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    // nur Server: Cooldown für Reopen (wenn singleUse=false)
+    private float _serverNextOpenTime = 0f;
 
 
     [Header("Slow Motion (Chest)")]
@@ -141,7 +150,8 @@ public class TreasureChest : MonoBehaviour
 
         if (holdTimer >= holdDuration)
         {
-            OpenChest();
+            SendOpenRequestToServer();
+            holdTimer = 0f; // reset clientseitig
         }
     }
 
@@ -160,37 +170,82 @@ public class TreasureChest : MonoBehaviour
     }
 
 
-    private void OpenChest()
+    // Clientseitige Block-Sicht (Opened kommt vom Server)
+    private bool IsBlockedClientView()
     {
-        // Reset/Blockaden
-        holdTimer = 0f;
-        UpdateUI();
+        if (singleUse && Opened.Value) return true;
+        if (!singleUse && Time.time < cooldownUntil) return true; // clientseitige Visual-Cooldown-Anzeige
+        return false;
+    }
+
+    private void SendOpenRequestToServer()
+    {
+        // Versuche den PlayerInventory zu referenzieren (optional, Server validiert trotzdem)
+        NetworkObjectReference invRef = default;
+        if (recipient != null)
+        {
+            var no = recipient.GetComponent<NetworkObject>();
+            if (no) invRef = no;
+        }
+
+        RequestOpenServerRpc(invRef);
+    }
+
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestOpenServerRpc(NetworkObjectReference openerInventoryRef, ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        ulong sender = rpcParams.Receive.SenderClientId;
+
+        if (singleUse && Opened.Value) return;
+        if (!singleUse && Time.time < _serverNextOpenTime) return;
+
+        PlayerInventory inv = null;
+        if (openerInventoryRef.TryGet(out var obj) && obj)
+            inv = obj.GetComponent<PlayerInventory>();
+        if (inv == null)
+        {
+            var playerObj = NetworkManager.Singleton?.SpawnManager?.GetPlayerNetworkObject(sender);
+            if (playerObj) inv = playerObj.GetComponent<PlayerInventory>() ?? playerObj.GetComponentInChildren<PlayerInventory>(true);
+        }
+        if (inv == null) return;
+
+        if (singleUse) Opened.Value = true;
+        _serverNextOpenTime = Time.time + reopenCooldown;
+
+        //GiveRewardsServer(inv, out int issuedCount);
+
+        float revealDelay = 0f;
+        var dp = GetCurrentDropProfile();
+        if (dp != null) revealDelay = Mathf.Max(0f, dp.animDuration + dp.delayTime);
+
+        // Ziel nur der Öffner
+        var target = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } }
+        };
+
+        // Startet Animation + beginnt Client-seitigen Timer
+        ClientStartOpenSequenceClientRpc(revealDelay, target);
+    }
+    
+    
+    [ClientRpc]
+    private void ClientStartOpenSequenceClientRpc(float revealDelaySeconds, ClientRpcParams clientRpcParams = default)
+    {
+        if (animator && openTriggerHash != 0) animator.SetTrigger(openTriggerHash);
+        StopHoldLoop();
+        if (audioSource && openClip) audioSource.PlayOneShot(openClip);
 
         if (singleUse) opened = true;
         cooldownUntil = Time.time + reopenCooldown;
 
-        if (holdCircle) holdCircle.gameObject.SetActive(false);
-
-        // Animation wie in ChestInteraction
-        if (animator && openTriggerHash != 0)
-            animator.SetTrigger(openTriggerHash);
-
-        // Optional: Collider deaktivieren, wenn nur einmal nutzbar
-        //var col = GetComponent<Collider>();
-        //if (col && singleUse) col.enabled = false;
-
-        // --- AUDIO: Hold-Loop aus, Open-SFX an
-        StopHoldLoop();
-        if (audioSource != null && openClip != null)
-            audioSource.PlayOneShot(openClip);
-
-        // Drops vergeben
-        GiveRewards(recipient);
-
-        // UI wie zuvor, aber Objekt NICHT deaktivieren/zerstören
         UIChestManager.Activate(this);
 
-        // SlowMo NACH Delay starten, bis Close
+        // WICHTIG: Sequenz wirklich starten
+        UIChestManager.instance?.Begin();
+
         if (chestSlowMo && SlowMoManager.Instance != null && _chestSlowHandle == 0)
         {
             if (_slowDelayCo != null) StopCoroutine(_slowDelayCo);
@@ -199,10 +254,54 @@ public class TreasureChest : MonoBehaviour
 
         OnOpened?.Invoke();
 
-        // Fortschrittszähler für Profile (nur wenn Profile existieren)
-        if (dropProfiles != null && dropProfiles.Length > 0)
-            totalPickups = (totalPickups + 1) % dropProfiles.Length;
+        // Auto-Grant kurz vor den Reveals (kleines Epsilon)
+        //float t = Mathf.Max(0f, revealDelaySeconds - 0.05f);
+        //StartCoroutine(RequestGrantAfterDelay(t));
     }
+
+    private IEnumerator RequestGrantAfterDelay(float seconds)
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, seconds));
+        // Falls du lieber per Done-Button triggerst, rufe diese Zeile stattdessen in UIChestManager.CloseUI() auf.
+        ConfirmOpenRevealDoneServerRpc();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void ConfirmOpenRevealDoneServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        ulong sender = rpcParams.Receive.SenderClientId;
+
+        // Inventar des Öffners ermitteln (wie im ersten RPC)
+        PlayerInventory inv = null;
+        var playerObj = NetworkManager.Singleton?.SpawnManager?.GetPlayerNetworkObject(sender);
+        if (playerObj) inv = playerObj.GetComponent<PlayerInventory>() ?? playerObj.GetComponentInChildren<PlayerInventory>(true);
+        if (inv == null) return;
+
+        GiveRewardsServer(inv, out _);
+    }
+
+    //[ClientRpc]
+    //private void ClientOpenVfxAndUiClientRpc(int rewardCountIssued, ClientRpcParams clientRpcParams = default)
+    //{
+    //    if (animator && openTriggerHash != 0) animator.SetTrigger(openTriggerHash);
+    //    StopHoldLoop();
+    //    if (audioSource && openClip) audioSource.PlayOneShot(openClip);
+//
+    //    if (singleUse) opened = true;
+    //    cooldownUntil = Time.time + reopenCooldown;
+//
+    //    UIChestManager.Activate(this);
+//
+    //    if (chestSlowMo && SlowMoManager.Instance != null && _chestSlowHandle == 0)
+    //    {
+    //        if (_slowDelayCo != null) StopCoroutine(_slowDelayCo);
+    //        _slowDelayCo = StartCoroutine(StartChestSlowMoDelayed());
+    //    }
+//
+    //    OnOpened?.Invoke();
+    //}
+
 
     private bool IsBlocked()
     {
@@ -329,20 +428,61 @@ public class TreasureChest : MonoBehaviour
     private bool TryUpgrade<T>(PlayerInventory inventory) where T : class { return false; }
     private bool TryGive<T>(PlayerInventory inventory) where T : class { return false; }
 
-    private void GiveRewards(PlayerInventory inventory)
+    private bool TryUpgradeOneWeapon(PlayerInventory inventory)
     {
-        if (inventory == null) return;
+        if (inventory == null) return false;
+
+        // PlayerWeapons am gleichen Player finden
+        var weapons = inventory.GetComponent<PlayerWeapons>();
+        if (weapons == null) return false;
+
+        // Server bevorzugt direkt
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        {
+            return weapons.Server_TryLevelUpRandomWeapon(out _);
+        }
+        else
+        {
+            // Fallback: Client fordert Server an
+            weapons.RequestLevelUpFromChestServerRpc();
+            return true; // UI-Icon kommt via Owner-ClientRpc vom Server
+        }
+    }
+
+    // Server-only
+    private void GiveRewardsServer(PlayerInventory inventory, out int issuedCount)
+    {
+        issuedCount = 0;
+        if (!IsServer || inventory == null) return;
 
         int rewardCount = GetRewardCount();
         for (int i = 0; i < rewardCount; i++)
         {
-            if (possibleDrops.HasFlag(DropType.Evolution) && TryEvolve<object>(inventory)) continue;
-            if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && TryUpgrade<object>(inventory)) continue;
+            issuedCount++;
+
+            // Mehrere Waffen-Upgrades pro Open erlaubt:
+            if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && TryUpgradeOneWeaponServer(inventory))
+                continue;
+
+            if (possibleDrops.HasFlag(DropType.Evolution)      && TryEvolve<object>(inventory)) continue;
             if (possibleDrops.HasFlag(DropType.UpgradePassive) && TryUpgrade<object>(inventory)) continue;
-            if (possibleDrops.HasFlag(DropType.NewWeapon) && TryGive<object>(inventory)) continue;
-            if (possibleDrops.HasFlag(DropType.NewPassive)) TryGive<object>(inventory);
+            if (possibleDrops.HasFlag(DropType.NewWeapon)      && TryGive<object>(inventory))   continue;
+            if (possibleDrops.HasFlag(DropType.NewPassive))          TryGive<object>(inventory);
         }
     }
+
+    private bool TryUpgradeOneWeaponServer(PlayerInventory inventory)
+    {
+        if (!IsServer || inventory == null) return false;
+        var weapons = inventory.GetComponent<PlayerWeapons>();
+        if (!weapons) return false;
+
+        // hebt genau EINE vorhandene, upgradefähige Waffe um +1 an (zufällig)
+        return weapons.Server_TryLevelUpRandomWeapon(out _);
+    }
+
+
+
 
     public void OnChestUIClose()
     {

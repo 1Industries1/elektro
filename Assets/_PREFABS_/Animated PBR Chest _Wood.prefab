@@ -202,6 +202,7 @@ GameObject:
   - component: {fileID: 2233641030255947943}
   - component: {fileID: 8992765083951649092}
   - component: {fileID: 7288827017311005462}
+  - component: {fileID: 7838985761405601206}
   - component: {fileID: 7605234626174230350}
   - component: {fileID: 238466553331692278}
   m_Layer: 0
@@ -293,6 +294,29 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 5.241759, y: 2.442398, z: 3.5114655}
   m_Center: {x: 0.010321856, y: 1.1410141, z: 1.2557266}
+--- !u!114 &7838985761405601206
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2439856038845161096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 4071732557
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!114 &7605234626174230350
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -318,10 +342,12 @@ MonoBehaviour:
   openClip: {fileID: 8300000, guid: f8d18faa081376b41922856e46a61192, type: 3}
   holdLoopBaseVolume: 0.25
   modulateHoldByProgress: 1
+  Opened:
+    m_InternalValue: 0
   chestSlowMo: 1
   chestSlowScale: 0.05
-  chestSlowFadeIn: 0.45
-  chestSlowFadeOut: 1.2
+  chestSlowFadeIn: 0.5
+  chestSlowFadeOut: 0.5
   chestSlowDelay: 1
   OnOpened:
     m_PersistentCalls:
@@ -333,6 +359,7 @@ MonoBehaviour:
   dropCountType: 1
   dropProfiles:
   - {fileID: 11400000, guid: 7ccbb234f98727f48835d04e14432e6d, type: 2}
+  - {fileID: 11400000, guid: ecc4b8cc2e9fd9842ad4f35e16420914, type: 2}
 --- !u!82 &238466553331692278
 AudioSource:
   m_ObjectHideFlags: 0

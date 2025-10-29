@@ -13,14 +13,16 @@ public class BlasterController : NetworkBehaviour
 
     [Header("Weapon Data")]
     public WeaponDefinition weaponDef; // Blaster.asset
+    private PlayerWeapons _playerWeapons;
 
-    [Header("Bullet / Damage (legacy)")]
+
+
+    [Header("(legacy)")]
     public NetworkObject altBulletPrefab; // Fallback, wenn weaponDef.bulletPrefab leer ist
-
-    [Header("Fire Settings (legacy fallback)")]
-    [Tooltip("Sekunden pro Schuss (Cooldown).")]
     public float fireRate = 1.5f; // legacy; Runtime übernimmt
     [Range(0f, 0.5f)] public float altFireRateJitterPct = 0.05f;
+
+
 
     [Header("Accuracy / Charge")]
     public float altInaccuracyAngle = 1f;
@@ -78,14 +80,46 @@ public class BlasterController : NetworkBehaviour
         if (!primary) primary = GetComponentInParent<CannonController>();
         if (!bulletSpawnPoint && primary) bulletSpawnPoint = primary.bulletSpawnPoint;
 
-        if (IsServer && weaponDef != null)
+        _playerWeapons = GetComponentInParent<PlayerWeapons>();
+        if (_playerWeapons != null)
+            _playerWeapons.RuntimesRebuilt += OnWeaponsRebuilt;
+
+        BuildLocalRuntime();
+        ApplySpeedHint();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (_playerWeapons != null)
+            _playerWeapons.RuntimesRebuilt -= OnWeaponsRebuilt;
+    }
+
+    private void OnWeaponsRebuilt()
+    {
+        BuildLocalRuntime();
+        ApplySpeedHint();
+    }
+
+    private void BuildLocalRuntime()
+    {
+        if (_playerWeapons != null && _playerWeapons.BlasterRuntime != null)
+        {
+            _runtime = new WeaponRuntime(_playerWeapons.blasterDef, _playerWeapons.blasterLevel.Value);
+            if (_upgrades) _upgrades.ApplyTo(_runtime);
+        }
+        else if (weaponDef != null)
         {
             _runtime = new WeaponRuntime(weaponDef, 1);
             if (_upgrades) _upgrades.ApplyTo(_runtime);
-
-            // Zielhilfe / Geschwindigkeit
-            altBulletSpeedHint = weaponDef.projectileSpeed > 0 ? weaponDef.projectileSpeed : altBulletSpeedHint;
         }
+    }
+
+    private void ApplySpeedHint()
+    {
+        if (_runtime != null)
+            altBulletSpeedHint = _runtime.projectileSpeed > 0 ? _runtime.projectileSpeed : altBulletSpeedHint;
+        else if (weaponDef != null)
+            altBulletSpeedHint = weaponDef.projectileSpeed > 0 ? weaponDef.projectileSpeed : altBulletSpeedHint;
     }
 
     private void Update()
