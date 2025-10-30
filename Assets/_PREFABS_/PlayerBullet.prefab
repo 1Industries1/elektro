@@ -217,7 +217,7 @@ MonoBehaviour:
   maxBounces: 3
   bounceLayers:
     serializedVersion: 2
-    m_Bits: 512
+    m_Bits: 0
   minSpeedAfterBounce: 4
   separationEpsilon: 0.01
 --- !u!96 &1904763662979679081
@@ -3116,7 +3116,7 @@ ParticleSystem:
     strength:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.25
+      scalar: 1
       minScalar: 1
       maxCurve:
         serializedVersion: 2

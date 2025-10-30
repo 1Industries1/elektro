@@ -18,6 +18,7 @@ MonoBehaviour:
   animDuration: 2.5
   noOfItems: 2
   beamColors:
+  - {r: 0.2783019, g: 0.6790555, b: 1, a: 0.6}
   - {r: 0.4011555, g: 0, b: 0.4056604, a: 0.6}
   delayTime: 0
   delayedBeams: 0

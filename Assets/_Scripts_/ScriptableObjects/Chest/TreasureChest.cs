@@ -34,6 +34,8 @@ public class TreasureChest : NetworkBehaviour
     [SerializeField][Range(0f, 1f)] private float holdLoopBaseVolume = 0.25f;
     [SerializeField] private bool modulateHoldByProgress = true; // Lautstärke/Pitch nach Fortschritt
 
+    private readonly List<string> _lockedRewardWeaponIds = new();
+
 
     public NetworkVariable<bool> Opened = new(false,
         NetworkVariableReadPermission.Everyone,
@@ -41,6 +43,11 @@ public class TreasureChest : NetworkBehaviour
 
     // nur Server: Cooldown für Reopen (wenn singleUse=false)
     private float _serverNextOpenTime = 0f;
+
+    // --- Lock für das je Öffnung gewählte Profil (Server-Quelle der Wahrheit)
+    private int _lockedProfileIndex = -1;
+    private TreasureChestDropProfile _lockedProfile = null;
+
 
 
     [Header("Slow Motion (Chest)")]
@@ -214,25 +221,48 @@ public class TreasureChest : NetworkBehaviour
         if (singleUse) Opened.Value = true;
         _serverNextOpenTime = Time.time + reopenCooldown;
 
-        //GiveRewardsServer(inv, out int issuedCount);
+        // Profil locken
+        _lockedProfile = GetNextDropProfile();
+        _lockedProfileIndex = currentDropProfileIndex;
 
-        float revealDelay = 0f;
-        var dp = GetCurrentDropProfile();
-        if (dp != null) revealDelay = Mathf.Max(0f, dp.animDuration + dp.delayTime);
+        // --- NEU: Rewards für Preview planen (nur Upgrade-Weapon-Icons)
+        _lockedRewardWeaponIds.Clear();
+        int rewardCount = GetRewardCount();
+        if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && rewardCount > 0)
+        {
+            var weapons = inv.GetComponent<PlayerWeapons>();
+            if (weapons != null)
+            {
+                for (int i = 0; i < rewardCount; i++)
+                {
+                    var id = weapons.Server_PeekRandomUpgradeableId();
+                    if (!string.IsNullOrEmpty(id))
+                        _lockedRewardWeaponIds.Add(id);
+                }
+            }
+        }
 
-        // Ziel nur der Öffner
+        // Preview an Owner-Client schicken (IDs -> Icons lokal auflösen)
         var target = new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } }
         };
+        
+        foreach (var id in _lockedRewardWeaponIds)
+            Owner_PreviewIconClientRpc(id, target);
 
-        // Startet Animation + beginnt Client-seitigen Timer
-        ClientStartOpenSequenceClientRpc(revealDelay, target);
+        // UI starten (jetzt sind die Icons bereits gemeldet)
+        float revealDelay = 0f;
+        if (_lockedProfile != null)
+            revealDelay = Mathf.Max(0f, _lockedProfile.animDuration + _lockedProfile.delayTime);
+
+        ClientStartOpenSequenceClientRpc(revealDelay, _lockedProfileIndex, target);
     }
-    
-    
-    [ClientRpc]
-    private void ClientStartOpenSequenceClientRpc(float revealDelaySeconds, ClientRpcParams clientRpcParams = default)
+
+
+
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void ClientStartOpenSequenceClientRpc(float revealDelaySeconds, int profileIndex, ClientRpcParams clientRpcParams = default)
     {
         if (animator && openTriggerHash != 0) animator.SetTrigger(openTriggerHash);
         StopHoldLoop();
@@ -241,7 +271,8 @@ public class TreasureChest : NetworkBehaviour
         if (singleUse) opened = true;
         cooldownUntil = Time.time + reopenCooldown;
 
-        UIChestManager.Activate(this);
+        // *** NEU: UI mit exakt diesem Profil-Index aktivieren ***
+        UIChestManager.Activate(this, profileIndex);
 
         // WICHTIG: Sequenz wirklich starten
         UIChestManager.instance?.Begin();
@@ -253,11 +284,28 @@ public class TreasureChest : NetworkBehaviour
         }
 
         OnOpened?.Invoke();
-
-        // Auto-Grant kurz vor den Reveals (kleines Epsilon)
-        //float t = Mathf.Max(0f, revealDelaySeconds - 0.05f);
-        //StartCoroutine(RequestGrantAfterDelay(t));
     }
+    
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void Owner_PreviewIconClientRpc(string weaponId, ClientRpcParams clientRpcParams = default)
+    {
+        if (string.IsNullOrEmpty(weaponId)) return;
+
+        // Lokalen PlayerWeapons holen (Owner-Client)
+        var playerObj = NetworkManager.Singleton?.LocalClient?.PlayerObject;
+        if (!playerObj) return;
+
+        var pw = playerObj.GetComponent<PlayerWeapons>() ?? playerObj.GetComponentInChildren<PlayerWeapons>(true);
+        if (pw == null) return;
+
+        WeaponDefinition def = null;
+        if (pw.cannonDef  != null && pw.cannonDef.id  == weaponId) def = pw.cannonDef;
+        else if (pw.blasterDef != null && pw.blasterDef.id == weaponId) def = pw.blasterDef;
+
+        if (def != null && def.uiIcon != null)
+            UIChestManager.NotifyItemReceived(def.uiIcon);
+    }
+
 
     private IEnumerator RequestGrantAfterDelay(float seconds)
     {
@@ -358,7 +406,9 @@ public class TreasureChest : NetworkBehaviour
     {
         if (dropProfiles == null || dropProfiles.Length == 0) return null;
         currentDropProfileIndex = Mathf.Clamp(currentDropProfileIndex, 0, dropProfiles.Length - 1);
-        return dropProfiles[currentDropProfileIndex];
+        var p = dropProfiles[currentDropProfileIndex];
+        Debug.Log($"[Chest] Using CURRENT drop profile index={currentDropProfileIndex}, name='{p.profileName}', noOfItems={p.noOfItems}");
+        return p;
     }
 
     public TreasureChestDropProfile GetNextDropProfile()
@@ -419,7 +469,8 @@ public class TreasureChest : NetworkBehaviour
 
     private int GetRewardCount()
     {
-        TreasureChestDropProfile dp = GetNextDropProfile();
+        // *** NEU: Falls Lock vorhanden, das verwenden ***
+        var dp = _lockedProfile != null ? _lockedProfile : GetCurrentDropProfile();
         return dp ? Mathf.Max(1, dp.noOfItems) : 1;
     }
 
@@ -456,20 +507,40 @@ public class TreasureChest : NetworkBehaviour
         if (!IsServer || inventory == null) return;
 
         int rewardCount = GetRewardCount();
+        var weapons = inventory.GetComponent<PlayerWeapons>();
+
         for (int i = 0; i < rewardCount; i++)
         {
             issuedCount++;
 
-            // Mehrere Waffen-Upgrades pro Open erlaubt:
-            if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && TryUpgradeOneWeaponServer(inventory))
-                continue;
+            // 1) Geplantes Weapon-Upgrade deterministisch abarbeiten (ohne UI-Notify)
+            if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && weapons != null)
+            {
+                if (_lockedRewardWeaponIds.Count > 0)
+                {
+                    string id = _lockedRewardWeaponIds[0];
+                    _lockedRewardWeaponIds.RemoveAt(0);
 
+                    if (weapons.Server_LevelUpById(id, notifyOwner: false))
+                        continue; // vergeben, nächstes Reward
+                }
+
+                // Fallback: wenn nichts geplant/fehlgeschlagen -> random (bestehendes Verhalten)
+                if (TryUpgradeOneWeaponServer(inventory))
+                    continue;
+            }
+
+            // 2) Rest wie gehabt
             if (possibleDrops.HasFlag(DropType.Evolution)      && TryEvolve<object>(inventory)) continue;
             if (possibleDrops.HasFlag(DropType.UpgradePassive) && TryUpgrade<object>(inventory)) continue;
             if (possibleDrops.HasFlag(DropType.NewWeapon)      && TryGive<object>(inventory))   continue;
             if (possibleDrops.HasFlag(DropType.NewPassive))          TryGive<object>(inventory);
         }
+
+        // Aufräumen
+        _lockedRewardWeaponIds.Clear();
     }
+
 
     private bool TryUpgradeOneWeaponServer(PlayerInventory inventory)
     {

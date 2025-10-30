@@ -63,16 +63,22 @@ public class UIChestManager : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    // Activate ohne Coins-Empfänger
-    public static void Activate(TreasureChest chest)
+    public static void Activate(TreasureChest chest, int profileIndex)
     {
         if (!instance) { Debug.LogWarning("No treasure chest UI GameObject found."); return; }
         instance.currentChest = chest;
-        instance.dropProfile = chest != null ? chest.GetCurrentDropProfile() : null;
-        instance.gameObject.SetActive(true);
 
-        // Optional: Direkt starten (dann brauchst du den Begin()-Call in der Chest nicht mehr)
-        instance.Begin();
+        // Profil exakt per Index aus der Chest ziehen
+        TreasureChestDropProfile[] profiles = chest != null ? chest.dropProfiles : null;
+        if (profiles != null && profileIndex >= 0 && profileIndex < profiles.Length)
+            instance.dropProfile = profiles[profileIndex];
+        else
+            instance.dropProfile = chest != null ? chest.GetCurrentDropProfile() : null; // Fallback
+
+        instance.gameObject.SetActive(true);
+        
+        // Begin wird ausschließlich in ClientStartOpenSequenceClientRpc() aufgerufen.
+        //instance.Begin();
     }
 
     public static void NotifyItemReceived(Sprite icon)
@@ -136,6 +142,8 @@ public class UIChestManager : MonoBehaviour
 
     private void SetupBeam(int index)
     {
+        Debug.Log($"SetupBeam index={index}, items.Count={items.Count}");
+
         if (index < 0 || index >= items.Count) return;
 
         Sprite icon = (index < icons.Count) ? icons[index] : null;
@@ -167,6 +175,7 @@ public class UIChestManager : MonoBehaviour
     {
         if (dropProfile == null) return;
         int total = Mathf.Clamp(noOfBeams, 0, items.Count);
+        Debug.Log($"[UI] noOfBeams arg={noOfBeams}, items.Count={items.Count}, total(after clamp)={total}, profile='{dropProfile.profileName}'");
 
         int delayedStartIndex = Mathf.Max(0, total - Mathf.Max(0, dropProfile.delayedBeams));
 

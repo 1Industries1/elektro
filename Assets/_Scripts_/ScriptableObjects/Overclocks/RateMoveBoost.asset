@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 2
   kind: 0
-  icon: {fileID: 21300000, guid: 3bc1b4ca3ba5ee94685596897d475f54, type: 3}
+  icon: {fileID: 21300000, guid: d33fa8b33ff638446b357346ec46b8a1, type: 3}
   description: "Electro (Instant):\nmods: FireRateSeconds \xD7 0.7143 (entspricht
     +40% Fire Rate), MoveSpeed \xD7 1.2\nafterMods: FireRateSeconds \xD7 1.2 (\u221220%
     Fire Rate)\nafterEffectDuration = 8"

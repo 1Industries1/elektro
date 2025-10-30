@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
   id: 1
   displayName: Cannon
-  tags: 103
-  uiIcon: {fileID: 21300000, guid: 846391e67b2687b4d91ead241e3071d7, type: 3}
+  tags: 101
+  uiIcon: {fileID: -1308886238, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: -928037741104161360, guid: 5155f2aa90e192f46b39019e462048db, type: 3}
   projectileSpeed: 150
   rangeMeters: 120

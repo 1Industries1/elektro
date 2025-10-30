@@ -106,7 +106,7 @@ ParticleSystem:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-  moveWithTransform: 0
+  moveWithTransform: 1
   moveWithCustomTransform: {fileID: 0}
   scalingMode: 1
   randomSeed: 0
@@ -4906,13 +4906,13 @@ GameObject:
   - component: {fileID: 3167126214145023609}
   - component: {fileID: 6374008793609213502}
   - component: {fileID: 2785536848420333435}
+  - component: {fileID: 1476586629750628589}
+  - component: {fileID: 2041800245796593895}
   - component: {fileID: 2803057892986875465}
   - component: {fileID: 802006860478649309}
-  - component: {fileID: 1476586629750628589}
   - component: {fileID: 6985218107463179080}
-  - component: {fileID: 2041800245796593895}
-  - component: {fileID: 1904763662979679081}
   - component: {fileID: 527763977937752538}
+  - component: {fileID: 1904763662979679081}
   m_Layer: 8
   m_Name: PlayerBlaster
   m_TagString: Bullet
@@ -4992,6 +4992,75 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &1476586629750628589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4211810131274587892}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 3276269033
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &2041800245796593895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4211810131274587892}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c9b9e21a299ab34cace78282d05bd3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lifetime: 3
+  perHitSpeedLoss: 0
+  rehitCooldown: 0.15
+  explosionRadius: 3
+  damageFalloff:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0.0017776489
+      value: 0.99823
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.9991455
+      value: 0.0035705566
+      inSlope: 0.01749042
+      outSlope: 0.01749042
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.060244165
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  baseChainCount: 2
+  chainRange: 4
+  chainDamageMultiplier: 0.6
+  chainHitVFX: {fileID: 910702014090983749, guid: 6749b2631f80d244e941d3ff54547be4, type: 3}
+  explosionVFX: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
+  explosionSound: {fileID: 8300000, guid: 9ea0e51bdc252384e8cdd476387c9ca6, type: 3}
 --- !u!135 &2803057892986875465
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -5040,29 +5109,6 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 112
   m_CollisionDetection: 2
---- !u!114 &1476586629750628589
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4211810131274587892}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 3276269033
-  InScenePlacedSourceGlobalObjectIdHash: 0
-  AlwaysReplicateAsRoot: 0
-  SynchronizeTransform: 1
-  ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 1
-  SpawnWithObservers: 1
-  DontDestroyWithOwner: 0
-  AutoObjectParentSync: 1
-  SyncOwnerTransformWhenParented: 1
-  AllowOwnerToParent: 0
 --- !u!114 &6985218107463179080
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5094,7 +5140,7 @@ MonoBehaviour:
   InLocalSpace: 0
   Interpolate: 1
   SlerpPosition: 0
---- !u!114 &2041800245796593895
+--- !u!114 &527763977937752538
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -5103,48 +5149,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 4211810131274587892}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0c9b9e21a299ab34cace78282d05bd3e, type: 3}
+  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 62
-  lifetime: 3
-  damage: 1
-  baseMaxPierces: 5
-  perHitSpeedLoss: 0.076
-  rehitCooldown: 0.15
-  explosionRadius: 3
-  damageFalloff:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 2
-      outSlope: 2
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  baseChainCount: 2
-  chainRange: 4
-  chainDamageMultiplier: 0.6
-  chainHitVFX: {fileID: 0}
-  finalExplosionRadiusMultiplier: 1.8
-  finalExplosionDamageMultiplier: 1.75
-  explosionVFX: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
-  explosionSound: {fileID: 8300000, guid: 9ea0e51bdc252384e8cdd476387c9ca6, type: 3}
 --- !u!96 &1904763662979679081
 TrailRenderer:
   serializedVersion: 3
@@ -5282,15 +5289,3 @@ TrailRenderer:
   m_Autodestruct: 0
   m_Emitting: 1
   m_ApplyActiveColorSpace: 1
---- !u!114 &527763977937752538
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4211810131274587892}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

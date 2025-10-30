@@ -15,7 +15,7 @@ MonoBehaviour:
   id: 2
   displayName: Blaster
   tags: 23
-  uiIcon: {fileID: 21300000, guid: 9b82f5d5b5c0b524b8f0b7e590686660, type: 3}
+  uiIcon: {fileID: 1274948343, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: 1476586629750628589, guid: d940d4f0ac4a3ca46a9a99935586aef0, type: 3}
   projectileSpeed: 40
   rangeMeters: 120

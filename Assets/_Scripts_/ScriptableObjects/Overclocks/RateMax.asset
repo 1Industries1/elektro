@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 1
   kind: 1
-  icon: {fileID: 21300000, guid: 8705d6aaa8190904eb19845b733388be, type: 3}
+  icon: {fileID: 21300000, guid: 0cf897ae2ccd62e4b8bfd9bea4b5e7c8, type: 3}
   description: "RateBoost (Taktisch, 1\u20132 Ladungen):\nmods: FireRateSeconds Override
     = 0.08 (oder dein gew\xFCnschtes \u201EMax Fire Rate\u201C)"
   duration: 10
