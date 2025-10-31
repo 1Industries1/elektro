@@ -33,7 +33,6 @@ public class CannonController : NetworkBehaviour
     [Range(0f, 1f)] public float minDotToShoot = 0.95f; 
     public LayerMask enemyLayer;
     public LayerMask lineOfSightMask; 
-    public string eliteTag = "Elite";
 
     public Transform CurrentTarget => currentTarget;
     public Vector3 AimOrigin => bulletSpawnPoint ? bulletSpawnPoint.position : transform.position;

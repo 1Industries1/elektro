@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MimicSpace
 {
-    public class Leg : MonoBehaviour
+    public class Leg : MonoBehaviour, IRaycastReceiver
     {
         Mimic myMimic;
 
@@ -13,21 +13,21 @@ namespace MimicSpace
         public int legResolution;
 
         public LineRenderer legLine;
-        public int handlesCount = 8; // 8 (7 control points + final foot)
+        public int handlesCount = 8; // 0..6 + finaler Fuß (Index 7)
 
         public float legMinHeight = 0.3f;
         public float legMaxHeight = 1.1f;
         float legHeight;
 
-        public Vector3[] handles;         // Control points (size = handlesCount)
+        public Vector3[] handles;         // Größe = handlesCount
         public float handleOffsetMinRadius = 0.05f;
         public float handleOffsetMaxRadius = 0.25f;
-        public Vector3[] handleOffsets;   // random offsets for nicer curvature (size = 6)
+        public Vector3[] handleOffsets;   // Größe = 6
 
         public float finalFootDistance = 0.3f;
 
         public float growCoef = 5f;
-        public float growTarget = 1;
+        public float growTarget = 1f;
 
         [Range(0, 1f)] public float progression;
 
@@ -39,7 +39,7 @@ namespace MimicSpace
         public float rotationSpeed = 30f;
         public float minRotSpeed = 20f;
         public float maxRotSpeed = 50f;
-        float rotationSign = 1;
+        float rotationSign = 1f;
         public float oscillationSpeed = 40f;
         public float minOscillationSpeed = 30f;
         public float maxOscillationSpeed = 60f;
@@ -52,6 +52,17 @@ namespace MimicSpace
         Vector3[] pointsArray;   // Ausgabepuffer für Kurvenpunkte (>= legResolution + 2)
         int pointsCount;         // tatsächlich gefüllte Punkte
 
+        // ---------- Throttling ----------
+        float _nextLinecastTime;
+        bool _obstructed; // Ergebnis des letzten (gedrosselten) Checks
+
+        // Frame-Cadence: nur jedes N-te Frame updaten
+        [SerializeField] int tickDivisor = 3;
+        int _tickMask;
+        static int s_nextMask;
+
+        const int LOS_REQ_ID = 1;
+
         // ---------- Initialisierung ----------
         public void Initialize(Vector3 footPosition, int legResolution, float maxLegDistance, float growCoef, Mimic myMimic, float lifeTime)
         {
@@ -61,12 +72,15 @@ namespace MimicSpace
             this.growCoef = growCoef;
             this.myMimic = myMimic;
 
+            // Cadence zuweisen (verteilt Arbeit über Frames)
+            _tickMask = (s_nextMask++) % Mathf.Max(1, tickDivisor);
+
             legLine = GetComponent<LineRenderer>();
             if (legLine != null)
             {
                 legLine.useWorldSpace = true;
                 if (legLine.material == null)
-                    legLine.material = new Material(Shader.Find("Sprites/Default")); // einmalig, nicht pro Frame
+                    legLine.material = new Material(Shader.Find("Sprites/Default")); // einmalig
                 if (legLine.widthMultiplier <= 0f)
                     legLine.widthMultiplier = 0.06f;
             }
@@ -79,21 +93,20 @@ namespace MimicSpace
 
             // Finalen Fuß via Raycast auf den Boden setzen
             Vector2 footOffset = Random.insideUnitCircle.normalized * finalFootDistance;
-            RaycastHit hit;
             var start = footPosition + Vector3.up * 5f + new Vector3(footOffset.x, 0, footOffset.y);
-            if (Physics.Raycast(start, Vector3.down, out hit, 20f, myMimic.groundMask, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(start, Vector3.down, out var hit, 20f, myMimic.groundMask, QueryTriggerInteraction.Ignore))
                 handles[7] = hit.point;
             else
                 handles[7] = footPosition;
 
             legHeight = Random.Range(legMinHeight, legMaxHeight);
             rotationSpeed = Random.Range(minRotSpeed, maxRotSpeed);
-            rotationSign = 1;
+            rotationSign = 1f;
             oscillationSpeed = Random.Range(minOscillationSpeed, maxOscillationSpeed);
-            oscillationProgress = 0;
+            oscillationProgress = 0f;
 
             myMimic.legCount++;
-            growTarget = 1;
+            growTarget = 1f;
 
             isRemoved = false;
             canDie = false;
@@ -109,11 +122,9 @@ namespace MimicSpace
 
         void EnsureBuffers()
         {
-            // Arbeitskopie für de Casteljau
             if (workHandles == null || workHandles.Length != handlesCount)
                 workHandles = new Vector3[handlesCount];
 
-            // Ausgabepuffer: +2 (Endpunkt + Sicherheitsmarge)
             int neededPoints = Mathf.Max(2, legResolution + 2);
             if (pointsArray == null || pointsArray.Length < neededPoints)
                 pointsArray = new Vector3[neededPoints];
@@ -130,17 +141,20 @@ namespace MimicSpace
             yield return new WaitForSeconds(lifeTime);
             while (myMimic.deployedLegs < myMimic.minimumAnchoredParts)
                 yield return null;
-            growTarget = 0;
+            growTarget = 0f;
         }
 
         // ---------- Laufzeit ----------
         void Update()
         {
-            // Wenn sich die Auflösung zur Laufzeit ändert, Puffer anpassen
+            // nur jedes N-te Frame arbeiten
+            if ((Time.frameCount % Mathf.Max(1, tickDivisor)) != _tickMask)
+                return;
+
             EnsureBuffers();
 
-            // 1) Abstands-/Sichtlinienlogik
-            if (growTarget == 1)
+            // 1) Abstands-/Sichtlinienlogik (mit Throttling + Batching)
+            if (growTarget == 1f)
             {
                 float distXZ = Vector3.Distance(
                     new Vector3(myMimic.legPlacerOrigin.x, 0, myMimic.legPlacerOrigin.z),
@@ -148,25 +162,26 @@ namespace MimicSpace
 
                 if (distXZ > maxLegDistance && canDie && myMimic.deployedLegs > myMimic.minimumAnchoredParts)
                 {
-                    growTarget = 0;
+                    growTarget = 0f;
                 }
                 else
                 {
-                    RaycastHit hit;
-                    if (Physics.Linecast(footPosition + Vector3.up * 0.05f,
-                                         transform.position + Vector3.up * 0.2f,
-                                         out hit, myMimic.groundMask, QueryTriggerInteraction.Ignore))
+                    if (Time.time >= _nextLinecastTime)
                     {
-                        // Gelände zwischen Fuß und Körper -> einziehen
-                        growTarget = 0;
+                        _nextLinecastTime = Time.time + 0.15f;
+
+                        Vector3 from = footPosition + Vector3.up * 0.05f;
+                        Vector3 to   = transform.position + Vector3.up * 0.2f;
+
+                        RaycastBatcher.Enqueue(from, to, myMimic.groundMask, this, LOS_REQ_ID);
                     }
                 }
             }
 
-            // Wachstum / Einziehen
+            // 2) Wachstum / Einziehen
             progression = Mathf.Lerp(progression, growTarget, growCoef * Time.deltaTime);
 
-            // Deployment-Zählung
+            // 3) Deployment-Zählung
             if (!isDeployed && progression > 0.9f)
             {
                 myMimic.deployedLegs++;
@@ -178,8 +193,8 @@ namespace MimicSpace
                 isDeployed = false;
             }
 
-            // Recycle
-            if (progression < 0.5f && growTarget == 0)
+            // 4) Recycle
+            if (progression < 0.5f && growTarget == 0f)
             {
                 if (!isRemoved)
                 {
@@ -194,17 +209,24 @@ namespace MimicSpace
                 }
             }
 
-            // Kurven-Handles updaten & zeichnen (alloc-frei)
+            // 5) Kurven-Handles + Rendering (alloc-frei)
             Sethandles();
             GetSamplePointsNonAlloc(handles, legResolution, progression, pointsArray, workHandles, out pointsCount);
 
             if (legLine)
             {
                 legLine.positionCount = pointsCount;
-                // SetPositions(Vector3[]) würde das gesamte Array setzen; wir setzen nur die gefüllten Elemente:
                 for (int i = 0; i < pointsCount; i++)
                     legLine.SetPosition(i, pointsArray[i]);
             }
+        }
+
+        // ---------- Raycast-Ergebnis ----------
+        public void OnRaycastResult(int requestId, bool hit, RaycastHit hitInfo)
+        {
+            if (requestId != LOS_REQ_ID) return;
+            _obstructed = hit;
+            if (_obstructed) growTarget = 0f;
         }
 
         // ---------- Control-Points ----------
@@ -269,9 +291,7 @@ namespace MimicSpace
 
         Vector3 EvalCurveNonAlloc(Vector3[] source, Vector3[] work, float t)
         {
-            // Quelle in Arbeitskopie kopieren (8 Elemente → günstig)
             System.Array.Copy(source, work, source.Length);
-
             int n = source.Length;
             while (n > 1)
             {

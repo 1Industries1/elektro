@@ -247,7 +247,7 @@ public class TreasureChest : NetworkBehaviour
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } }
         };
-        
+
         foreach (var id in _lockedRewardWeaponIds)
             Owner_PreviewIconClientRpc(id, target);
 
@@ -285,7 +285,7 @@ public class TreasureChest : NetworkBehaviour
 
         OnOpened?.Invoke();
     }
-    
+
     [ClientRpc(Delivery = RpcDelivery.Reliable)]
     private void Owner_PreviewIconClientRpc(string weaponId, ClientRpcParams clientRpcParams = default)
     {
@@ -299,8 +299,9 @@ public class TreasureChest : NetworkBehaviour
         if (pw == null) return;
 
         WeaponDefinition def = null;
-        if (pw.cannonDef  != null && pw.cannonDef.id  == weaponId) def = pw.cannonDef;
+        if (pw.cannonDef != null && pw.cannonDef.id == weaponId) def = pw.cannonDef;
         else if (pw.blasterDef != null && pw.blasterDef.id == weaponId) def = pw.blasterDef;
+        else if (pw.grenadeDef != null && pw.grenadeDef.id == weaponId) def = pw.grenadeDef;
 
         if (def != null && def.uiIcon != null)
             UIChestManager.NotifyItemReceived(def.uiIcon);
@@ -335,18 +336,18 @@ public class TreasureChest : NetworkBehaviour
     //    if (animator && openTriggerHash != 0) animator.SetTrigger(openTriggerHash);
     //    StopHoldLoop();
     //    if (audioSource && openClip) audioSource.PlayOneShot(openClip);
-//
+    //
     //    if (singleUse) opened = true;
     //    cooldownUntil = Time.time + reopenCooldown;
-//
+    //
     //    UIChestManager.Activate(this);
-//
+    //
     //    if (chestSlowMo && SlowMoManager.Instance != null && _chestSlowHandle == 0)
     //    {
     //        if (_slowDelayCo != null) StopCoroutine(_slowDelayCo);
     //        _slowDelayCo = StartCoroutine(StartChestSlowMoDelayed());
     //    }
-//
+    //
     //    OnOpened?.Invoke();
     //}
 
@@ -522,23 +523,38 @@ public class TreasureChest : NetworkBehaviour
                     _lockedRewardWeaponIds.RemoveAt(0);
 
                     if (weapons.Server_LevelUpById(id, notifyOwner: false))
-                        continue; // vergeben, nächstes Reward
+                    {
+                        // owner id ist der Opener / inventory.OwnerClientId (Owner der PlayerWeapons)
+                        SignalWeaponUpgradeToastToOwner(weapons, ResolveDefById(weapons, id), inventory.OwnerClientId);
+                        continue;
+                    }
                 }
 
-                // Fallback: wenn nichts geplant/fehlgeschlagen -> random (bestehendes Verhalten)
-                if (TryUpgradeOneWeaponServer(inventory))
+                /// Fallback: random
+                if (weapons.Server_TryLevelUpRandomWeapon(out var upgradedDef))
+                {
+                    SignalWeaponUpgradeToastToOwner(weapons, upgradedDef, inventory.OwnerClientId);
                     continue;
+                }
             }
 
             // 2) Rest wie gehabt
-            if (possibleDrops.HasFlag(DropType.Evolution)      && TryEvolve<object>(inventory)) continue;
+            if (possibleDrops.HasFlag(DropType.Evolution) && TryEvolve<object>(inventory)) continue;
             if (possibleDrops.HasFlag(DropType.UpgradePassive) && TryUpgrade<object>(inventory)) continue;
-            if (possibleDrops.HasFlag(DropType.NewWeapon)      && TryGive<object>(inventory))   continue;
-            if (possibleDrops.HasFlag(DropType.NewPassive))          TryGive<object>(inventory);
+            if (possibleDrops.HasFlag(DropType.NewWeapon) && TryGive<object>(inventory)) continue;
+            if (possibleDrops.HasFlag(DropType.NewPassive)) TryGive<object>(inventory);
         }
 
         // Aufräumen
         _lockedRewardWeaponIds.Clear();
+    }
+
+    private WeaponDefinition ResolveDefById(PlayerWeapons pw, string id)
+    {
+        if (pw.cannonDef != null && pw.cannonDef.id == id) return pw.cannonDef;
+        if (pw.blasterDef != null && pw.blasterDef.id == id) return pw.blasterDef;
+        if (pw.grenadeDef != null && pw.grenadeDef.id == id) return pw.grenadeDef;
+        return null;
     }
 
 
@@ -552,6 +568,54 @@ public class TreasureChest : NetworkBehaviour
         return weapons.Server_TryLevelUpRandomWeapon(out _);
     }
 
+
+
+    // SERVER: nach erfolgreichem Waffen-Upgrade … Owner-Toast triggern
+    private void SignalWeaponUpgradeToastToOwner(PlayerWeapons weapons, WeaponDefinition def, ulong ownerClientId)
+    {
+        if (weapons == null || def == null) return;
+
+        int newLevel = 1;
+        if (def == weapons.cannonDef) newLevel = weapons.cannonLevel.Value;
+        else if (def == weapons.blasterDef) newLevel = weapons.blasterLevel.Value;
+        else if (def == weapons.grenadeDef) newLevel = weapons.grenadeLevel.Value;
+
+        var target = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { ownerClientId } }
+        };
+        Owner_ShowWeaponUpgradeToastClientRpc(def.id, newLevel, target);
+    }
+
+
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void Owner_ShowWeaponUpgradeToastClientRpc(string weaponId, int newLevel, ClientRpcParams clientRpcParams = default)
+    {
+        var playerObj = NetworkManager.Singleton?.LocalClient?.PlayerObject;
+        if (!playerObj) return;
+
+        var pw = playerObj.GetComponent<PlayerWeapons>() ?? playerObj.GetComponentInChildren<PlayerWeapons>(true);
+        var up = playerObj.GetComponent<PlayerUpgrades>() ?? playerObj.GetComponentInChildren<PlayerUpgrades>(true);
+        if (pw == null) return;
+
+        WeaponDefinition def = null;
+        if (pw.cannonDef != null && pw.cannonDef.id == weaponId) def = pw.cannonDef;
+        else if (pw.blasterDef != null && pw.blasterDef.id == weaponId) def = pw.blasterDef;
+        else if (pw.grenadeDef != null && pw.grenadeDef.id == weaponId) def = pw.grenadeDef;
+
+        // Body (das, was sich wirklich geändert hat)
+        string body = WeaponStepDescriber.DescribeStep(def, newLevel, up);
+        if (string.IsNullOrEmpty(body)) body = "Level up!";
+
+        // Schöner Header mit Waffennamen + neuer Stufe (TMP-RichText)
+        string header = def != null
+            ? $"<b>{def.displayName}</b>  <size=80%>Lv {newLevel}</size>"
+            : $"<b>Weapon</b>  <size=80%>Lv {newLevel}</size>";
+
+        // Zwei Zeilen im Toast
+        string msg = WeaponStepDescriber.DescribeStepWithName(def, newLevel, up);
+        CenterToastUI.Instance?.Show(msg, 4f);
+    }
 
 
 

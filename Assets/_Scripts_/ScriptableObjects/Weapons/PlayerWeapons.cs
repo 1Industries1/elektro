@@ -9,19 +9,23 @@ public class PlayerWeapons : NetworkBehaviour
     [Header("Assign weapon defs (ScriptableObjects)")]
     public WeaponDefinition cannonDef;
     public WeaponDefinition blasterDef;
+    public WeaponDefinition grenadeDef;
 
     public NetworkVariable<int> cannonLevel = new(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> blasterLevel = new(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> grenadeLevel = new(1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     public event Action RuntimesRebuilt;
 
     public WeaponRuntime CannonRuntime { get; private set; }
     public WeaponRuntime BlasterRuntime { get; private set; }
+    public WeaponRuntime GrenadeRuntime { get; private set; }
 
     void Rebuild()
     {
         if (cannonDef != null) CannonRuntime = new WeaponRuntime(cannonDef, Mathf.Max(1, cannonLevel.Value));
         if (blasterDef != null) BlasterRuntime = new WeaponRuntime(blasterDef, Mathf.Max(1, blasterLevel.Value));
+        if (grenadeDef != null) GrenadeRuntime = new WeaponRuntime(grenadeDef, Mathf.Max(1, grenadeLevel.Value));
 
         RuntimesRebuilt?.Invoke();
     }
@@ -29,11 +33,13 @@ public class PlayerWeapons : NetworkBehaviour
     // ---- Eigene Handler, damit -OnValueChanged korrekt abgemeldet werden kann
     private void OnCannonLevelChanged(int _, int __) => Rebuild();
     private void OnBlasterLevelChanged(int _, int __) => Rebuild();
+    private void OnGrenadeLevelChanged(int _, int __) => Rebuild();
 
     public override void OnNetworkSpawn()
     {
         cannonLevel.OnValueChanged += OnCannonLevelChanged;
         blasterLevel.OnValueChanged += OnBlasterLevelChanged;
+        grenadeLevel.OnValueChanged += OnGrenadeLevelChanged;
         Rebuild();
     }
 
@@ -41,6 +47,7 @@ public class PlayerWeapons : NetworkBehaviour
     {
         cannonLevel.OnValueChanged -= OnCannonLevelChanged;
         blasterLevel.OnValueChanged -= OnBlasterLevelChanged;
+        grenadeLevel.OnValueChanged -= OnGrenadeLevelChanged;
     }
 
     int MaxLevel(WeaponDefinition def) => 1 + (def?.steps?.Length ?? 0);
@@ -50,6 +57,7 @@ public class PlayerWeapons : NetworkBehaviour
         var list = new List<(WeaponDefinition, string, int)>();
         if (cannonDef != null && cannonLevel.Value < MaxLevel(cannonDef)) list.Add((cannonDef, "cannon", cannonLevel.Value));
         if (blasterDef != null && blasterLevel.Value < MaxLevel(blasterDef)) list.Add((blasterDef, "blaster", blasterLevel.Value));
+        if (grenadeDef != null && grenadeLevel.Value < MaxLevel(grenadeDef)) list.Add((grenadeDef, "grenade", grenadeLevel.Value));
         return list;
     }
 
@@ -69,10 +77,15 @@ public class PlayerWeapons : NetworkBehaviour
             cannonLevel.Value = Mathf.Min(cannonLevel.Value + 1, MaxLevel(cannonDef));
             upgraded = cannonDef;
         }
-        else
+        else if (choice.slot == "blaster")
         {
             blasterLevel.Value = Mathf.Min(blasterLevel.Value + 1, MaxLevel(blasterDef));
             upgraded = blasterDef;
+        }
+        else // grenade
+        {
+            grenadeLevel.Value = Mathf.Min(grenadeLevel.Value + 1, MaxLevel(grenadeDef));
+            upgraded = grenadeDef;
         }
 
         var target = new ClientRpcParams
@@ -82,7 +95,7 @@ public class PlayerWeapons : NetworkBehaviour
         OwnerNotifyUpgradeClientRpc(upgraded != null ? upgraded.id : null, target);
         return true;
     }
-    
+
 
     public string Server_PeekRandomUpgradeableId()
     {
@@ -117,6 +130,16 @@ public class PlayerWeapons : NetworkBehaviour
                 did = true;
             }
         }
+        else if (grenadeDef != null && grenadeDef.id == weaponId)
+        {
+            int max = MaxLevel(grenadeDef);
+            if (grenadeLevel.Value < max)
+            {
+                grenadeLevel.Value = Mathf.Min(grenadeLevel.Value + 1, max);
+                did = true;
+            }
+        }
+
 
         if (did && notifyOwner)
         {
@@ -151,6 +174,7 @@ public class PlayerWeapons : NetworkBehaviour
         WeaponDefinition def = null;
         if (cannonDef != null && cannonDef.id == weaponId) def = cannonDef;
         else if (blasterDef != null && blasterDef.id == weaponId) def = blasterDef;
+        else if (grenadeDef != null && grenadeDef.id == weaponId) def = grenadeDef;
 
         if (def != null && def.uiIcon != null)
             UIChestManager.NotifyItemReceived(def.uiIcon);

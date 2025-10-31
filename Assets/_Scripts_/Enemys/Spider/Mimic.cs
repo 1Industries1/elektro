@@ -36,7 +36,7 @@ namespace MimicSpace
         [Tooltip("Maximum lerp coef for leg growth smoothing")] public float maxGrowCoef = 6.5f;
 
         [Header("Physics")]
-        [Tooltip("Ray/Linecasts only hit these layers (e.g. Default, Ground, Terrain)")]
+        [Tooltip("Ray/Linecasts only hit these layers (e.g. Ground/Terrain)")]
         public LayerMask groundMask = ~0;
 
         [Header("Motion feed")]
@@ -44,7 +44,7 @@ namespace MimicSpace
         public Vector3 velocity;
 
         bool canCreateLeg = true;
-        readonly List<GameObject> availableLegPool = new List<GameObject>();
+        readonly List<GameObject> availableLegPool = new();
 
         void Start()
         {
@@ -87,8 +87,7 @@ namespace MimicSpace
             if (!canCreateLeg) return;
 
             // vor die Lauf-Richtung
-            var v = velocity;
-            v.y = 0;
+            var v = velocity; v.y = 0;
             var vNorm = v.sqrMagnitude > 0.0001f ? v.normalized : Vector3.forward;
             legPlacerOrigin = transform.position + vNorm * newLegRadius;
 
@@ -116,7 +115,7 @@ namespace MimicSpace
                 if (Vector3.Angle(velocity, newLegPosition - transform.position) > 45)
                     newLegPosition = transform.position + ((newLegPosition - transform.position) + vNorm * (newLegPosition - transform.position).magnitude) / 2f;
 
-                // ROBUSTER BODEN-TREFFER
+                // ROBUSTER BODEN-TREFFER (ein einziger Raycast beim Erzeugen)
                 if (!Physics.Raycast(newLegPosition + Vector3.up * 20f, Vector3.down, out var hit, 60f, groundMask, QueryTriggerInteraction.Ignore))
                     return;
 
@@ -137,12 +136,18 @@ namespace MimicSpace
             }
         }
 
+        void LateUpdate()
+        {
+            // einmal pro Frame Batch-Casts ausführen
+            RaycastBatcher.Flush();
+        }
+
         void RequestLeg(Vector3 footPosition, int legResolution, float maxLegDistance, float growCoef, Mimic myMimic, float lifeTime)
         {
             GameObject newLeg;
             if (availableLegPool.Count > 0)
             {
-                newLeg = availableLegPool[availableLegPool.Count - 1];
+                newLeg = availableLegPool[^1];
                 availableLegPool.RemoveAt(availableLegPool.Count - 1);
             }
             else
@@ -151,8 +156,8 @@ namespace MimicSpace
             }
 
             newLeg.SetActive(true);
+            newLeg.transform.SetParent(myMimic.transform, worldPositionStays: true);
             newLeg.GetComponent<Leg>().Initialize(footPosition, legResolution, maxLegDistance, growCoef, myMimic, lifeTime);
-            newLeg.transform.SetParent(myMimic.transform);
         }
 
         public void RecycleLeg(GameObject leg)

@@ -1132,6 +1132,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a3650060471c744c938951dc97d8c15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  targetRefreshRate: 0.25
 --- !u!114 &9038014760461084183
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1146,10 +1147,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lastHitByClientId: 0
   detectionRange: 9999999
-  attackRange: 2
-  minMoveSpeed: 12
-  maxMoveSpeed: 18
-  rotationSpeed: 6
+  attackRange: 5
+  minMoveSpeed: 16
+  maxMoveSpeed: 24
+  rotationSpeed: 10
   baseHealth: 25
   dmgNums: {fileID: 8409553502743980558}
 --- !u!114 &8409553502743980558

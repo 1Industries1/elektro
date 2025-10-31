@@ -2,12 +2,12 @@ using UnityEngine;
 using Unity.Netcode;
 using System;
 using System.Collections;
-using MimicSpace;
+using MimicSpace; // IRaycastReceiver & RaycastBatcher
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(EnemyController))]
 [DisallowMultipleComponent]
-public class EnemySpider : NetworkBehaviour, IEnemy
+public class EnemySpider : NetworkBehaviour, IEnemy, IRaycastReceiver
 {
     private Rigidbody rb;
     private EnemyController controller;
@@ -57,6 +57,16 @@ public class EnemySpider : NetworkBehaviour, IEnemy
     private enum State { Idle, Skitter, SpitWindup, Recover }
     private State state = State.Idle;
 
+    [Header("Performance")]
+    [SerializeField] private float losCheckInterval = 0.2f;
+    [SerializeField] private float targetUpdateInterval = 0.25f;
+
+    private float _nextLOSCheckTime;
+    private bool  _cachedLOS = true;
+    private float _nextTargetUpdateTime;
+
+    const int LOS_REQ_ID = 101;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -66,7 +76,6 @@ public class EnemySpider : NetworkBehaviour, IEnemy
 
         if (!visualsRoot) visualsRoot = transform;
 
-        // RB-Schutz
         rb.useGravity = true;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -80,8 +89,7 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         if (IsServer)
         {
             health.Value = baseHealth;
-            controller.UpdateTarget();
-            target = controller.Target;
+            ForceUpdateTarget();
             state = State.Idle;
             ScheduleStrafeFlip();
         }
@@ -98,9 +106,19 @@ public class EnemySpider : NetworkBehaviour, IEnemy
     {
         if (!IsServer || isDead) return;
 
+        if (Time.time >= _nextTargetUpdateTime)
+        {
+            ForceUpdateTarget();
+            _nextTargetUpdateTime = Time.time + targetUpdateInterval;
+        }
+
+        TickFSM(Time.fixedDeltaTime);
+    }
+
+    private void ForceUpdateTarget()
+    {
         controller.UpdateTarget();
         target = controller.Target;
-        TickFSM(Time.fixedDeltaTime);
     }
 
     private void TickFSM(float dt)
@@ -120,7 +138,7 @@ public class EnemySpider : NetworkBehaviour, IEnemy
             case State.Skitter:
                 SkitterMove(dt, target.position);
 
-                bool hasLOS = HasLOS(target);
+                bool hasLOS = HasLOSAsync(target);
                 if (Time.time >= nextSpitTime && hasLOS && dist <= spitRange && dist >= minSpitRange)
                 {
                     StartCoroutine(SpitRoutine());
@@ -129,7 +147,6 @@ public class EnemySpider : NetworkBehaviour, IEnemy
                 break;
 
             case State.SpitWindup:
-                // von Coroutine gesteuert
                 break;
 
             case State.Recover:
@@ -147,7 +164,7 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         if (toT.sqrMagnitude > 0.001f)
             step += toT.normalized * moveSpeed * dt;
 
-        Vector3 right = Vector3.Cross(Vector3.up, toT.normalized);
+        Vector3 right = Vector3.Cross(Vector3.up, toT.sqrMagnitude > 0.0001f ? toT.normalized : transform.forward);
         step += right * strafeDir * strafeSpeed * dt;
 
         rb.MovePosition(rb.position + step);
@@ -164,17 +181,30 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         visualsRoot.rotation = Quaternion.Slerp(visualsRoot.rotation, trg, rotationSpeed * dt);
     }
 
-    private bool HasLOS(Transform t)
+    /// <summary>
+    /// LOS-Prüfung: gedrosselt + gebatcht. Gibt den zuletzt bekannten Wert zurück.
+    /// </summary>
+    private bool HasLOSAsync(Transform t)
     {
-        if (!spitMuzzle) return true;
+        if (!spitMuzzle || t == null) return true;
+
+        if (Time.time < _nextLOSCheckTime)
+            return _cachedLOS;
+
+        _nextLOSCheckTime = Time.time + losCheckInterval;
+
         Vector3 eye = spitMuzzle.position;
         Vector3 tgt = t.position + Vector3.up * targetHeightOffset;
-        Vector3 dir = tgt - eye;
-        float dist = dir.magnitude;
 
-        if (Physics.Raycast(eye, dir.normalized, out var hit, dist, losMask, QueryTriggerInteraction.Ignore))
-            return false;
-        return true;
+        RaycastBatcher.Enqueue(eye, tgt, losMask, this, LOS_REQ_ID);
+        return _cachedLOS; // sofort letzter bekannter Zustand
+    }
+
+    // Ergebnis des RaycastBatchers
+    public void OnRaycastResult(int requestId, bool hit, RaycastHit hitInfo)
+    {
+        if (requestId != LOS_REQ_ID) return;
+        _cachedLOS = !hit;
     }
 
     private void FlipStrafeDir()
@@ -228,15 +258,8 @@ public class EnemySpider : NetworkBehaviour, IEnemy
         lastHitByClientId = attackerId;
         health.Value -= amount;
 
-        // Damage Popup
         if (dmgNums != null)
-        {
-            // ALLE Spieler sehen DMG Popups
-            //dmgNums.ShowForAllClients(amount, hitPoint, isCrit: false);
-
-            // Nur der Angreifer sieht die Zahl
             dmgNums.ShowForAttackerOnly(amount, hitPoint, attackerId, isCrit: false);
-        }
 
         effects?.PlayHitEffectClientRpc(hitPoint);
     }
@@ -258,10 +281,8 @@ public class EnemySpider : NetworkBehaviour, IEnemy
 
         if (IsServer)
         {
-            // Death-VFX an Position schicken, dann despawnen
             Vector3 pos = transform.position;
             effects?.PlayDeathEffectClientRpc(pos);
-
             GetComponent<NetworkObject>().Despawn(true);
         }
     }

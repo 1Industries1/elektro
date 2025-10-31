@@ -5,6 +5,9 @@ using Unity.Netcode;
 
 public class GrenadeLauncherController : NetworkBehaviour
 {
+    [Header("WeaponDef")]
+    public WeaponDefinition grenadeDef;
+    
     [Header("Grenade Prefab & Spawn")]
     public NetworkObject grenadePrefab;
     public Transform muzzle;
@@ -38,9 +41,6 @@ public class GrenadeLauncherController : NetworkBehaviour
         Quaternion.identity, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner
     );
 
-    // ===== Damage (NEU – analog zur Cannon) =====
-    [Header("Damage")]
-    public Vector2 grenadeDamageRange = new Vector2(30f, 55f);
 
     [Header("Damage Multipliers")]
     [Tooltip("Schadensfaktor während Roll_Anim (LSHIFT gehalten). < 1 für Nerf beim Rollen.")]
@@ -50,6 +50,8 @@ public class GrenadeLauncherController : NetworkBehaviour
 
     private PlayerMovement _ownerMovement;   // wie bei Cannon
     private PlayerUpgrades _upgrades;        // wie bei Cannon
+    private PlayerWeapons _weapons;
+    private WeaponRuntime _runtime;
 
     private float _nextFireTime;
     private float _nextRetarget;
@@ -66,7 +68,32 @@ public class GrenadeLauncherController : NetworkBehaviour
     {
         // Owner-Kontext für Multiplikatoren
         _ownerMovement = GetComponentInParent<PlayerMovement>();
-        _upgrades      = GetComponentInParent<PlayerUpgrades>();
+        _upgrades = GetComponentInParent<PlayerUpgrades>();
+
+        _weapons = GetComponentInParent<PlayerWeapons>();
+        if (_weapons != null)
+        {
+            _runtime = _weapons.GrenadeRuntime;
+            _weapons.RuntimesRebuilt += OnRuntimesRebuilt;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_weapons != null) _weapons.RuntimesRebuilt -= OnRuntimesRebuilt;
+    }
+    
+    private void OnRuntimesRebuilt()
+    {
+        _runtime = _weapons != null ? _weapons.GrenadeRuntime : null;
+    }
+
+    // === replace your cooldown source with runtime ===
+    private float NextCooldownRuntime()
+    {
+        // runtime cooldown (with your jitter)
+        float baseCd = (_runtime != null) ? _runtime.GetCooldownSeconds() : fireRate;
+        return NextCooldown(baseCd, fireRateJitterPct);
     }
 
     private void Update()
@@ -98,6 +125,23 @@ public class GrenadeLauncherController : NetworkBehaviour
         NetworkRotation.Value = look;
     }
 
+    // === damage: runtime + crit + roll + generic upgrade multiplier ===
+    private float ComputeGrenadeDamage()
+    {
+        // roll crit at shot-time (per salvo), then per-grenade ±5% variance stays as you had
+        float dmg = (_runtime != null)
+            ? _runtime.ComputeDamageNonPierced(applyCrit:true)
+            : Random.Range(30f, 55f); // fallback to old average range if runtime missing
+
+        float rollMul = GetRollDamageMultiplier();
+        float upgradeMul = _upgrades ? _upgrades.GetDamageMultiplier() : 1f;
+
+        return dmg * rollMul * upgradeMul;
+    }
+
+    // === OPTIONAL: expose projectile size from runtime ===
+    private float GetProjectileSizeMul() => (_runtime != null) ? Mathf.Max(0.05f, _runtime.projectileSize) : 1f;
+
     private void AutoFire()
     {
         if (_currentTarget == null) return;
@@ -108,26 +152,25 @@ public class GrenadeLauncherController : NetworkBehaviour
         float dot = Vector3.Dot(transform.forward, dir);
         bool cdReady = Time.time >= _nextFireTime;
 
-        if (Time.time >= _dbgNext) { _dbgNext = Time.time + 0.5f; }
-
         if (cdReady && los && dot >= minDotToShoot)
         {
-            float cd = NextCooldown(fireRate, fireRateJitterPct);
+            float cd = NextCooldownRuntime();          // CHANGED
             _nextFireTime = Time.time + cd;
 
-            Vector3 v0 = ApplySpread(dir) * launchSpeed;
+            Vector3 v0 = ApplySpread(dir) * GetLaunchSpeed();
 
             NetworkObjectReference targetRef = default;
             var maybeNo = _currentTarget.GetComponentInParent<NetworkObject>();
             if (maybeNo != null) targetRef = maybeNo;
 
-            // >>> NEU: Schaden *vor* Spawn berechnen & mitsenden
-            float damageForSalvo = RollGrenadeDamage();
-
+            float damageForSalvo = ComputeGrenadeDamage();  // CHANGED
             int countEff = GetEffectiveSalvoCount();
-            RequestSalvoServerRpc(origin, v0, targetRef, countEff, salvoInterval, cd, damageForSalvo);
+            float sizeMul = GetProjectileSizeMul();         // NEW
+
+            RequestSalvoServerRpc(origin, v0, targetRef, countEff, salvoInterval, cd, damageForSalvo, sizeMul); // signature extended
         }
     }
+
 
     private void ManualAimWithMouse()
     {
@@ -145,7 +188,7 @@ public class GrenadeLauncherController : NetworkBehaviour
     {
         if (!Input.GetMouseButtonDown(0) || Time.time < _nextFireTime) return;
 
-        float cd = NextCooldown(fireRate, fireRateJitterPct);
+        float cd = NextCooldownRuntime();      // CHANGED
         _nextFireTime = Time.time + cd;
 
         Vector3 origin = muzzle.position;
@@ -157,18 +200,19 @@ public class GrenadeLauncherController : NetworkBehaviour
             targetPos = hit.point;
 
         dir = GetClampedAimDirection(origin, targetPos);
-        Vector3 v0 = ApplySpread(dir) * launchSpeed;
+        Vector3 v0 = ApplySpread(dir) * GetLaunchSpeed();
 
-        float damageForSalvo = RollGrenadeDamage();
-
+        float damageForSalvo = ComputeGrenadeDamage(); // CHANGED
+        float sizeMul = GetProjectileSizeMul();        // NEW
         int countEff = GetEffectiveSalvoCount();
-        RequestSalvoServerRpc(origin, v0, default, countEff, salvoInterval, cd, damageForSalvo);
+
+        RequestSalvoServerRpc(origin, v0, default, countEff, salvoInterval, cd, damageForSalvo, sizeMul); // signature extended
     }
 
     private int GetEffectiveSalvoCount()
     {
-        int bonus = _upgrades ? _upgrades.GetGrenadeSalvoBonus() : 0;
-        return Mathf.Max(1, salvoCount + bonus);
+        if (_runtime != null) return Mathf.Max(1, _runtime.salvoCount);
+        return Mathf.Max(1, salvoCount); // Fallback auf Inspector
     }
 
     // ================== DAMAGE (NEU) ==================
@@ -178,14 +222,6 @@ public class GrenadeLauncherController : NetworkBehaviour
         if (_ownerMovement == null) _ownerMovement = GetComponentInParent<PlayerMovement>();
         if (_ownerMovement == null) return 1f;
         return _ownerMovement.ServerRollHeld ? damageWhileRolling : damageWhileNotRolling;
-    }
-
-    private float RollGrenadeDamage()
-    {
-        float baseRoll = Random.Range(grenadeDamageRange.x, grenadeDamageRange.y);
-        float rollMul  = GetRollDamageMultiplier();
-        float upgrade  = _upgrades ? _upgrades.GetDamageMultiplier() : 1f; // HIER WIRD DER MULTI VON ALT WEAPON GENOMMEN
-        return baseRoll * rollMul * upgrade;
     }
 
     // ================== UTILS ==================
@@ -215,7 +251,7 @@ public class GrenadeLauncherController : NetworkBehaviour
 
     private Transform AcquireTarget()
     {
-        Collider[] hits = Physics.OverlapSphere(transform.position, targetRange, enemyLayer, QueryTriggerInteraction.Ignore);
+        Collider[] hits = Physics.OverlapSphere(transform.position, GetTargetRange(), enemyLayer, QueryTriggerInteraction.Ignore);
         Transform best = null; float bestScore = float.PositiveInfinity;
 
         foreach (var h in hits)
@@ -249,35 +285,50 @@ public class GrenadeLauncherController : NetworkBehaviour
         return Mathf.Max(0.01f, baseRate * (1f + r));
     }
 
+    private float GetServerBaseCooldown()
+    {
+        // Laufzeitwert, Fallback auf Inspector-Feld
+        var baseCd = (_runtime != null) ? _runtime.GetCooldownSeconds() : fireRate;
+        return Mathf.Max(0.01f, baseCd);
+    }
+
+    private float GetLaunchSpeed()
+        => (_runtime != null) ? Mathf.Max(0.1f, _runtime.projectileSpeed) : launchSpeed;
+
+    private float GetTargetRange()
+        => (_runtime != null) ? Mathf.Max(0.5f, _runtime.def.rangeMeters) : targetRange;
+
     // ================== RPC / SPAWN ==================
 
     [ServerRpc]
     private void RequestSalvoServerRpc(
-        Vector3 spawnPos,
-        Vector3 initialVelocity,
-        NetworkObjectReference targetRef,
-        int count,
-        float interval,
-        float clientCooldown,
-        float damageFromClient)
+        Vector3 spawnPos, Vector3 initialVelocity, NetworkObjectReference targetRef,
+        int count, float interval, float clientCooldown, float damageFromClient, float sizeMul)
     {
         float now = Time.time;
 
         if (!_lastSalvoFire.TryGetValue(OwnerClientId, out var last)) last = -9999f;
-        float baseCd = Mathf.Max(0.01f, fireRate);
+
+        float baseCd = GetServerBaseCooldown();                    // CHANGED
         float minCd  = Mathf.Max(0.01f, baseCd * (1f - fireRateJitterPct));
         float maxCd  = Mathf.Max(0.01f, baseCd * (1f + fireRateJitterPct));
+
         if (clientCooldown < minCd || clientCooldown > maxCd) return;
         if (now - last < clientCooldown) return;
-        if (grenadePrefab == null) { Debug.LogError("[GL] grenadePrefab NULL"); return; }
 
-        // Server-seitige Schadens-Neuberechnung zur Sicherheit (Clientwert ignorieren):
-        float serverDamage = RollGrenadeDamage(); // Wichtig: Anti-Cheat
-        int serverCount = Mathf.Max(1, salvoCount + (_upgrades ? _upgrades.GetGrenadeSalvoBonus() : 0));
+        if (grenadePrefab == null)
+        {
+            // Fallback: Prefab aus WeaponDefinition, wenn im Controller nicht gesetzt
+            if (grenadeDef != null && grenadeDef.bulletPrefab != null)
+                grenadePrefab = grenadeDef.bulletPrefab;
+            if (grenadePrefab == null) { Debug.LogError("[GL] grenadePrefab NULL"); return; }
+        }
 
-        //_lastSalvoFire[OwnerClientId] = Time.time;
+        float serverDamage = ComputeGrenadeDamage();               // deine sichere Serverberechnung
+        int serverCount = GetEffectiveSalvoCount();
+
         _lastSalvoFire[OwnerClientId] = now;
-        StartCoroutine(FireSalvoRoutine(spawnPos, initialVelocity, targetRef, serverCount, Mathf.Max(0f, interval), serverDamage));
+        StartCoroutine(FireSalvoRoutine(spawnPos, initialVelocity, targetRef, serverCount, Mathf.Max(0f, interval), serverDamage, sizeMul));
         PlaySalvoSFXClientRpc(Random.Range(0.95f, 1.05f));
     }
 
@@ -287,14 +338,14 @@ public class GrenadeLauncherController : NetworkBehaviour
         NetworkObjectReference targetRef,
         int count,
         float interval,
-        float baseDamageForThisSalvo) // << NEU
+        float baseDamageForThisSalvo,
+        float sizeMul) // NEW
     {
         var targets = AcquireTargetsForSalvo(spawnPos, count);
 
         for (int i = 0; i < count; i++)
         {
             Vector3 v0 = initialVelocity;
-
             if (inaccuracyAngle > 0f)
             {
                 Quaternion spread =
@@ -315,9 +366,8 @@ public class GrenadeLauncherController : NetworkBehaviour
             var gp = obj.GetComponent<GrenadeProjectile>();
             if (gp != null)
             {
-                // Pro Granate kann man optional leicht variieren (z.B. ±5%)
                 float perGrenade = baseDamageForThisSalvo * Random.Range(0.95f, 1.05f);
-                gp.ServerInit(v0, OwnerClientId, perGrenade, perGrenadeTarget);
+                gp.ServerInit(v0, OwnerClientId, perGrenade, perGrenadeTarget, sizeMul); // NEW param
             }
 
             if (i < count - 1 && interval > 0f) yield return new WaitForSeconds(interval);

@@ -89,16 +89,28 @@ public class LevelUpUI : MonoBehaviour
 
     private void Start()
     {
-        // Stats dauerhaft sichtbar & aktualisiert halten
         if (statsPanel) statsPanel.SetActive(true);
-        FindLocalUpgradesCached();
-        SubscribeStats();
+    }
 
-        _weapons = FindLocalWeapons();
+    private Coroutine _bindCo;
+
+    private IEnumerator BindAndSubscribeWhenReady()
+    {
+        // Warten bis Local Player vorhanden ist UND wir beide Komponenten finden
+        while (_upgrades == null || _weapons == null)
+        {
+            _upgrades ??= FindLocalUpgrades();
+            _weapons ??= FindLocalWeapons();
+            yield return null; // nächste Frame abwarten
+        }
+
+        // Jetzt sicher abonnieren (idempotent durch Guards in den Methoden)
+        SubscribeStats();
         SubscribeWeaponStats();
 
         RefreshStats();
     }
+
 
     private void Update()
     {
@@ -109,27 +121,47 @@ public class LevelUpUI : MonoBehaviour
         if (Input.GetKeyDown(pickKeyC)) OnPick(_choices[2]);
     }
 
+
+    private void OnEnable()
+    {
+        if (NetworkManager.Singleton != null)
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+
+        if (_bindCo == null)
+            _bindCo = StartCoroutine(BindAndSubscribeWhenReady());
+    }
+
     private void OnDisable()
     {
+        if (NetworkManager.Singleton != null)
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+
         _open = false;
         UnsubscribeStats();
         UnsubscribeWeaponStats();
         _previewType = null;
+        if (_bindCo != null) { StopCoroutine(_bindCo); _bindCo = null; }
+    }
+
+    private void OnClientConnected(ulong _)
+    {
+        // bei Szene-Wechseln/Respawns: erneut binden
+        if (_bindCo == null)
+            _bindCo = StartCoroutine(BindAndSubscribeWhenReady());
     }
 
     private void SubscribeWeaponStats()
     {
-        if (_weaponsSubscribed || _weapons == null) return;
+        if (_weapons == null || _weaponsSubscribed) return;
 
-        // NetworkVariables der Levels
-        _weapons.cannonLevel.OnValueChanged  += OnAnyWeaponStatChanged;
+        _weapons.cannonLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.blasterLevel.OnValueChanged += OnAnyWeaponStatChanged;
-
-        // Runtime-Rebuild-Event (wenn Levels neu angewendet wurden)
+        _weapons.grenadeLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.RuntimesRebuilt += OnWeaponsRebuiltUI;
 
         _weaponsSubscribed = true;
     }
+
 
     private void UnsubscribeWeaponStats()
     {
@@ -137,11 +169,12 @@ public class LevelUpUI : MonoBehaviour
 
         _weapons.cannonLevel.OnValueChanged -= OnAnyWeaponStatChanged;
         _weapons.blasterLevel.OnValueChanged -= OnAnyWeaponStatChanged;
-        _weapons.RuntimesRebuilt -= OnWeaponsRebuiltUI;
+        _weapons.grenadeLevel.OnValueChanged -= OnAnyWeaponStatChanged;
 
+        _weapons.RuntimesRebuilt -= OnWeaponsRebuiltUI;
         _weaponsSubscribed = false;
     }
-    
+
     private void RefreshStatsIfVisible()
     {
         // refresht auch außerhalb des LevelUp-Overlays,
@@ -364,15 +397,6 @@ public class LevelUpUI : MonoBehaviour
                       v => FormatValue(UpgradeType.MaxHP, v));
         }
 
-        // --- Grenade Salvo ---
-        {
-            int lvl = _upgrades.GetLevel(UpgradeType.GrenadeSalvo);
-            int max = _upgrades.GetMaxLevel(UpgradeType.GrenadeSalvo);
-            float curr = _upgrades.GetCurrentValue(UpgradeType.GrenadeSalvo);
-            FillBasic(UpgradeType.GrenadeSalvo, "GL Salvo", curr, lvl, max,
-                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.GrenadeSalvo, l),
-                      v => FormatValue(UpgradeType.GrenadeSalvo, v));
-        }
 
         // --- Magnet ---
         {
@@ -468,9 +492,42 @@ public class LevelUpUI : MonoBehaviour
                     );
                 }
             }
+            // Grenade
+            {
+                var def = _weapons.grenadeDef;
+                int lvl = _weapons.grenadeLevel.Value;
+                int max = 1 + (def?.steps?.Length ?? 0);
+                var row = GetOrCreateCustomRow("Weapon_Grenade", def ? def.displayName : "Grenade");
+                if (row)
+                {
+                    string label = def ? def.displayName : "Grenade";
+                    var rt = _weapons.GrenadeRuntime;
+
+                    // DPS-Schätzung für Salvenwaffe:
+                    // damagePerShot = Schaden pro Granate
+                    // shotsPerSecond = Salven pro Sekunde
+                    // salvoCount = Granaten pro Salve
+                    // => proj/s = shotsPerSecond * salvoCount
+                    // (wenn dein WeaponRuntime.salvoCount noch nicht existiert,
+                    //  fallback auf def.baseSalvoCount oder 1)
+                    int salvo = rt != null ? Mathf.Max(1, rt.salvoCount) :
+                                (def != null ? Mathf.Max(1, def.baseSalvoCount) : 1);
+
+                    string extra = rt != null
+                        ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond * salvo):0.#}  |  {rt.shotsPerSecond:0.##} salvos/s × {salvo}"
+                        : null;
+
+                    row.Set(
+                        label,
+                        $"Lv {lvl}/{max}" + (string.IsNullOrEmpty(extra) ? "" : $"   ({extra})"),
+                        null,
+                        max > 0 ? (lvl / (float)max) : -1f
+                    );
+                }
+            }
         }
 
-        
+
     }
 
 
@@ -484,7 +541,6 @@ public class LevelUpUI : MonoBehaviour
         switch (type)
         {
             case UpgradeType.MaxHP: return Mathf.Max(1f, curr + stacks * _upgrades.maxHPPerLevel);
-            case UpgradeType.GrenadeSalvo: return Mathf.Max(1f, curr + PlayerUpgrades.GrenadePerLevel * stacks);
             default: return curr;
         }
     }
@@ -496,7 +552,6 @@ public class LevelUpUI : MonoBehaviour
         switch (type)
         {
             case UpgradeType.MaxHP: return $"{v:0.#} HP";
-            case UpgradeType.GrenadeSalvo: return $"{v:0}×";
             case UpgradeType.Magnet: return $"{v:0.00}×";
             case UpgradeType.MoveSpeed: return $"{v:0.##} m/s";
             default: return v.ToString("0.##");
@@ -509,10 +564,9 @@ public class LevelUpUI : MonoBehaviour
         if (_upgrades == null) _upgrades = FindLocalUpgrades();
         if (_upgrades == null) return;
 
-        _upgrades.MaxHPLevel.OnValueChanged        += OnAnyStatChanged;
-        _upgrades.GrenadeSalvoLevel.OnValueChanged += OnAnyStatChanged;
-        _upgrades.MagnetLevel.OnValueChanged       += OnAnyStatChanged;
-        _upgrades.MoveSpeedLevel.OnValueChanged    += OnAnyStatChanged;
+        _upgrades.MaxHPLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.MagnetLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.MoveSpeedLevel.OnValueChanged += OnAnyStatChanged;
         _statsSubscribed = true;
     }
 
@@ -520,10 +574,9 @@ public class LevelUpUI : MonoBehaviour
     {
         if (!_statsSubscribed || _upgrades == null) return;
 
-        _upgrades.MaxHPLevel.OnValueChanged        -= OnAnyStatChanged;
-        _upgrades.GrenadeSalvoLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.MagnetLevel.OnValueChanged       -= OnAnyStatChanged;
-        _upgrades.MoveSpeedLevel.OnValueChanged    -= OnAnyStatChanged;
+        _upgrades.MaxHPLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.MagnetLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.MoveSpeedLevel.OnValueChanged -= OnAnyStatChanged;
         _statsSubscribed = false;
     }
 
@@ -592,23 +645,10 @@ public class LevelUpUI : MonoBehaviour
         int stacks = UpgradeRoller.StacksForChoice(encodedId);
         string tag = stacks switch { 1 => "(Common)", 2 => "(Rare)", 3 => "(Epic)", 4 => "(Legendary)", _ => "" };
 
-        // Falls kein PlayerUpgrades gefunden wurde (Edge-Case, z.B. sehr frühe UI-Init),
-        // liefere eine neutrale Fallback-Beschreibung.
-        if (up == null)
-        {
-            return type switch
-            {
-                UpgradeType.MaxHP => $"+{15f * stacks:0.#} max HP {tag}",
-                UpgradeType.GrenadeSalvo => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo {tag}",
-                _ => $"Upgrade {tag}"
-            };
-        }
-
         // Dynamisch aus den tatsächlich eingestellten Werten
         return type switch
         {
             UpgradeType.MaxHP => $"+{up.maxHPPerLevel * stacks:0.#} max HP",
-            UpgradeType.GrenadeSalvo => $"+{PlayerUpgrades.GrenadePerLevel * stacks} bullets per salvo",
             UpgradeType.Magnet => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacks):0.#}% magnet range",
             UpgradeType.MoveSpeed => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel, stacks):0.#}% move speed",
             _ => $"Upgrade"

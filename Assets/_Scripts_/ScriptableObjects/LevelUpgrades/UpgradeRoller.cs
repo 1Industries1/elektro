@@ -6,11 +6,10 @@ public static class UpgradeRoller
 {
     // ======== Basis-IDs (stabil) ========
     public const int MaxHP        = 4;
-    public const int GrenadeSalvo = 6;
     public const int Magnet       = 7;
     public const int MoveSpeed    = 8;
 
-    private static readonly int[] pool = { MaxHP, GrenadeSalvo, Magnet, MoveSpeed };
+    private static readonly int[] pool = { MaxHP, Magnet, MoveSpeed };
 
     // ======== Rarity-Konfig ========
     // Stacks, die eine Rarity gewährt (für "stapelnde" Upgrades)
@@ -130,7 +129,6 @@ public static class UpgradeRoller
     public static UpgradeType Resolve(int baseId) => baseId switch
     {
         MaxHP        => UpgradeType.MaxHP,
-        GrenadeSalvo => UpgradeType.GrenadeSalvo,
         Magnet       => UpgradeType.Magnet,
         MoveSpeed    => UpgradeType.MoveSpeed,
         _            => UpgradeType.MaxHP
@@ -175,7 +173,6 @@ public static class UpgradeRoller
     public static string UpgradeKey(int baseId) => baseId switch
     {
         MaxHP        => "upgrade.maxHP",
-        GrenadeSalvo => "upgrade.grenadeSalvo",
         Magnet       => "upgrade.magnet",
         MoveSpeed    => "upgrade.moveSpeed",
         _            => "upgrade.generic"
@@ -184,7 +181,6 @@ public static class UpgradeRoller
     public static string UpgradeNameFallback(int baseId) => baseId switch
     {
         MaxHP        => "Max HP",
-        GrenadeSalvo => "Grenade Salvo",
         Magnet       => "Magnet",
         MoveSpeed    => "Move Speed",
         _            => "Upgrade"

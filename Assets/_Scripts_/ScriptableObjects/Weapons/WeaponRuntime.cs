@@ -18,6 +18,7 @@ public sealed class WeaponRuntime {
     public float projectileSize;
     public float critChance;
     public float critMult;
+    public int salvoCount;
 
     // Augments
     public bool hasImpactExplosionAug;
@@ -50,6 +51,7 @@ public sealed class WeaponRuntime {
         critChance      = def.baseCritChance;
         critMult        = def.baseCritMult;
         hasImpactExplosionAug = false;
+        salvoCount      = Mathf.Max(1, def.baseSalvoCount);
 
         // Steps bis Level anwenden (Level 1 = 0 Steps)
         int stepsToApply = Mathf.Min(def.steps?.Length ?? 0, Mathf.Max(0, level - 1));
@@ -67,13 +69,18 @@ public sealed class WeaponRuntime {
                     hasImpactExplosionAug = true;
                     tags |= WeaponTag.Explosive; // Explosive Mastery darf greifen
                     break;
+                case StepType.AddSalvoCount:
+                    salvoCount += Mathf.Max(0, s.intValue);
+                    break;
             }
         }
 
-        // Masteries (kontextlos – d.h. ohne „piercedOnce“) erstmal statisch auf Basisstats
+        // Masteries (optional – Beispiel: +Salve pro Tier, falls du willst)
         foreach (var (m, tier) in _masteries) {
             if (!MasteryEval.Matches(tags, m, piercedAtLeastOnce:false)) continue;
             int idx = Mathf.Clamp(tier - 1, 0, 2);
+            // Beispiel: wenn du in MasteryDefinition ein int[] salvoAddByTier ergänzt:
+            // if (m.salvoAddByTier != null && m.salvoAddByTier.Length > idx) salvoCount += m.salvoAddByTier[idx];
             if (m.damagePctByTier != null && m.damagePctByTier.Length > idx) damagePerShot *= (1f + m.damagePctByTier[idx]);
             if (m.critChanceAdd   != null && m.critChanceAdd.Length   > idx) critChance    += m.critChanceAdd[idx];
             if (m.critMultAdd     != null && m.critMultAdd.Length     > idx) critMult      += m.critMultAdd[idx];
@@ -84,6 +91,7 @@ public sealed class WeaponRuntime {
         critChance     = Mathf.Clamp01(critChance);
         critMult       = Mathf.Max(1f, critMult);
         pierce         = Mathf.Max(0, pierce);
+        salvoCount     = Mathf.Clamp(salvoCount, 1, 16);
     }
 
     public float GetCooldownSeconds() => 1f / shotsPerSecond;

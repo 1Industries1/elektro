@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ca412dda5f0ade449e7d21f2154383c, type: 3}
+  m_Name: Grenade
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
+  id: 3
+  displayName: Grenade
+  tags: 200
+  uiIcon: {fileID: 1841327315, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
+  bulletPrefab: {fileID: -928037741104161360, guid: 58ecefc8e3fa15d46b2becc3d55f0ec0, type: 3}
+  projectileSpeed: 50
+  rangeMeters: 150
+  projectileSize: 1
+  knockback: 0
+  baseDamage: 20
+  shotsPerSecond: 2
+  basePierce: 0
+  baseSalvoCount: 1
+  baseCritChance: 0
+  baseCritMult: 1.5
+  steps:
+  - name: L2
+    type: 8
+    value: 0
+    intValue: 2
+  - name: L3
+    type: 1
+    value: 0.5
+    intValue: 0
+  - name: L4
+    type: 0
+    value: 0.4
+    intValue: 0
+  - name: L5
+    type: 7
+    value: 0.5
+    intValue: 0
+  - name: L6
+    type: 8
+    value: 0
+    intValue: 4
+  - name: L7
+    type: 1
+    value: 0.5
+    intValue: 0
+  - name: L8
+    type: 7
+    value: 0.5
+    intValue: 0

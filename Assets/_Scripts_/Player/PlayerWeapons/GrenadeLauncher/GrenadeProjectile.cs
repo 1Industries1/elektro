@@ -39,11 +39,9 @@ public class GrenadeProjectile : NetworkBehaviour
     public LayerMask damageMask = ~0;
 
     [Header("Explosion")]
-    // HINWEIS: Schaden kommt nun vom Controller. Dieser Wert wird NICHT mehr genutzt.
-    [Tooltip("Wird ignoriert – Damage wird vom GrenadeLauncherController gesetzt.")]
-    public float baseDamage = 40f;
     public float radius = 4.5f;
-    public float force = 700f;
+    private float _runtimeSizeMul = 1f;
+    public float force = 100f;
     public float upwardModifier = 0.35f;
     public AnimationCurve damageFalloff = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
@@ -102,7 +100,7 @@ public class GrenadeProjectile : NetworkBehaviour
     }
 
     // >>> Signatur ERWEITERT: Schaden kommt jetzt vom Controller
-    public void ServerInit(Vector3 initialVelocity, ulong shooterClientId, float baseDamageFromShooter, NetworkObjectReference maybeTarget)
+    public void ServerInit(Vector3 initialVelocity, ulong shooterClientId, float baseDamageFromShooter, NetworkObjectReference maybeTarget, float sizeMul = 1f)
     {
         if (!IsServer) return;
 
@@ -110,9 +108,19 @@ public class GrenadeProjectile : NetworkBehaviour
         _targetRef = maybeTarget;
         _baseDamageFromShooter = Mathf.Max(0f, baseDamageFromShooter);
 
+        _runtimeSizeMul = Mathf.Max(0.05f, sizeMul);
+
         _rb.linearVelocity = initialVelocity;
         if (initialVelocity.sqrMagnitude > 0.01f)
             transform.forward = initialVelocity.normalized;
+
+        // Apply size to explosion radius and (optionally) the visible scale
+        radius *= _runtimeSizeMul;
+
+        // Optional: scale the projectile visuals/collider uniformly
+        transform.localScale *= _runtimeSizeMul;
+        var col = GetComponent<Collider>();
+        if (col is SphereCollider sc) sc.radius *= _runtimeSizeMul;
     }
 
     private IEnumerator HardFuseRoutine()

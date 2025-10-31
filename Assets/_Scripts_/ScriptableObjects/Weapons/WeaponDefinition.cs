@@ -1,7 +1,8 @@
 using Unity.Netcode;
 using UnityEngine;
 
-public enum StepType {
+public enum StepType
+{
     AddDamagePct,
     AddFireRatePct,
     AddPierce,
@@ -10,6 +11,7 @@ public enum StepType {
     AddCritMult,
     TwinBarrel,           // +25% effektive DPS
     ImpactExplosionAug,   // Blaster: AOE am letzten Pierce (2.5m, 50% dmg)
+    AddSalvoCount
 }
 
 [System.Serializable]
@@ -41,6 +43,7 @@ public class WeaponDefinition : ScriptableObject {
     public float baseDamage = 10f;
     public float shotsPerSecond = 1f;
     public int basePierce = 0;
+    public int baseSalvoCount = 1;
 
     [Header("Crit")]
     public float baseCritChance = 0f; // 0..1

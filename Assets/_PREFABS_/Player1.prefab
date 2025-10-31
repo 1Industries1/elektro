@@ -840,7 +840,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &4637037343647819799
 Transform:
   m_ObjectHideFlags: 0
@@ -1669,7 +1669,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &6656739555995357333
 Transform:
   m_ObjectHideFlags: 0
@@ -1678,14 +1678,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6877170251567002664}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.30909312, y: -0, z: -0, w: 0.9510318}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2342097674755619982}
   m_Father: {fileID: 3963026483496299984}
-  m_LocalEulerAnglesHint: {x: -36.009, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2603605539006418897
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1702,7 +1702,7 @@ MonoBehaviour:
   _firePoint: {fileID: 2342097674755619982}
   _owner: {fileID: 3963026483496299984}
   _autoFireEnabled: 1
-  fireInterval: 5
+  fireInterval: 2.5
   _airstrikeKey: 113
   missilesPerStrike: 10
   salvoDuration: 3
@@ -1742,13 +1742,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7011924526486487808}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.6601956, y: -0, z: -0, w: 0.75109375}
+  m_LocalRotation: {x: -0.13052624, y: 0, z: 0, w: 0.9914449}
   m_LocalPosition: {x: -0.1679371, y: -0.13037902, z: 1.2636182}
   m_LocalScale: {x: 0.8983464, y: 0.5575467, z: 0.5818847}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 6656739555995357333}
-  m_LocalEulerAnglesHint: {x: -82.63, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -15, y: 0, z: 0}
 --- !u!1 &7364241556965581723
 GameObject:
   m_ObjectHideFlags: 0
@@ -1766,7 +1766,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &9046243704394151238
 Transform:
   m_ObjectHideFlags: 0
@@ -1814,7 +1814,6 @@ MonoBehaviour:
   lineOfSightMask:
     serializedVersion: 2
     m_Bits: 512
-  eliteTag: Elite
   useAimLead: 1
   primaryBulletSpeedHint: 35
   fireRateJitterPct: 0.257
@@ -2154,6 +2153,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da3f922a760be784b9d28e49a75ddc15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  grenadeDef: {fileID: 11400000, guid: 36439c519127b2947a6abc791d73de9d, type: 2}
   grenadePrefab: {fileID: -928037741104161360, guid: 58ecefc8e3fa15d46b2becc3d55f0ec0, type: 3}
   muzzle: {fileID: 8132406708268217447}
   fireRate: 2
@@ -2178,7 +2178,6 @@ MonoBehaviour:
   rotationLerpRate: 15
   NetworkRotation:
     m_InternalValue: {x: 0, y: 0, z: 0, w: 1}
-  grenadeDamageRange: {x: 10, y: 15}
   damageWhileRolling: 0.5
   damageWhileNotRolling: 1
 --- !u!82 &207347428838057164
@@ -2539,9 +2538,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   cannonDef: {fileID: 11400000, guid: 28e276fe833bd01438dbee70425a98de, type: 2}
   blasterDef: {fileID: 11400000, guid: 89494c543718e894f9552a76859a58e1, type: 2}
+  grenadeDef: {fileID: 11400000, guid: 36439c519127b2947a6abc791d73de9d, type: 2}
   cannonLevel:
     m_InternalValue: 1
   blasterLevel:
+    m_InternalValue: 1
+  grenadeLevel:
     m_InternalValue: 1
 --- !u!114 &4238535403307873137
 MonoBehaviour:
@@ -2555,22 +2557,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cda17cb7a661e974b955a32d9b5a60de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cannon: {fileID: 2746908290376024938}
-  altWeapon: {fileID: 0}
   health: {fileID: 435328487496650130}
-  grenadeLauncher: {fileID: 1481329118813977962}
   movement: {fileID: 1882036456320694656}
-  maxLevel_MaxHP: 12
-  maxLevel_GrenadeSalvo: 10
+  maxLevel_MaxHP: 10
   maxLevel_Magnet: 10
-  maxLevel_MoveSpeed: 12
+  maxLevel_MoveSpeed: 10
   maxHPPerLevel: 15
   magnetRangeMultPerLevel: 1.15
   moveSpeedMultPerLevel: 1.1
   startingMasteries: []
   MaxHPLevel:
-    m_InternalValue: 0
-  GrenadeSalvoLevel:
     m_InternalValue: 0
   MagnetLevel:
     m_InternalValue: 0
@@ -2623,7 +2619,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHP: 100
-  regenPerSecond: 0.5
+  regenPerSecond: 0
   iFrames: 0.4
   rollDR: 0.3
   armorFlat: 0

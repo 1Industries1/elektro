@@ -59,6 +59,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a3650060471c744c938951dc97d8c15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
+  targetRefreshRate: 0.25
 --- !u!114 &6155833427515785666
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -145,7 +146,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 512
-  velocity: {x: 0.5793102, y: 0, z: -0.2635598}
+  velocity: {x: -0.45625123, y: 0, z: -0.52743477}
 --- !u!114 &8357887114018345148
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179,6 +180,8 @@ MonoBehaviour:
   spitWindup: 0.18
   baseHealth: 60
   dmgNums: {fileID: 4752927243913064266}
+  losCheckInterval: 0.25
+  targetUpdateInterval: 0.3
 --- !u!114 &4752927243913064266
 MonoBehaviour:
   m_ObjectHideFlags: 0

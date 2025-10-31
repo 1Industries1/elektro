@@ -24,34 +24,35 @@ MonoBehaviour:
   baseDamage: 30
   shotsPerSecond: 2
   basePierce: 0
+  baseSalvoCount: 1
   baseCritChance: 0
   baseCritMult: 1.5
   steps:
   - name: L2
     type: 1
-    value: 0.3
+    value: 0.5
     intValue: 0
   - name: L3
     type: 1
-    value: 0.3
+    value: 0.5
     intValue: 0
   - name: L4
     type: 0
-    value: 0.3
+    value: 0.5
     intValue: 0
   - name: L5
     type: 1
-    value: 0.4
+    value: 0.5
     intValue: 0
   - name: L6
     type: 6
-    value: 0.2
+    value: 1
     intValue: 0
   - name: L7
     type: 1
-    value: 0.2
+    value: 0.5
     intValue: 0
-  - name: L7
-    type: 1
-    value: 0.2
+  - name: L8
+    type: 7
+    value: 1
     intValue: 0
