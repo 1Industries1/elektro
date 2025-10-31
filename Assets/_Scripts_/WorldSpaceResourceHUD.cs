@@ -1,5 +1,3 @@
-// Scripts/UI/WorldSpaceResourceHUD.cs
-using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -10,16 +8,21 @@ public class WorldSpaceResourceHUD : MonoBehaviour
     public class ResourceEntry
     {
         public ResourceType type;
+
         [Header("Texts")]
-        public TextMeshProUGUI totalText;   // z.B. "Energy: 35"
-        public TextMeshProUGUI popupText;   // z.B. "+5" (wird eingeblendet)
+        public TextMeshProUGUI totalText;   // Zahl im Kreis (z. B. Gold: 123)
+        public TextMeshProUGUI popupText;   // "+5" Popup
+
         [Header("Optional")]
-        public CanvasGroup popupGroup;      // für Fade; wenn null, wird alpha über color gemacht
-        public string labelOverride;        // optional: eigener Label-Name statt enum.ToString()
+        public CanvasGroup popupGroup;      // für Fade
+        public string labelOverride;        // z. B. "Gold" statt enum.ToString()
     }
 
     [Header("Entries")]
     public List<ResourceEntry> entries = new();
+
+    [Header("Gold-Preis (UI neben Gold-Kreis)")]
+    [SerializeField] private TextMeshProUGUI goldPriceText; // NEU: Preisanzeige direkt neben dem Gold-Kreis
 
     [Header("Flash Settings")]
     [Tooltip("Gesamtdauer des Popup-Fades in Sekunden")]
@@ -37,8 +40,8 @@ public class WorldSpaceResourceHUD : MonoBehaviour
     // Laufzeit-Zustand pro Ressource
     private class Runtime
     {
-        public int pendingDelta = 0;   // neue Deltas, die seit letzter Anzeige eingetroffen sind
-        public int aggregateDelta = 0; // Summe über die gesamte Popup-Laufzeit
+        public int pendingDelta = 0;
+        public int aggregateDelta = 0;
         public Coroutine routine = null;
         public float t = 0f;
     }
@@ -46,7 +49,7 @@ public class WorldSpaceResourceHUD : MonoBehaviour
     private readonly Dictionary<ResourceType, ResourceEntry> _entry = new();
     private readonly Dictionary<ResourceType, Runtime> _rt = new();
 
-    void Awake()
+    private void Awake()
     {
         _entry.Clear();
         _rt.Clear();
@@ -57,7 +60,6 @@ public class WorldSpaceResourceHUD : MonoBehaviour
             _entry[e.type] = e;
             _rt[e.type] = new Runtime();
 
-            // Init UI
             if (e.popupText != null)
             {
                 e.popupText.gameObject.SetActive(false);
@@ -65,7 +67,12 @@ public class WorldSpaceResourceHUD : MonoBehaviour
                 else e.popupText.alpha = 0f;
             }
         }
+
+        // Initial: Gold-Preis verbergen, falls nicht gesetzt
+        if (goldPriceText) goldPriceText.gameObject.SetActive(!string.IsNullOrEmpty(goldPriceText.text));
     }
+
+    // ====== Public API ======
 
     public void SetTotal(ResourceType type, int total)
     {
@@ -85,33 +92,40 @@ public class WorldSpaceResourceHUD : MonoBehaviour
         if (rt.routine == null)
             rt.routine = StartCoroutine(CoFlash(type, e, rt));
         else
-            rt.t = 0f; // Reset Zeit, damit Verlängerung bei erneutem Einsammeln spürbar ist
+            rt.t = 0f; // Re-Pop
     }
 
-    // --- 3) CoFlash: pending -> aggregate addieren und AGGREGAT anzeigen
-    private IEnumerator CoFlash(ResourceType type, ResourceEntry e, Runtime rt)
+    /// <summary>
+    /// Setzt den aktuell zu zahlenden Goldpreis (z. B. Truhenpreis) neben den Gold-Kreis.
+    /// </summary>
+    public void SetChestPrice(int price)
+    {
+        if (!goldPriceText) return;
+        goldPriceText.text = price > 0 ? price.ToString() : string.Empty;
+        goldPriceText.gameObject.SetActive(price > 0);
+    }
+
+    // ====== Intern ======
+
+    private System.Collections.IEnumerator CoFlash(ResourceType type, ResourceEntry e, Runtime rt)
     {
         var tr = e.popupText.rectTransform;
         e.popupText.gameObject.SetActive(true);
 
         float dur = Mathf.Max(0.05f, flashDuration);
         rt.t = 0f;
-
-        // WICHTIG: Aggregat beim Start leeren
         rt.aggregateDelta = 0;
 
         while (rt.t < dur || rt.pendingDelta != 0)
         {
-            // neue Deltas addieren und den AGGREGAT-Wert anzeigen
             if (rt.pendingDelta != 0)
             {
-                rt.aggregateDelta += rt.pendingDelta; // <— hier wird aufsummiert
+                rt.aggregateDelta += rt.pendingDelta;
                 rt.pendingDelta = 0;
 
                 int show = rt.aggregateDelta;
                 e.popupText.text = show > 0 ? $"+{show}" : $"{show}";
 
-                // „Re-Pop“ Effekt, damit es sich frisch anfühlt
                 rt.t = Mathf.Min(rt.t, dur * 0.35f);
             }
 
@@ -128,13 +142,11 @@ public class WorldSpaceResourceHUD : MonoBehaviour
             yield return null;
         }
 
-        // Ende: zurücksetzen
         if (e.popupGroup != null) e.popupGroup.alpha = 0f;
         else e.popupText.alpha = 0f;
 
         e.popupText.gameObject.SetActive(false);
-        rt.aggregateDelta = 0; // <— Aggregat leeren
+        rt.aggregateDelta = 0;
         rt.routine = null;
     }
-
 }

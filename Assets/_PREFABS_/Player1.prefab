@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &8472685889579885394
 RectTransform:
   m_ObjectHideFlags: 0
@@ -307,7 +307,7 @@ GameObject:
   - component: {fileID: 983256571510740434}
   - component: {fileID: 4297838756177414068}
   m_Layer: 7
-  m_Name: TMP (Energy) (1)
+  m_Name: TMP Popup (Energy)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -443,7 +443,7 @@ GameObject:
   - component: {fileID: 1552119707061700364}
   - component: {fileID: 2599301018075805816}
   m_Layer: 7
-  m_Name: TMP (Crystal)
+  m_Name: TMP (Gold)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -496,7 +496,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Crystal: 0'
+  m_text: 'Gold: 0'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 90967c8b835547e47b68ce284793810e, type: 2}
   m_sharedMaterial: {fileID: -6535881968553196672, guid: 90967c8b835547e47b68ce284793810e, type: 2}
@@ -610,7 +610,7 @@ GameObject:
   - component: {fileID: 7180472112132993277}
   - component: {fileID: 1856820652816425458}
   m_Layer: 7
-  m_Name: TMP (Crystal) (1)
+  m_Name: TMP Popup (Gold)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -712,7 +712,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -1195,7 +1195,7 @@ GameObject:
   - component: {fileID: 412624474966887979}
   - component: {fileID: 4044751264698420345}
   m_Layer: 7
-  m_Name: TMP (Ore) (1)
+  m_Name: TMP Popup (XP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1297,7 +1297,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -1520,7 +1520,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 35, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 4, y: 0.744}
+  m_AnchoredPosition: {x: 4, y: 1.251}
   m_SizeDelta: {x: 3, y: 2}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!223 &9049115623186240661
@@ -1599,21 +1599,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   entries:
-  - type: 0
-    totalText: {fileID: 7878740703630263078}
-    popupText: {fileID: 4297838756177414068}
-    popupGroup: {fileID: 0}
-    labelOverride: 
-  - type: 1
-    totalText: {fileID: 773116911795542771}
-    popupText: {fileID: 4044751264698420345}
-    popupGroup: {fileID: 0}
-    labelOverride: 
   - type: 2
     totalText: {fileID: 2599301018075805816}
     popupText: {fileID: 1856820652816425458}
     popupGroup: {fileID: 0}
     labelOverride: 
+  - type: 0
+    totalText: {fileID: 773116911795542771}
+    popupText: {fileID: 4044751264698420345}
+    popupGroup: {fileID: 0}
+    labelOverride: XP
+  goldPriceText: {fileID: 0}
   flashDuration: 0.9
   ease:
     serializedVersion: 2
@@ -1766,7 +1762,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &9046243704394151238
 Transform:
   m_ObjectHideFlags: 0
@@ -1928,7 +1924,7 @@ GameObject:
   - component: {fileID: 2673921484328839691}
   - component: {fileID: 773116911795542771}
   m_Layer: 7
-  m_Name: TMP (Ore)
+  m_Name: TMP (XP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1981,7 +1977,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Ore: 0'
+  m_text: 'XP: 0'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 90967c8b835547e47b68ce284793810e, type: 2}
   m_sharedMaterial: {fileID: -6535881968553196672, guid: 90967c8b835547e47b68ce284793810e, type: 2}
@@ -2290,14 +2286,14 @@ GameObject:
   - component: {fileID: 2437930798575218387}
   - component: {fileID: 550442866370291592}
   - component: {fileID: 7166551182607951162}
-  - component: {fileID: 7004618678821039836}
-  - component: {fileID: 7025646431992723550}
   - component: {fileID: 1882036456320694656}
+  - component: {fileID: 7004618678821039836}
+  - component: {fileID: 435328487496650130}
+  - component: {fileID: 7025646431992723550}
   - component: {fileID: 8157122480171432841}
   - component: {fileID: 4238535403307873137}
   - component: {fileID: 4061243089856759362}
   - component: {fileID: 7755142805804514707}
-  - component: {fileID: 435328487496650130}
   - component: {fileID: 3796743474270066251}
   - component: {fileID: 5401752439710392122}
   - component: {fileID: 5225748196820303031}
@@ -2413,33 +2409,6 @@ MonoBehaviour:
   InLocalSpace: 0
   Interpolate: 1
   SlerpPosition: 0
---- !u!114 &7004618678821039836
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 28b71b170b9790c4e875a74de81bd395, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _hud: {fileID: 8776001213006559624}
---- !u!114 &7025646431992723550
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 35a1468d2dd71dd43b10d567be68cc29, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  CurrentKills:
-    m_InternalValue: 0
 --- !u!114 &1882036456320694656
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2453,8 +2422,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 15
-  acceleration: 5
-  deceleration: 5
+  acceleration: 4
+  deceleration: 4
   airControl: 0.5
   jumpForce: 8
   dashForce: 100
@@ -2499,13 +2468,13 @@ MonoBehaviour:
   downGravityMultiplier: 2.6
   apexBonusMultiplier: 1.15
   apexThreshold: 0.75
-  maxFallSpeed: 30
+  maxFallSpeed: 42
   coyoteTime: 0.1
   jumpBufferTime: 0.12
   standingSpeedThreshold: 0.15
   anim: {fileID: 3011663369909900}
   turnSpeedDegPerSec: 720
-  rollSpeedMultiplier: 2.2
+  rollSpeedMultiplier: 2
   keepRollBoostInAir: 1
   keepMomentumWhileRollAir: 1
   minAirControlWhileRoll: 0.95
@@ -2524,6 +2493,50 @@ MonoBehaviour:
   rollLoopClip: {fileID: 8300000, guid: 2736670c1aa7fb34fadb9986d21a8c23, type: 3}
   rollLoopVolume: 2
   overclocks: {fileID: 4061243089856759362}
+--- !u!114 &7004618678821039836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28b71b170b9790c4e875a74de81bd395, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _hud: {fileID: 8776001213006559624}
+--- !u!114 &435328487496650130
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f98bcf0d2d84bd44f8aaa044d9bc67e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHP: 100
+  regenPerSecond: 0
+  iFrames: 0.4
+  rollDR: 0.3
+  armorFlat: 0
+--- !u!114 &7025646431992723550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35a1468d2dd71dd43b10d567be68cc29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CurrentKills:
+    m_InternalValue: 0
 --- !u!114 &8157122480171432841
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2563,8 +2576,8 @@ MonoBehaviour:
   maxLevel_Magnet: 10
   maxLevel_MoveSpeed: 10
   maxHPPerLevel: 15
-  magnetRangeMultPerLevel: 1.15
-  moveSpeedMultPerLevel: 1.1
+  magnetRangeMultPerLevel: 1.2
+  moveSpeedMultPerLevel: 1.05
   startingMasteries: []
   MaxHPLevel:
     m_InternalValue: 0
@@ -2606,23 +2619,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f790198c0f7c22a49a398b137e8842fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &435328487496650130
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f98bcf0d2d84bd44f8aaa044d9bc67e5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxHP: 100
-  regenPerSecond: 0
-  iFrames: 0.4
-  rollDR: 0.3
-  armorFlat: 0
 --- !u!114 &3796743474270066251
 MonoBehaviour:
   m_ObjectHideFlags: 0

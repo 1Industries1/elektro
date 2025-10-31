@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ca412dda5f0ade449e7d21f2154383c, type: 3}
   m_Name: Grenade
   m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
-  id: 3
+  id: grenade
   displayName: Grenade
-  tags: 200
+  tags: 140
   uiIcon: {fileID: 1841327315, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: -928037741104161360, guid: 58ecefc8e3fa15d46b2becc3d55f0ec0, type: 3}
   projectileSpeed: 50
-  rangeMeters: 150
+  rangeMeters: 100
   projectileSize: 1
   knockback: 0
   baseDamage: 20

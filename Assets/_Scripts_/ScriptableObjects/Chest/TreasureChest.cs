@@ -4,51 +4,52 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using TMPro;
 
-[RequireComponent(typeof(Collider))]
+[RequireComponent(typeof(NetworkObject))]
+[RequireComponent(typeof(SphereCollider))]
+[DisallowMultipleComponent]
 public class TreasureChest : NetworkBehaviour
 {
-    // ==========================
-    // --- ChestInteraction-Teil
-    // ==========================
+    [Header("Kosten")]
+    public int goldCost = 30; // Preis in Gold
+
     [Header("References")]
     [SerializeField] private Animator animator;
-    [SerializeField] private Image holdCircle;
     [SerializeField] private string openTrigger = "Open";
 
-    [Header("Settings")]
-    [Tooltip("Sekunden, die im Trigger gewartet werden müssen.")]
-    [SerializeField] private float holdDuration = 3f;
-    [Tooltip("Fortschritt fällt zurück, wenn Spieler den Trigger verlässt?")]
-    [SerializeField] private bool resetOnExit = true;
+    [Header("Interact")]
+    [SerializeField] private string playerTag = "Player";
+    [SerializeField] private KeyCode interactKey = KeyCode.E;
+    [Tooltip("Optionaler lokaler Prompt (z. B. \"[E] Öffnen (30)\")")]
+    [SerializeField] private GameObject promptUI;
+    [SerializeField] private TMP_Text promptText;
+    [SerializeField] private float promptYOffset = 1.2f;
+
+    [Header("Reuse")]
     [Tooltip("Kann die Truhe nur einmal geöffnet werden?")]
     [SerializeField] private bool singleUse = true;
     [Tooltip("Zeit nach Öffnen, bevor erneut interagiert werden darf (falls singleUse = false).")]
     [SerializeField] private float reopenCooldown = 2f;
-    [SerializeField] private string playerTag = "Player";
 
     [Header("Audio")]
-    [SerializeField] private AudioSource audioSource;  // Quelle am selben GameObject
-    [SerializeField] private AudioClip holdLoopClip;   // Sound, der während des Haltens looped
-    [SerializeField] private AudioClip openClip;       // Einmaliger Sound beim Öffnen
-    [SerializeField][Range(0f, 1f)] private float holdLoopBaseVolume = 0.25f;
-    [SerializeField] private bool modulateHoldByProgress = true; // Lautstärke/Pitch nach Fortschritt
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip openClip;
 
-    private readonly List<string> _lockedRewardWeaponIds = new();
+    [Header("Debug")]
+    [SerializeField] private bool debugLogs = true;
 
-
+    // Öffnungs-Status (Server-Quelle der Wahrheit)
     public NetworkVariable<bool> Opened = new(false,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
 
-    // nur Server: Cooldown für Reopen (wenn singleUse=false)
+    // nur Server: Cooldown für Reopen (wenn singleUse = false)
     private float _serverNextOpenTime = 0f;
 
-    // --- Lock für das je Öffnung gewählte Profil (Server-Quelle der Wahrheit)
+    // --- Profil-Lock (Server)
     private int _lockedProfileIndex = -1;
     private TreasureChestDropProfile _lockedProfile = null;
-
-
 
     [Header("Slow Motion (Chest)")]
     public bool chestSlowMo = true;
@@ -62,17 +63,15 @@ public class TreasureChest : NetworkBehaviour
 
     [Header("Events")]
     public UnityEvent OnOpened;
-    public UnityEvent<float> OnProgress; // 0..1
+    public UnityEvent<float> OnProgress; // für Kompatibilität
 
-    // intern
-    private bool inRange;
-    private bool opened;
-    private float holdTimer;
-    private float cooldownUntil;
+    // intern (Client)
+    private bool _inRangeLocal;
+    private Transform _nearbyPlayerClient; // für UI-Referenz (lokal)
     private int openTriggerHash;
 
-    // wer steht gerade im Trigger
-    private PlayerInventory recipient;
+    // --- Server: Wer steht im Trigger? (OwnerClientIds)
+    private readonly HashSet<ulong> _serverClientsInTrigger = new();
 
     // ==========================
     // --- Drop-Logik (bestehend)
@@ -94,188 +93,263 @@ public class TreasureChest : NetworkBehaviour
     public static int totalPickups = 0;
     private int currentDropProfileIndex = 0;
 
+    // Für Preview-Lock (serverseitig vorgeplante Upgrades)
+    private readonly List<string> _lockedRewardWeaponIds = new();
+
+    // ===== Helpers =====
+    private void Log(string msg)
+    {
+        if (!debugLogs) return;
+        string id = IsSpawned ? NetworkObjectId.ToString() : "unspawned";
+        Debug.Log($"[Chest#{id}] {msg}");
+    }
+
+    private void Warn(string msg)
+    {
+        if (!debugLogs) return;
+        string id = IsSpawned ? NetworkObjectId.ToString() : "unspawned";
+        Debug.LogWarning($"[Chest#{id}] {msg}");
+    }
+
     private void Awake()
     {
         if (!animator) animator = GetComponent<Animator>();
 
-        var col = GetComponent<Collider>();
-        if (col) col.isTrigger = true;
+        var col = GetComponent<SphereCollider>();
+        if (col)
+        {
+            col.isTrigger = true;
+        }
 
         openTriggerHash = Animator.StringToHash(openTrigger);
 
-        if (holdCircle)
-        {
-            holdCircle.type = Image.Type.Filled;
-            holdCircle.fillAmount = 0f;
-            holdCircle.gameObject.SetActive(false);
-        }
-
-        if (audioSource == null && (holdLoopClip != null || openClip != null))
+        if (audioSource == null && openClip != null)
             audioSource = gameObject.AddComponent<AudioSource>();
+
+        if (promptUI) promptUI.SetActive(false);
+        if (promptText) promptText.text = $"[E] {goldCost} Gold";
+
+        Log("Awake: setup done.");
     }
 
+    private void OnValidate()
+    {
+        var col = GetComponent<SphereCollider>();
+        if (col) col.isTrigger = true;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        Log($"OnNetworkSpawn: IsServer={IsServer}, IsClient={IsClient}, IsSpawned={IsSpawned}, Opened={Opened.Value}");
+        TryPushPriceToLocalHud();
+    }
+
+    private void Update()
+    {
+        // Prompt schwebt über der Kiste
+        if (promptUI)
+            promptUI.transform.position = transform.position + Vector3.up * promptYOffset;
+
+        // Nur lokale Eingabe scannen
+        if (!_inRangeLocal || IsBlockedClientView()) return;
+
+        if (Input.GetKeyDown(interactKey))
+        {
+            Log("Client: E pressed → sending open request RPC.");
+            SendOpenRequestToServer();
+        }
+    }
+
+    // ===== Trigger-Handling =====
     private void OnTriggerEnter(Collider other)
     {
-        if (IsBlocked() || !other.CompareTag(playerTag)) return;
+        if (!other.CompareTag(playerTag)) return;
 
-        inRange = true;
+        // --- Client: Prompt zeigen (nur für lokalen Player)
+        var noClient = other.GetComponentInParent<NetworkObject>();
+        if (noClient && NetworkManager.Singleton.LocalClientId == noClient.OwnerClientId && !IsBlockedClientView())
+        {
+            _inRangeLocal = true;
+            _nearbyPlayerClient = other.transform;
 
-        // Versuche PlayerInventory zu merken (für Drops)
-        if (other.TryGetComponent(out PlayerInventory p))
-            recipient = p;
+            if (promptUI) promptUI.SetActive(true);
+            if (promptText) promptText.text = $"[E] {goldCost} Gold";
+            Log($"Client: Local player entered trigger (player NO #{noClient.NetworkObjectId}).");
+        }
 
-        if (holdCircle) holdCircle.gameObject.SetActive(true);
-
-        TryStartHoldLoop();
+        // --- Server: Mitgliedschaft tracken
+        if (IsServer && noClient != null)
+        {
+            _serverClientsInTrigger.Add(noClient.OwnerClientId);
+            Log($"Server: Enter by client {noClient.OwnerClientId}. InTrigger={_serverClientsInTrigger.Count}");
+        }
     }
 
     private void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag(playerTag)) return;
 
-        inRange = false;
-
-        if (resetOnExit) holdTimer = 0f;
-        UpdateUI();
-
-        if (holdCircle) holdCircle.gameObject.SetActive(false);
-
-        // Spieler verlässt Bereich -> Empfänger vergessen
-        if (other.TryGetComponent(out PlayerInventory p) && p == recipient)
-            recipient = null;
-
-        StopHoldLoop();
-    }
-
-    private void Update()
-    {
-        if (!inRange || IsBlocked()) return;
-
-        // Automatischer Hold-Progress
-        holdTimer += Time.deltaTime;
-        UpdateUI();
-
-        if (holdTimer >= holdDuration)
+        var noClient = other.GetComponentInParent<NetworkObject>();
+        if (noClient && NetworkManager.Singleton.LocalClientId == noClient.OwnerClientId)
         {
-            SendOpenRequestToServer();
-            holdTimer = 0f; // reset clientseitig
+            _inRangeLocal = false;
+            _nearbyPlayerClient = null;
+            if (promptUI) promptUI.SetActive(false);
+            Log($"Client: Local player exited trigger (player NO #{noClient.NetworkObjectId}).");
+        }
+
+        if (IsServer && noClient != null)
+        {
+            _serverClientsInTrigger.Remove(noClient.OwnerClientId);
+            Log($"Server: Exit by client {noClient.OwnerClientId}. InTrigger={_serverClientsInTrigger.Count}");
         }
     }
-
-    private void UpdateUI()
-    {
-        float t = holdDuration <= 0f ? 1f : Mathf.Clamp01(holdTimer / Mathf.Max(0.0001f, holdDuration));
-        if (holdCircle) holdCircle.fillAmount = t;
-        OnProgress?.Invoke(t);
-
-        // Audio-Feedback an Fortschritt koppeln
-        if (modulateHoldByProgress && audioSource != null && audioSource.clip == holdLoopClip && audioSource.isPlaying)
-        {
-            audioSource.volume = holdLoopBaseVolume * Mathf.Lerp(0.6f, 1f, t);
-            audioSource.pitch = Mathf.Lerp(0.9f, 1.1f, t);
-        }
-    }
-
 
     // Clientseitige Block-Sicht (Opened kommt vom Server)
     private bool IsBlockedClientView()
     {
-        if (singleUse && Opened.Value) return true;
-        if (!singleUse && Time.time < cooldownUntil) return true; // clientseitige Visual-Cooldown-Anzeige
+        if (singleUse && Opened.Value)
+        {
+            Log("Client: Chest is blocked (already opened).");
+            return true;
+        }
         return false;
     }
 
     private void SendOpenRequestToServer()
     {
-        // Versuche den PlayerInventory zu referenzieren (optional, Server validiert trotzdem)
-        NetworkObjectReference invRef = default;
-        if (recipient != null)
+        NetworkObjectReference playerRef = default;
+
+        // bevorzugt: aus Trigger
+        if (_nearbyPlayerClient != null)
         {
-            var no = recipient.GetComponent<NetworkObject>();
-            if (no) invRef = no;
+            var no = _nearbyPlayerClient.GetComponentInParent<NetworkObject>();
+            if (no)
+            {
+                playerRef = no;
+                Log($"Client: Using trigger playerRef NO#{no.NetworkObjectId}.");
+            }
         }
 
-        RequestOpenServerRpc(invRef);
+        // Fallback: Local Player
+        if (!playerRef.TryGet(out _))
+        {
+            var local = NetworkManager.Singleton?.LocalClient?.PlayerObject;
+            if (local)
+            {
+                playerRef = local;
+                Log($"Client: Trigger ref missing → using Local Player NO#{local.NetworkObjectId}.");
+            }
+            else
+            {
+                Warn("Client: No Local PlayerObject found! Sending default ref.");
+            }
+        }
+
+        Log("Client: Calling RequestOpenServerRpc...");
+        RequestOpenServerRpc(playerRef);
     }
 
-
+    // ===== ServerRpc: Öffnen anfordern (Trigger-Mitgliedschaft als Bedingung) =====
     [ServerRpc(RequireOwnership = false)]
-    private void RequestOpenServerRpc(NetworkObjectReference openerInventoryRef, ServerRpcParams rpcParams = default)
+    private void RequestOpenServerRpc(NetworkObjectReference playerRef, ServerRpcParams rpcParams = default)
     {
-        if (!IsServer) return;
+        if (!IsServer) { Warn("ServerRpc called but not on server → abort."); return; }
         ulong sender = rpcParams.Receive.SenderClientId;
+        Log($"ServerRpc: Open request from client {sender}.");
 
-        if (singleUse && Opened.Value) return;
-        if (!singleUse && Time.time < _serverNextOpenTime) return;
-
-        PlayerInventory inv = null;
-        if (openerInventoryRef.TryGet(out var obj) && obj)
-            inv = obj.GetComponent<PlayerInventory>();
-        if (inv == null)
+        if (singleUse && Opened.Value) { Log("Server: Already opened → abort."); return; }
+        if (!singleUse && Time.time < _serverNextOpenTime)
         {
-            var playerObj = NetworkManager.Singleton?.SpawnManager?.GetPlayerNetworkObject(sender);
-            if (playerObj) inv = playerObj.GetComponent<PlayerInventory>() ?? playerObj.GetComponentInChildren<PlayerInventory>(true);
+            Log($"Server: Reopen cooldown {(_serverNextOpenTime - Time.time):F2}s → abort.");
+            return;
         }
-        if (inv == null) return;
 
+        // (A) Muss im Trigger sein
+        if (!_serverClientsInTrigger.Contains(sender))
+        {
+            Log($"Server: Client {sender} not in trigger → abort.");
+            return;
+        }
+
+        // (B) PlayerObject robust bestimmen (ref → Fallback Sender)
+        NetworkObject playerNo = null;
+        if (!playerRef.TryGet(out playerNo) || playerNo == null)
+        {
+            playerNo = NetworkManager.Singleton?.SpawnManager?.GetPlayerNetworkObject(sender);
+            Log("Server: playerRef invalid → using sender PlayerObject.");
+        }
+        if (playerNo == null) { Warn("Server: No PlayerObject → abort."); return; }
+
+        // (C) Inventory & Gold prüfen
+        var inv = playerNo.GetComponent<PlayerInventory>() ?? playerNo.GetComponentInChildren<PlayerInventory>(true);
+        if (inv == null) { Warn("Server: PlayerInventory missing → abort."); return; }
+
+        int curGold = inv.GetAmount(ResourceType.Gold);
+        Log($"Server: Player gold {curGold} / price {goldCost}.");
+        if (!inv.Server_Has(ResourceType.Gold, goldCost))
+        {
+            var toOwner = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } } };
+            NotEnoughGoldClientRpc(goldCost, toOwner);
+            Log("Server: Not enough gold → notified owner.");
+            return;
+        }
+
+        // (D) Abbuchen
+        bool ok = inv.Server_TryConsume(ResourceType.Gold, goldCost);
+        Log($"Server: Consume gold result = {ok}.");
+
+        // (E) Öffnen status/cooldown
         if (singleUse) Opened.Value = true;
         _serverNextOpenTime = Time.time + reopenCooldown;
+        Log($"Server: Opened={Opened.Value}, next reopen @ {_serverNextOpenTime:F2}.");
 
-        // Profil locken
+        // (F) Drop-Profil locken
         _lockedProfile = GetNextDropProfile();
         _lockedProfileIndex = currentDropProfileIndex;
+        Log($"Server: Locked profile index = {_lockedProfileIndex}.");
 
-        // --- NEU: Rewards für Preview planen (nur Upgrade-Weapon-Icons)
+        // (G) Preview-Upgrades planen (optional)
         _lockedRewardWeaponIds.Clear();
         int rewardCount = GetRewardCount();
-        if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && rewardCount > 0)
+        var weapons = playerNo.GetComponent<PlayerWeapons>();
+        if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && rewardCount > 0 && weapons != null)
         {
-            var weapons = inv.GetComponent<PlayerWeapons>();
-            if (weapons != null)
+            for (int i = 0; i < rewardCount; i++)
             {
-                for (int i = 0; i < rewardCount; i++)
+                var id = weapons.Server_PeekRandomUpgradeableId();
+                if (!string.IsNullOrEmpty(id))
                 {
-                    var id = weapons.Server_PeekRandomUpgradeableId();
-                    if (!string.IsNullOrEmpty(id))
-                        _lockedRewardWeaponIds.Add(id);
+                    _lockedRewardWeaponIds.Add(id);
+                    Log($"Server: Planned weapon upgrade id='{id}'.");
                 }
             }
         }
 
-        // Preview an Owner-Client schicken (IDs -> Icons lokal auflösen)
-        var target = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } }
-        };
+        // (H) Preview-Icons und UI-Start an den Sender
+        var toSender = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } } };
+        foreach (var id in _lockedRewardWeaponIds) Owner_PreviewIconClientRpc(id, toSender);
 
-        foreach (var id in _lockedRewardWeaponIds)
-            Owner_PreviewIconClientRpc(id, target);
-
-        // UI starten (jetzt sind die Icons bereits gemeldet)
         float revealDelay = 0f;
-        if (_lockedProfile != null)
-            revealDelay = Mathf.Max(0f, _lockedProfile.animDuration + _lockedProfile.delayTime);
-
-        ClientStartOpenSequenceClientRpc(revealDelay, _lockedProfileIndex, target);
+        if (_lockedProfile != null) revealDelay = Mathf.Max(0f, _lockedProfile.animDuration + _lockedProfile.delayTime);
+        Log($"Server: Starting client sequence (profile={_lockedProfileIndex}, delay={revealDelay:F2}).");
+        ClientStartOpenSequenceClientRpc(revealDelay, _lockedProfileIndex, toSender);
     }
 
-
-
+    // ===== ClientRpc: Start der Open-Sequenz (VFX/UI) =====
     [ClientRpc(Delivery = RpcDelivery.Reliable)]
     private void ClientStartOpenSequenceClientRpc(float revealDelaySeconds, int profileIndex, ClientRpcParams clientRpcParams = default)
     {
-        if (animator && openTriggerHash != 0) animator.SetTrigger(openTriggerHash);
-        StopHoldLoop();
+        Log($"ClientRpc: StartOpenSequence (delay={revealDelaySeconds:F2}, profileIndex={profileIndex}).");
+
+        if (animator && openTriggerHash != 0) animator.SetTrigger(openTrigger);
         if (audioSource && openClip) audioSource.PlayOneShot(openClip);
 
-        if (singleUse) opened = true;
-        cooldownUntil = Time.time + reopenCooldown;
-
-        // *** NEU: UI mit exakt diesem Profil-Index aktivieren ***
         UIChestManager.Activate(this, profileIndex);
-
-        // WICHTIG: Sequenz wirklich starten
         UIChestManager.instance?.Begin();
+
+        if (promptUI) promptUI.SetActive(false);
 
         if (chestSlowMo && SlowMoManager.Instance != null && _chestSlowHandle == 0)
         {
@@ -287,11 +361,18 @@ public class TreasureChest : NetworkBehaviour
     }
 
     [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void NotEnoughGoldClientRpc(int price, ClientRpcParams clientRpcParams = default)
+    {
+        Log($"ClientRpc: Not enough gold (need {price}).");
+        CenterToastUI.Instance?.Show($"Not enough gold (requires {price}).", 2.5f);
+    }
+
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
     private void Owner_PreviewIconClientRpc(string weaponId, ClientRpcParams clientRpcParams = default)
     {
+        Log($"ClientRpc: Preview icon for weaponId='{weaponId}'.");
         if (string.IsNullOrEmpty(weaponId)) return;
 
-        // Lokalen PlayerWeapons holen (Owner-Client)
         var playerObj = NetworkManager.Singleton?.LocalClient?.PlayerObject;
         if (!playerObj) return;
 
@@ -307,108 +388,52 @@ public class TreasureChest : NetworkBehaviour
             UIChestManager.NotifyItemReceived(def.uiIcon);
     }
 
-
-    private IEnumerator RequestGrantAfterDelay(float seconds)
-    {
-        yield return new WaitForSecondsRealtime(Mathf.Max(0f, seconds));
-        // Falls du lieber per Done-Button triggerst, rufe diese Zeile stattdessen in UIChestManager.CloseUI() auf.
-        ConfirmOpenRevealDoneServerRpc();
-    }
-
-    [ServerRpc(RequireOwnership = false)]
-    public void ConfirmOpenRevealDoneServerRpc(ServerRpcParams rpcParams = default)
-    {
-        if (!IsServer) return;
-        ulong sender = rpcParams.Receive.SenderClientId;
-
-        // Inventar des Öffners ermitteln (wie im ersten RPC)
-        PlayerInventory inv = null;
-        var playerObj = NetworkManager.Singleton?.SpawnManager?.GetPlayerNetworkObject(sender);
-        if (playerObj) inv = playerObj.GetComponent<PlayerInventory>() ?? playerObj.GetComponentInChildren<PlayerInventory>(true);
-        if (inv == null) return;
-
-        GiveRewardsServer(inv, out _);
-    }
-
-    //[ClientRpc]
-    //private void ClientOpenVfxAndUiClientRpc(int rewardCountIssued, ClientRpcParams clientRpcParams = default)
-    //{
-    //    if (animator && openTriggerHash != 0) animator.SetTrigger(openTriggerHash);
-    //    StopHoldLoop();
-    //    if (audioSource && openClip) audioSource.PlayOneShot(openClip);
-    //
-    //    if (singleUse) opened = true;
-    //    cooldownUntil = Time.time + reopenCooldown;
-    //
-    //    UIChestManager.Activate(this);
-    //
-    //    if (chestSlowMo && SlowMoManager.Instance != null && _chestSlowHandle == 0)
-    //    {
-    //        if (_slowDelayCo != null) StopCoroutine(_slowDelayCo);
-    //        _slowDelayCo = StartCoroutine(StartChestSlowMoDelayed());
-    //    }
-    //
-    //    OnOpened?.Invoke();
-    //}
-
-
-    private bool IsBlocked()
-    {
-        if (singleUse && opened) return true;
-        if (!singleUse && Time.time < cooldownUntil) return true;
-        return false;
-    }
-
     private IEnumerator StartChestSlowMoDelayed()
     {
         float d = Mathf.Max(0f, chestSlowDelay);
         if (d > 0f)
             yield return new WaitForSecondsRealtime(d);
 
-        // Falls während des Delays schon geschlossen/abgebrochen wurde:
         if (!chestSlowMo || SlowMoManager.Instance == null || _chestSlowHandle != 0)
         {
+            Log("Client: SlowMo cancelled/skip.");
             _slowDelayCo = null;
             yield break;
         }
 
         _chestSlowHandle = SlowMoManager.Instance.BeginHold(chestSlowScale, chestSlowFadeIn);
+        Log("Client: SlowMo begin.");
         _slowDelayCo = null;
+    }
+
+    public void OnChestUIClose()
+    {
+        Log("Client: Chest UI close.");
+
+        if (_slowDelayCo != null)
+        {
+            StopCoroutine(_slowDelayCo);
+            _slowDelayCo = null;
+        }
+
+        if (_chestSlowHandle != 0 && SlowMoManager.Instance != null)
+        {
+            SlowMoManager.Instance.EndHold(_chestSlowHandle, chestSlowFadeOut);
+            _chestSlowHandle = 0;
+            Log("Client: SlowMo end.");
+        }
     }
 
     // ==========================
     // --- Drop-Helfer
     // ==========================
 
-    private void TryStartHoldLoop()
-    {
-        if (audioSource == null || holdLoopClip == null) return;
-
-        // Nur starten, wenn noch nicht läuft bzw. anderer Clip aktiv ist
-        if (!audioSource.isPlaying || audioSource.clip != holdLoopClip)
-        {
-            audioSource.clip = holdLoopClip;
-            audioSource.loop = true;
-            audioSource.volume = holdLoopBaseVolume;
-            audioSource.pitch = 1f;
-            audioSource.Play();
-        }
-    }
-
-    private void StopHoldLoop()
-    {
-        if (audioSource == null) return;
-        if (audioSource.clip == holdLoopClip)
-            audioSource.Stop();
-    }
-
-
     public TreasureChestDropProfile GetCurrentDropProfile()
     {
         if (dropProfiles == null || dropProfiles.Length == 0) return null;
         currentDropProfileIndex = Mathf.Clamp(currentDropProfileIndex, 0, dropProfiles.Length - 1);
         var p = dropProfiles[currentDropProfileIndex];
-        Debug.Log($"[Chest] Using CURRENT drop profile index={currentDropProfileIndex}, name='{p.profileName}', noOfItems={p.noOfItems}");
+        Log($"GetCurrentDropProfile → index={currentDropProfileIndex}, name='{p.profileName}', noOfItems={p.noOfItems}");
         return p;
     }
 
@@ -416,7 +441,7 @@ public class TreasureChest : NetworkBehaviour
     {
         if (dropProfiles == null || dropProfiles.Length == 0)
         {
-            Debug.LogWarning("Drop profiles not set.");
+            Warn("Drop profiles not set.");
             return null;
         }
 
@@ -424,17 +449,11 @@ public class TreasureChest : NetworkBehaviour
         {
             case DropCountType.sequential:
                 currentDropProfileIndex = Mathf.Clamp(totalPickups, 0, dropProfiles.Length - 1);
+                Log($"GetNextDropProfile (sequential) → index={currentDropProfileIndex}");
                 return dropProfiles[currentDropProfileIndex];
 
             case DropCountType.random:
-                float playerLuck = 1f;
-                if (recipient)
-                {
-                    // Optional: Luck aus Stats ziehen
-                    // var stats = recipient.GetComponentInChildren<PlayerStats>();
-                    // if (stats != null) playerLuck = Mathf.Max(0f, stats.Actual.luck);
-                }
-
+                float playerLuck = 1f; // Optional
                 var weightedProfiles = new List<(int index, TreasureChestDropProfile profile, float weight)>();
                 for (int i = 0; i < dropProfiles.Length; i++)
                 {
@@ -443,25 +462,25 @@ public class TreasureChest : NetworkBehaviour
                     float weight = Mathf.Max(0f, p.baseDropChance * (1f + p.luckScaling * (playerLuck - 1f)));
                     weightedProfiles.Add((i, p, weight));
                 }
-
                 if (weightedProfiles.Count == 0) return GetCurrentDropProfile();
 
                 float totalWeight = 0f;
-                foreach (var entry in weightedProfiles) totalWeight += entry.weight;
-                if (totalWeight <= 0f) return GetCurrentDropProfile();
+                foreach (var e in weightedProfiles) totalWeight += e.weight;
 
                 float r = Random.Range(0f, totalWeight);
                 float cumulative = 0f;
-                foreach (var entry in weightedProfiles)
+                foreach (var e in weightedProfiles)
                 {
-                    cumulative += entry.weight;
+                    cumulative += e.weight;
                     if (r < cumulative)
                     {
-                        currentDropProfileIndex = entry.index;
-                        return entry.profile;
+                        currentDropProfileIndex = e.index;
+                        Log($"GetNextDropProfile (random) → index={currentDropProfileIndex}");
+                        return e.profile;
                     }
                 }
                 currentDropProfileIndex = weightedProfiles[^1].index;
+                Log($"GetNextDropProfile (random, fallback) → index={currentDropProfileIndex}");
                 return weightedProfiles[^1].profile;
         }
 
@@ -470,42 +489,17 @@ public class TreasureChest : NetworkBehaviour
 
     private int GetRewardCount()
     {
-        // *** NEU: Falls Lock vorhanden, das verwenden ***
         var dp = _lockedProfile != null ? _lockedProfile : GetCurrentDropProfile();
-        return dp ? Mathf.Max(1, dp.noOfItems) : 1;
+        int c = dp ? Mathf.Max(1, dp.noOfItems) : 1;
+        Log($"GetRewardCount → {c}");
+        return c;
     }
 
-    // Stubs, bis Items angebunden sind
-    private bool TryEvolve<T>(PlayerInventory inventory) where T : class { return false; }
-    private bool TryUpgrade<T>(PlayerInventory inventory) where T : class { return false; }
-    private bool TryGive<T>(PlayerInventory inventory) where T : class { return false; }
-
-    private bool TryUpgradeOneWeapon(PlayerInventory inventory)
-    {
-        if (inventory == null) return false;
-
-        // PlayerWeapons am gleichen Player finden
-        var weapons = inventory.GetComponent<PlayerWeapons>();
-        if (weapons == null) return false;
-
-        // Server bevorzugt direkt
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-        {
-            return weapons.Server_TryLevelUpRandomWeapon(out _);
-        }
-        else
-        {
-            // Fallback: Client fordert Server an
-            weapons.RequestLevelUpFromChestServerRpc();
-            return true; // UI-Icon kommt via Owner-ClientRpc vom Server
-        }
-    }
-
-    // Server-only
+    // Server-only: Rewards erteilen (inkl. deterministische Upgrades)
     private void GiveRewardsServer(PlayerInventory inventory, out int issuedCount)
     {
         issuedCount = 0;
-        if (!IsServer || inventory == null) return;
+        if (!IsServer || inventory == null) { Warn("GiveRewardsServer: invalid state."); return; }
 
         int rewardCount = GetRewardCount();
         var weapons = inventory.GetComponent<PlayerWeapons>();
@@ -514,7 +508,6 @@ public class TreasureChest : NetworkBehaviour
         {
             issuedCount++;
 
-            // 1) Geplantes Weapon-Upgrade deterministisch abarbeiten (ohne UI-Notify)
             if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && weapons != null)
             {
                 if (_lockedRewardWeaponIds.Count > 0)
@@ -524,51 +517,42 @@ public class TreasureChest : NetworkBehaviour
 
                     if (weapons.Server_LevelUpById(id, notifyOwner: false))
                     {
-                        // owner id ist der Opener / inventory.OwnerClientId (Owner der PlayerWeapons)
+                        Log($"Server: Upgraded planned weapon '{id}'.");
                         SignalWeaponUpgradeToastToOwner(weapons, ResolveDefById(weapons, id), inventory.OwnerClientId);
                         continue;
                     }
+                    else
+                    {
+                        Log($"Server: Planned upgrade '{id}' failed → fallback random.");
+                    }
                 }
 
-                /// Fallback: random
                 if (weapons.Server_TryLevelUpRandomWeapon(out var upgradedDef))
                 {
+                    Log($"Server: Random weapon upgrade → '{upgradedDef?.id}'.");
                     SignalWeaponUpgradeToastToOwner(weapons, upgradedDef, inventory.OwnerClientId);
                     continue;
                 }
             }
 
-            // 2) Rest wie gehabt
-            if (possibleDrops.HasFlag(DropType.Evolution) && TryEvolve<object>(inventory)) continue;
-            if (possibleDrops.HasFlag(DropType.UpgradePassive) && TryUpgrade<object>(inventory)) continue;
-            if (possibleDrops.HasFlag(DropType.NewWeapon) && TryGive<object>(inventory)) continue;
-            if (possibleDrops.HasFlag(DropType.NewPassive)) TryGive<object>(inventory);
+            // weitere Drop-Typen hier (Stubs)
+            // if (possibleDrops.HasFlag(DropType.Evolution)) { ... }
+            // if (possibleDrops.HasFlag(DropType.UpgradePassive)) { ... }
+            // if (possibleDrops.HasFlag(DropType.NewWeapon)) { ... }
+            // if (possibleDrops.HasFlag(DropType.NewPassive)) { ... }
         }
 
-        // Aufräumen
         _lockedRewardWeaponIds.Clear();
     }
 
     private WeaponDefinition ResolveDefById(PlayerWeapons pw, string id)
     {
+        if (pw == null) return null;
         if (pw.cannonDef != null && pw.cannonDef.id == id) return pw.cannonDef;
         if (pw.blasterDef != null && pw.blasterDef.id == id) return pw.blasterDef;
         if (pw.grenadeDef != null && pw.grenadeDef.id == id) return pw.grenadeDef;
         return null;
     }
-
-
-    private bool TryUpgradeOneWeaponServer(PlayerInventory inventory)
-    {
-        if (!IsServer || inventory == null) return false;
-        var weapons = inventory.GetComponent<PlayerWeapons>();
-        if (!weapons) return false;
-
-        // hebt genau EINE vorhandene, upgradefähige Waffe um +1 an (zufällig)
-        return weapons.Server_TryLevelUpRandomWeapon(out _);
-    }
-
-
 
     // SERVER: nach erfolgreichem Waffen-Upgrade … Owner-Toast triggern
     private void SignalWeaponUpgradeToastToOwner(PlayerWeapons weapons, WeaponDefinition def, ulong ownerClientId)
@@ -584,9 +568,9 @@ public class TreasureChest : NetworkBehaviour
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { ownerClientId } }
         };
+        Log($"Server: Send upgrade toast for '{def.id}' L{newLevel} to owner {ownerClientId}.");
         Owner_ShowWeaponUpgradeToastClientRpc(def.id, newLevel, target);
     }
-
 
     [ClientRpc(Delivery = RpcDelivery.Reliable)]
     private void Owner_ShowWeaponUpgradeToastClientRpc(string weaponId, int newLevel, ClientRpcParams clientRpcParams = default)
@@ -603,35 +587,41 @@ public class TreasureChest : NetworkBehaviour
         else if (pw.blasterDef != null && pw.blasterDef.id == weaponId) def = pw.blasterDef;
         else if (pw.grenadeDef != null && pw.grenadeDef.id == weaponId) def = pw.grenadeDef;
 
-        // Body (das, was sich wirklich geändert hat)
-        string body = WeaponStepDescriber.DescribeStep(def, newLevel, up);
-        if (string.IsNullOrEmpty(body)) body = "Level up!";
-
-        // Schöner Header mit Waffennamen + neuer Stufe (TMP-RichText)
-        string header = def != null
-            ? $"<b>{def.displayName}</b>  <size=80%>Lv {newLevel}</size>"
-            : $"<b>Weapon</b>  <size=80%>Lv {newLevel}</size>";
-
-        // Zwei Zeilen im Toast
         string msg = WeaponStepDescriber.DescribeStepWithName(def, newLevel, up);
         CenterToastUI.Instance?.Show(msg, 4f);
     }
 
-
-
-    public void OnChestUIClose()
+    // Button/Callback aus UI (z. B. „Fertig“) → Rewards wirklich gutschreiben
+    [ServerRpc(RequireOwnership = false)]
+    public void ConfirmOpenRevealDoneServerRpc(ServerRpcParams rpcParams = default)
     {
-        if (_slowDelayCo != null)
-        {
-            StopCoroutine(_slowDelayCo);
-            _slowDelayCo = null;
-        }
+        if (!IsServer) return;
+        ulong sender = rpcParams.Receive.SenderClientId;
+        Log($"ServerRpc: Confirm reveal done from {sender}.");
 
-        if (_chestSlowHandle != 0 && SlowMoManager.Instance != null)
-        {
-            SlowMoManager.Instance.EndHold(_chestSlowHandle, chestSlowFadeOut);
-            _chestSlowHandle = 0;
-        }
+        var playerObj = NetworkManager.Singleton?.SpawnManager?.GetPlayerNetworkObject(sender);
+        if (!playerObj) { Warn("No PlayerObject in ConfirmOpenRevealDone."); return; }
+
+        var inv = playerObj.GetComponent<PlayerInventory>() ?? playerObj.GetComponentInChildren<PlayerInventory>(true);
+        if (inv == null) { Warn("No PlayerInventory in ConfirmOpenRevealDone."); return; }
+
+        GiveRewardsServer(inv, out var issued);
+        Log($"Server: Rewards granted, count={issued}.");
     }
 
+    // ===== kleine Helfer =====
+
+    private void TryPushPriceToLocalHud()
+    {
+        // Optional: HUD des lokalen Players updaten (Preis neben Gold-Kreis)
+        var localPlayer = NetworkManager.Singleton?.LocalClient?.PlayerObject;
+        if (!localPlayer) return;
+
+        var hud = localPlayer.GetComponentInChildren<WorldSpaceResourceHUD>(true);
+        if (hud != null)
+        {
+            hud.SetChestPrice(goldCost);
+            Log($"Client: HUD price set to {goldCost}.");
+        }
+    }
 }

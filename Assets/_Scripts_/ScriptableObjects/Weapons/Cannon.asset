@@ -12,17 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ca412dda5f0ade449e7d21f2154383c, type: 3}
   m_Name: Cannon
   m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
-  id: 1
+  id: cannon
   displayName: Cannon
-  tags: 101
+  tags: 97
   uiIcon: {fileID: -1308886238, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: -928037741104161360, guid: 5155f2aa90e192f46b39019e462048db, type: 3}
   projectileSpeed: 150
-  rangeMeters: 120
+  rangeMeters: 80
   projectileSize: 1
   knockback: 0
-  baseDamage: 30
-  shotsPerSecond: 2
+  baseDamage: 35
+  shotsPerSecond: 1
   basePierce: 0
   baseSalvoCount: 1
   baseCritChance: 0

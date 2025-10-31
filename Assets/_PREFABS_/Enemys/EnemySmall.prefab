@@ -430,7 +430,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 1
-  m_Constraints: 0
+  m_Constraints: 80
   m_CollisionDetection: 1
 --- !u!136 &7864375055206474013
 CapsuleCollider:
@@ -521,6 +521,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a3650060471c744c938951dc97d8c15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  targetRefreshRate: 0.25
 --- !u!114 &1411359686327814201
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -537,14 +538,13 @@ MonoBehaviour:
   detectionRange: 120
   loseTargetRange: 180
   preferredDistance: 40
-  losHeightOffset: 5
   losMask:
     serializedVersion: 2
     m_Bits: 512
-  moveSpeed: 10
-  strafeSpeed: 10
+  moveSpeed: 8
+  strafeSpeed: 8
   rotationSpeed: 8
-  distanceTolerance: 6
+  distanceTolerance: 15
   dashSpeed: 50
   dashWindup: 0.35
   dashDuration: 0.6
@@ -621,10 +621,14 @@ MonoBehaviour:
     dropChance: 1
     countRange: {x: 1, y: 2}
     spawnImpulse: 3
+  - prefab: {fileID: 87859245550732243, guid: 86254c1f507849e478ef69f3a6e199e1, type: 3}
+    dropChance: 0.8
+    countRange: {x: 1, y: 1}
+    spawnImpulse: 3
   spawnRadius: 3
   groundMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 512
   groundCheckDown: 2
 --- !u!114 &1501904548257056351
 MonoBehaviour:

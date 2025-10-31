@@ -1148,8 +1148,8 @@ MonoBehaviour:
   lastHitByClientId: 0
   detectionRange: 9999999
   attackRange: 5
-  minMoveSpeed: 16
-  maxMoveSpeed: 24
+  minMoveSpeed: 10
+  maxMoveSpeed: 16
   rotationSpeed: 10
   baseHealth: 25
   dmgNums: {fileID: 8409553502743980558}
@@ -1225,6 +1225,10 @@ MonoBehaviour:
   drops:
   - prefab: {fileID: 4447019598221353416, guid: 3f5ef3b492b1a9043aee199a411bccc3, type: 3}
     dropChance: 1
+    countRange: {x: 1, y: 1}
+    spawnImpulse: 2
+  - prefab: {fileID: 87859245550732243, guid: 86254c1f507849e478ef69f3a6e199e1, type: 3}
+    dropChance: 0.8
     countRange: {x: 1, y: 1}
     spawnImpulse: 2
   spawnRadius: 2

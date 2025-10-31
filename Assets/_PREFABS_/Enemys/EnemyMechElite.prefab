@@ -2110,8 +2110,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6f6b5a549d36e5b44a4ccec8fbb75f3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRange: 150
-  loseTargetRange: 125
+  detectionRange: 175
+  loseTargetRange: 150
   losMask:
     serializedVersion: 2
     m_Bits: 512
@@ -2129,7 +2129,7 @@ MonoBehaviour:
   pitchSpeed: 8
   targetHeightOffset: 0.2
   heavyBulletPrefab: {fileID: 4211810131274587892, guid: f28be79baba9aa6438566ec1e6e7f6a5, type: 3}
-  fireRange: 120
+  fireRange: 135
   chargeTime: 1
   fireCooldown: 1.5
   chargeFx: {fileID: 8988589322174755268, guid: 337f94315e250994a9ed0c362c91f466, type: 3}
@@ -2197,12 +2197,16 @@ MonoBehaviour:
   - prefab: {fileID: 4447019598221353416, guid: 3f5ef3b492b1a9043aee199a411bccc3, type: 3}
     dropChance: 1
     countRange: {x: 45, y: 60}
+    spawnImpulse: 6
+  - prefab: {fileID: 87859245550732243, guid: 86254c1f507849e478ef69f3a6e199e1, type: 3}
+    dropChance: 1
+    countRange: {x: 20, y: 35}
     spawnImpulse: 8
-  spawnRadius: 8
+  spawnRadius: 6
   groundMask:
     serializedVersion: 2
     m_Bits: 512
-  groundCheckDown: 8
+  groundCheckDown: 10
 --- !u!114 &2464898785566775757
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -188,7 +188,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: b30936588bb60ca468ed7f81320bc417, type: 2}
+  - {fileID: 2100000, guid: 55b6a40c2960acb4db2854478185f06e, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -301,7 +301,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: b30936588bb60ca468ed7f81320bc417, type: 2}
+  - {fileID: 2100000, guid: 55b6a40c2960acb4db2854478185f06e, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -467,6 +467,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a3650060471c744c938951dc97d8c15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  targetRefreshRate: 0.25
 --- !u!114 &2349609915594055925
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -536,15 +537,14 @@ MonoBehaviour:
   pullMaxSpeed: 10
   detectionRange: 120
   loseTargetRange: 180
-  preferredDistance: 45
-  losHeightOffset: 5
+  preferredDistance: 55
   losMask:
     serializedVersion: 2
     m_Bits: 512
-  moveSpeed: 10
-  strafeSpeed: 10
+  moveSpeed: 8
+  strafeSpeed: 8
   rotationSpeed: 8
-  distanceTolerance: 6
+  distanceTolerance: 25
   dashSpeed: 100
   dashWindup: 0.5
   dashDuration: 0.6
@@ -556,8 +556,8 @@ MonoBehaviour:
   targetHeightOffset: 0.9
   bulletPrefab: {fileID: 4211810131274587892, guid: 7c6d58a6037e9aa48ba50438305f601e, type: 3}
   bulletSpawn: {fileID: 1092511943301943110}
-  shootRange: 55
-  burstCount: 5
+  shootRange: 75
+  burstCount: 3
   burstInterval: 0.3
   inaccuracyAngle: 1
   audioSource: {fileID: 9223212118158675686}
@@ -619,12 +619,16 @@ MonoBehaviour:
   drops:
   - prefab: {fileID: 4447019598221353416, guid: 3f5ef3b492b1a9043aee199a411bccc3, type: 3}
     dropChance: 1
-    countRange: {x: 2, y: 6}
+    countRange: {x: 2, y: 5}
+    spawnImpulse: 5
+  - prefab: {fileID: 87859245550732243, guid: 86254c1f507849e478ef69f3a6e199e1, type: 3}
+    dropChance: 0.8
+    countRange: {x: 1, y: 2}
     spawnImpulse: 5
   spawnRadius: 5
   groundMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 512
   groundCheckDown: 2
 --- !u!114 &2913323573280078055
 MonoBehaviour:

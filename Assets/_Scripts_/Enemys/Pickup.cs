@@ -31,6 +31,9 @@ public class Pickup : NetworkBehaviour
         AnimationCurve.EaseInOut(0f, 1f, 1f, 3f);
     public float retargetHz = 6f;
 
+    // Behalte aktuelles Target bis es deutlich raus ist (1.2 = +20 %)
+    [Range(1f, 2f)] public float leaveRadiusMult = 1.2f;
+
     [Header("Interact-Settings")]
     public string playerTag = "Player";
     public KeyCode interactKey = KeyCode.E;
@@ -60,6 +63,10 @@ public class Pickup : NetworkBehaviour
         _trigger = GetComponent<SphereCollider>();
         if (_trigger) _trigger.isTrigger = true;
         if (promptUI) promptUI.SetActive(false);
+
+        // Jitter, damit nicht alle Instanzen gleichzeitig retargeten
+        if (IsServer)
+            _retargetTimer = Random.value / Mathf.Max(0.01f, retargetHz);
     }
 
     private void Update()
@@ -82,15 +89,38 @@ public class Pickup : NetworkBehaviour
         if (!IsServer) return;
         if (mode != Mode.Magnet) return;
 
-        // Ziel regelmäßig neu suchen
-        _retargetTimer -= Time.fixedDeltaTime;
-        if (_retargetTimer <= 0f)
+        // 1) Aktuelles Target behalten, solange es in einem erweiterten Radius bleibt
+        if (_target != null)
         {
-            _retargetTimer = 1f / Mathf.Max(0.01f, retargetHz);
-            _target = FindClosestPlayerWithin(attractRadius);
+            // Wenn Ziel deaktiviert/zerstört ist → loslassen
+            if (!_target.gameObject.activeInHierarchy)
+            {
+                _target = null;
+            }
+            else
+            {
+                float d2 = (_target.position - transform.position).sqrMagnitude;
+                float leaveR = attractRadius * leaveRadiusMult;
+                if (d2 > leaveR * leaveR)
+                    _target = null;
+            }
         }
-        if (_target == null) return;
 
+        // 2) Nur retargeten, wenn aktuell kein Target existiert
+        if (_target == null)
+        {
+            _retargetTimer -= Time.fixedDeltaTime;
+            if (_retargetTimer <= 0f)
+            {
+                _retargetTimer = 1f / Mathf.Max(0.01f, retargetHz);
+                _target = FindClosestPlayerWithin(attractRadius);
+            }
+
+            // noch keins → in diesem Tick keine Bewegung
+            if (_target == null) return;
+        }
+
+        // 3) Bewegung / Einsammeln mit vorhandenem Target
         Vector3 toPlayer = _target.position - transform.position;
         float dist = toPlayer.magnitude;
 
@@ -222,15 +252,23 @@ public class Pickup : NetworkBehaviour
     {
         float best = float.MaxValue;
         Transform bestT = null;
-        var players = GameObject.FindObjectsOfType<PlayerInventory>();
-        foreach (var p in players)
+
+        // Kleine, serverseitige Liste iterieren (siehe PlayerInventory.ServerPlayers)
+        var list = PlayerInventory.ServerPlayers;
+        for (int i = 0; i < list.Count; i++)
         {
+            var p = list[i];
+            if (p == null) continue;
+
             float d2 = (p.transform.position - transform.position).sqrMagnitude;
+
             float mult = 1f;
             var up = p.GetComponent<PlayerUpgrades>();
             if (up != null) mult = Mathf.Max(0.1f, up.GetMagnetRangeMult());
+
             float effR = radius * mult;
-            if (d2 < effR * effR && d2 < best)
+            float r2 = effR * effR;
+            if (d2 < r2 && d2 < best)
             {
                 best = d2;
                 bestT = p.transform;
