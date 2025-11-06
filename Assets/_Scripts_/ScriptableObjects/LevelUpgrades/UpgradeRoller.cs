@@ -2,17 +2,43 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+
+
 public static class UpgradeRoller
 {
-    // ======== Basis-IDs (stabil) ========
-    public const int MaxHP        = 4;
-    public const int Magnet       = 7;
-    public const int MoveSpeed    = 8;
+    // ======== Basis-IDs (stabil) für Stats ========
+    public const int MaxHP     = 4;
+    public const int Armor     = 5;
+    public const int Magnet    = 7;
+    public const int MoveSpeed = 8;
 
-    private static readonly int[] pool = { MaxHP, Magnet, MoveSpeed };
+    // Alle passiven Stat-Upgrades
+    private static readonly int[] StatPool = { MaxHP, Armor, Magnet, MoveSpeed };
+
+    // ======== Mastery-ID-Bereich ========
+    // Wir mappen masteryPool[i] → baseId = MASTERIES_OFFSET + i
+    private const int MASTERIES_OFFSET = 1000;
+
+    public static bool IsMasteryBaseId(int baseId) => baseId >= MASTERIES_OFFSET;
+    public static bool IsMasteryChoice(int choiceId) => IsMasteryBaseId(ChoiceCodec.BaseId(choiceId));
+
+    /// <summary>
+    /// BaseId → MasteryDefinition aus dem PlayerUpgrades.masteryPool auflösen.
+    /// </summary>
+    public static bool TryResolveMasteryBaseId(PlayerUpgrades up, int baseId, out MasteryDefinition def)
+    {
+        def = null;
+        if (up == null || up.masteryPool == null) return false;
+        int idx = baseId - MASTERIES_OFFSET;
+        if (idx < 0 || idx >= up.masteryPool.Length) return false;
+
+        def = up.masteryPool[idx];
+        return def != null;
+    }
 
     // ======== Rarity-Konfig ========
-    // Stacks, die eine Rarity gewährt (für "stapelnde" Upgrades)
+
+    // Stacks, die eine Rarity gewährt (für "stapelnde" Upgrades/Masteries)
     public static readonly Dictionary<Rarity, int> StacksPerRarity = new()
     {
         { Rarity.Common,    1 },
@@ -31,20 +57,19 @@ public static class UpgradeRoller
     };
 
     // ======== Präsentation (Farben/Badges/Icons) ========
-    // --> UI soll kein <color> in Strings mehr bekommen. Siehe ChoiceViewModel.
 
     public struct ChoiceViewModel
     {
-        public string upgradeKey;    // z.B. "upgrade.fireRate" (Lokalisierungsschlüssel)
-        public string upgradeName;   // Fallback-Anzeige, falls kein Loca-System
+        public string upgradeKey;    // z.B. "upgrade.maxHP" oder "mastery.pierce"
+        public string upgradeName;   // finaler Anzeigename
         public Rarity rarity;
         public int    stacks;        // 1..n
-        public string badgeText;     // "", "(I)", "(II)", "(III)"
-        public Color  rarityColor;   // UI kann direkt Farbe setzen
-        public Sprite rarityIcon;    // optionales Emblem
+        public string badgeText;     // "Common", "Rare", "Epic", "LEGENDARY"
+        public Color  rarityColor;
+        public Sprite rarityIcon;
     }
 
-    // Farbcodes für Rarities (entspricht bisherigen Hexwerten)
+    // Farbcodes für Rarities
     public static readonly Dictionary<Rarity, Color> RarityColors = new()
     {
         { Rarity.Common,    Hex("#000000ff") },
@@ -53,16 +78,14 @@ public static class UpgradeRoller
         { Rarity.Legendary, Hex("#FCC653FF") },
     };
 
-    // Text-Badges (ersetzt "star")
     public static readonly Dictionary<Rarity, string> RarityBadge = new()
     {
         { Rarity.Common,    "Common"     },
-        { Rarity.Rare,      "Rare"  },
-        { Rarity.Epic,      "Epic" },
-        { Rarity.Legendary, "LEGENDARY"},
+        { Rarity.Rare,      "Rare"       },
+        { Rarity.Epic,      "Epic"       },
+        { Rarity.Legendary, "LEGENDARY"  },
     };
 
-    // Optional: Icons pro Rarity (Designer-Asset)
     private static readonly Dictionary<Rarity, Sprite> _rarityIcons = new();
 
     public static void RegisterRarityIcon(Rarity rarity, Sprite icon)
@@ -71,21 +94,57 @@ public static class UpgradeRoller
         _rarityIcons[rarity] = icon;
     }
 
-    // ======== Ziehen von 3 gültigen Optionen ========
+    // ======== 3 gültige Optionen rollen (Stats + Masteries) ========
+
     public static int[] Roll3Valid(PlayerUpgrades up)
     {
-        var valid = new List<int>(pool.Length);
-        foreach (var id in pool)
+        if (up == null)
+            up = UnityEngine.Object.FindObjectOfType<PlayerUpgrades>();
+
+        var statCandidates    = new List<int>(StatPool.Length);
+        var masteryCandidates = new List<int>();
+
+        // --- Stats: nur wenn noch nicht max ---
+        foreach (var id in StatPool)
         {
             var t = Resolve(id);
-            if (up.GetLevel(t) < up.GetMaxLevel(t)) valid.Add(id);
+            if (up.GetLevel(t) < up.GetMaxLevel(t))
+                statCandidates.Add(id);
         }
-        if (valid.Count == 0) valid.AddRange(pool);
 
-        var r = new System.Random();
+        // Wenn alle Stats capped → trotzdem alle erlauben (damit nie leere Liste)
+        if (statCandidates.Count == 0)
+            statCandidates.AddRange(StatPool);
 
-        // Fisher–Yates auf Kopie
-        var bag = new List<int>(valid);
+        // --- Masteries: aus masteryPool, nur < Tier 3 ---
+        if (up.masteryPool != null)
+        {
+            for (int i = 0; i < up.masteryPool.Length; i++)
+            {
+                var def = up.masteryPool[i];
+                if (def == null) continue;
+
+                int curTier = up.GetMasteryTier(def);
+                const int maxTier = 3;
+                if (curTier >= maxTier) continue;
+
+                int baseId = MASTERIES_OFFSET + i;
+                masteryCandidates.Add(baseId);
+            }
+        }
+
+        // Kombinierter Pool: Stats + Masteries
+        var allCandidates = new List<int>();
+        allCandidates.AddRange(statCandidates);
+        allCandidates.AddRange(masteryCandidates);
+
+        // Fallback: sollte eigentlich nie leer sein
+        if (allCandidates.Count == 0)
+            allCandidates.AddRange(StatPool);
+
+        // Fisher–Yates-Shuffle
+        var r   = new System.Random();
+        var bag = new List<int>(allCandidates);
         for (int i = bag.Count - 1; i > 0; i--)
         {
             int j = r.Next(i + 1);
@@ -96,13 +155,36 @@ public static class UpgradeRoller
         var picks = new List<int>(3);
         foreach (var id in bag)
         {
-            picks.Add(id);
+            if (!picks.Contains(id))
+                picks.Add(id);
             if (picks.Count == 3) break;
         }
-        while (picks.Count < 3) picks.Add(valid[r.Next(valid.Count)]);
+        while (picks.Count < 3)
+            picks.Add(allCandidates[r.Next(allCandidates.Count)]);
 
         int EncodeClamped(int baseId)
         {
+            // ----- Mastery -----
+            if (IsMasteryBaseId(baseId))
+            {
+                if (!TryResolveMasteryBaseId(up, baseId, out var mDef))
+                    return ChoiceCodec.Encode(MaxHP, Rarity.Common); // Fallback
+
+                int curTier = up.GetMasteryTier(mDef);
+                const int maxTier = 3;
+                if (curTier >= maxTier)
+                    return ChoiceCodec.Encode(MaxHP, Rarity.Common);
+
+                var rarity = WeightedRarity(r);
+                int stacks = StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
+                stacks = Mathf.Min(stacks, maxTier - curTier);
+                if (stacks <= 0) { rarity = Rarity.Common; stacks = 1; }
+
+                rarity = RarityForStacks(stacks);
+                return ChoiceCodec.Encode(baseId, rarity);
+            }
+
+            // ----- Stat -----
             var type = Resolve(baseId);
             int cur  = up.GetLevel(type);
             int max  = up.GetMaxLevel(type);
@@ -110,11 +192,13 @@ public static class UpgradeRoller
             if (cur >= max)
                 return ChoiceCodec.Encode(baseId, Rarity.Common);
 
-            var rarity = WeightedRarity(r);
-            int stacks = Mathf.Min(StacksPerRarity[rarity], max - cur);
-            if (stacks <= 0) { rarity = Rarity.Common; stacks = 1; }
-            rarity = RarityForStacks(stacks);
-            return ChoiceCodec.Encode(baseId, rarity);
+            var rarityStat = WeightedRarity(r);
+            int stacksStat = StacksPerRarity.TryGetValue(rarityStat, out var sStat) ? sStat : 1;
+            stacksStat = Mathf.Min(stacksStat, max - cur);
+            if (stacksStat <= 0) { rarityStat = Rarity.Common; stacksStat = 1; }
+
+            rarityStat = RarityForStacks(stacksStat);
+            return ChoiceCodec.Encode(baseId, rarityStat);
         }
 
         return new[]
@@ -126,12 +210,14 @@ public static class UpgradeRoller
     }
 
     // ======== Mapping / Hilfen ========
+
     public static UpgradeType Resolve(int baseId) => baseId switch
     {
-        MaxHP        => UpgradeType.MaxHP,
-        Magnet       => UpgradeType.Magnet,
-        MoveSpeed    => UpgradeType.MoveSpeed,
-        _            => UpgradeType.MaxHP
+        MaxHP     => UpgradeType.MaxHP,
+        Armor     => UpgradeType.Armor,
+        Magnet    => UpgradeType.Magnet,
+        MoveSpeed => UpgradeType.MoveSpeed,
+        _         => UpgradeType.MaxHP
     };
 
     public static UpgradeType ResolveFromChoice(int choiceId) => Resolve(ChoiceCodec.BaseId(choiceId));
@@ -150,44 +236,76 @@ public static class UpgradeRoller
     }
 
     // ======== Präsentations-API für deine UI ========
-    public static ChoiceViewModel GetChoiceViewModel(int choiceId, Func<string, string> localize = null)
+
+    public static ChoiceViewModel GetChoiceViewModel(int choiceId, PlayerUpgrades up, Func<string, string> localize = null)
     {
-        int baseId   = ChoiceCodec.BaseId(choiceId);
-        var rarity   = ChoiceCodec.GetRarity(choiceId);
-        int stacks   = StacksForChoice(choiceId);
-        string key   = UpgradeKey(baseId);
-        string name  = localize != null ? localize(key) : UpgradeNameFallback(baseId);
+        int baseId = ChoiceCodec.BaseId(choiceId);
+        var rarity = ChoiceCodec.GetRarity(choiceId);
+        int stacks = StacksForChoice(choiceId);
+
+        // ---- Mastery-Karte ----
+        if (IsMasteryBaseId(baseId) && up != null && TryResolveMasteryBaseId(up, baseId, out var mDef))
+        {
+            string key  = $"mastery.{mDef.id}";
+            string name = !string.IsNullOrEmpty(mDef.displayName) ? mDef.displayName : "Mastery";
+            if (localize != null)
+            {
+                var loc = localize(key);
+                if (!string.IsNullOrEmpty(loc)) name = loc;
+            }
+
+            return new ChoiceViewModel
+            {
+                upgradeKey   = key,
+                upgradeName  = name,
+                rarity       = rarity,
+                stacks       = stacks,
+                badgeText    = RarityBadge[rarity],
+                rarityColor  = RarityColors[rarity],
+                rarityIcon   = _rarityIcons.TryGetValue(rarity, out var spr) ? spr : null
+            };
+        }
+
+        // ---- Stat-Karte ----
+        string statKey  = UpgradeKey(baseId);
+        string statName = UpgradeNameFallback(baseId);
+        if (localize != null)
+        {
+            var loc = localize(statKey);
+            if (!string.IsNullOrEmpty(loc)) statName = loc;
+        }
 
         return new ChoiceViewModel
         {
-            upgradeKey   = key,
-            upgradeName  = name,
+            upgradeKey   = statKey,
+            upgradeName  = statName,
             rarity       = rarity,
             stacks       = stacks,
             badgeText    = RarityBadge[rarity],
             rarityColor  = RarityColors[rarity],
-            rarityIcon   = _rarityIcons.TryGetValue(rarity, out var spr) ? spr : null
+            rarityIcon   = _rarityIcons.TryGetValue(rarity, out var spr2) ? spr2 : null
         };
     }
 
     public static string UpgradeKey(int baseId) => baseId switch
     {
-        MaxHP        => "upgrade.maxHP",
-        Magnet       => "upgrade.magnet",
-        MoveSpeed    => "upgrade.moveSpeed",
-        _            => "upgrade.generic"
+        MaxHP     => "upgrade.maxHP",
+        Armor     => "upgrade.armor",
+        Magnet    => "upgrade.magnet",
+        MoveSpeed => "upgrade.moveSpeed",
+        _         => "upgrade.generic"
     };
 
     public static string UpgradeNameFallback(int baseId) => baseId switch
     {
-        MaxHP        => "Max HP",
-        Magnet       => "Magnet",
-        MoveSpeed    => "Move Speed",
-        _            => "Upgrade"
+        MaxHP     => "Max HP",
+        Armor     => "Armor",
+        Magnet    => "Magnet",
+        MoveSpeed => "Move Speed",
+        _         => "Upgrade"
     };
 
-
-    // Falls noch irgendwo im Projekt gebraucht (z. B. alte UI-Pfade) -> PlayerXP verwendet das noch
+    // Wird noch von Logs / Debug verwendet – Stats + sehr generischer Fallback für Masteries
     public static string Label(int choiceId)
     {
         var baseId = ChoiceCodec.BaseId(choiceId);
@@ -201,26 +319,24 @@ public static class UpgradeRoller
 
     public static string ColorTag(Rarity r)
     {
-        // Behalte bisherige Hexfarben exakt bei.
         string hex = r switch
         {
             Rarity.Common    => "#ffffffff",
             Rarity.Rare      => "#0071aaff",
             Rarity.Epic      => "#952bffff",
             Rarity.Legendary => "#fcc653ff",
-            _ => "#ffffffff"
+            _                => "#ffffffff"
         };
         return $"<color={hex}>";
     }
 
     // ======== intern ========
+
     private static Rarity WeightedRarity(System.Random r)
     {
-        // Iteriere in definierter Reihenfolge, damit deterministisch
-        float x = (float)r.NextDouble();
+        float x   = (float)r.NextDouble();
         float acc = 0f;
 
-        // feste Reihenfolge
         var order = new[] { Rarity.Common, Rarity.Rare, Rarity.Epic, Rarity.Legendary };
         foreach (var rr in order)
         {

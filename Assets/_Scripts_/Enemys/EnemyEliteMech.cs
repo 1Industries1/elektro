@@ -1,4 +1,3 @@
-// EnemyEliteMech.cs
 using UnityEngine;
 using Unity.Netcode;
 using System;
@@ -68,6 +67,22 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
     [SerializeField] private AudioClip chargeSfx;
     [SerializeField] private AudioClip fireSfx;
 
+    [Header("Flame Burst")]
+    [SerializeField] private GameObject flameExplosionPrefab; // Feuer-Explosion-Prefab
+    [SerializeField] private float flameMinRadiusAroundPlayer = 2f;
+    [SerializeField] private float flameMaxRadiusAroundPlayer = 6f;
+    [SerializeField] private float flameCooldown = 7f;
+    [SerializeField] private float flameSpawnHeight = 5f; // für Raycast von oben
+    private float lastFlameTime = -999f;
+
+    [Header("Attack Pattern")]
+    [SerializeField] private Vector2Int shotsPerCycleRange = new Vector2Int(2, 4);   // 2–4 Schüsse
+    [SerializeField] private Vector2Int flamesPerCycleRange = new Vector2Int(1, 2);  // 1–2 Flame Bursts
+    private int remainingShotsInPhase;
+    private int remainingFlamesInPhase;
+    private enum AttackPhase { Shooting, Flame }
+    private AttackPhase attackPhase = AttackPhase.Shooting;
+
     [Header("C) Telegrafie")]
     [SerializeField] private LineRenderer aimLaser;             // einfacher Aimpointer
     [SerializeField] private GameObject splashTelegraphPrefab;  // Kreis-Decal (Prefab)
@@ -136,15 +151,15 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
         rb.isKinematic = !IsServer;
 
         if (heavyBulletPrefab != null)
-    {
-        var comp = heavyBulletPrefab.GetComponent<EnemyHeavyBulletController>();
-        if (comp != null)
         {
-            projectileSpeed   = comp.Speed;
-            cachedSplashRadius = comp.SplashRadius;   // <-- NEU
+            var comp = heavyBulletPrefab.GetComponent<EnemyHeavyBulletController>();
+            if (comp != null)
+            {
+                projectileSpeed = comp.Speed;
+                cachedSplashRadius = comp.SplashRadius;
+            }
+            else Debug.LogWarning("[EnemyEliteMech] heavyBulletPrefab hat keinen EnemyHeavyBulletController – nutze Fallbacks.");
         }
-        else Debug.LogWarning("[EnemyEliteMech] heavyBulletPrefab hat keinen EnemyHeavyBulletController – nutze Fallbacks.");
-    }
 
         if (IsServer)
         {
@@ -154,6 +169,12 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
             state = State.Idle;
             lastFireTime = -999f;
             lastStompTime = -999f;
+            lastFlameTime = -999f;
+
+            // Attack-Pattern initialisieren
+            attackPhase = AttackPhase.Shooting;
+            remainingShotsInPhase = RandomInclusive(shotsPerCycleRange.x, shotsPerCycleRange.y);
+            remainingFlamesInPhase = 0;
         }
 
         health.OnValueChanged += OnHealthChanged;
@@ -229,12 +250,51 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
 
                 if (anim) anim.SetBool(AnimAiming, true);
 
-                if (hasLOS && dist <= fireRange && Time.time >= lastFireTime + fireCooldown && fireCo == null)
+                // --- Angriffsmuster: Schießen-Phase vs. Flame-Phase ---
+                if (hasLOS && dist <= fireRange)
                 {
-                    fireCo = StartCoroutine(FireSequence());
-                    state = State.Firing;
+                    if (attackPhase == AttackPhase.Shooting)
+                    {
+                        // Heavy Shots Phase
+                        if (Time.time >= lastFireTime + fireCooldown && fireCo == null && remainingShotsInPhase > 0)
+                        {
+                            fireCo = StartCoroutine(FireSequence());
+                            state = State.Firing;
+
+                            remainingShotsInPhase--;
+
+                            // Wenn keine Schüsse mehr übrig → zur Flame-Phase wechseln
+                            if (remainingShotsInPhase <= 0)
+                            {
+                                attackPhase = AttackPhase.Flame;
+                                remainingFlamesInPhase = RandomInclusive(flamesPerCycleRange.x, flamesPerCycleRange.y);
+
+                                // kleine Pause vor dem ersten Flame (optional)
+                                lastFlameTime = Time.time;
+                            }
+                        }
+                    }
+                    else if (attackPhase == AttackPhase.Flame)
+                    {
+                        // Flame-Burst-Phase
+                        if (remainingFlamesInPhase > 0 && Time.time >= lastFlameTime + flameCooldown)
+                        {
+                            SpawnFlameBurstAroundTarget(target);
+                            remainingFlamesInPhase--;
+                            lastFlameTime = Time.time;
+
+                            // Wenn alle Flame Bursts gemacht → zurück zur Shooting-Phase
+                            if (remainingFlamesInPhase <= 0)
+                            {
+                                attackPhase = AttackPhase.Shooting;
+                                remainingShotsInPhase = RandomInclusive(shotsPerCycleRange.x, shotsPerCycleRange.y);
+                            }
+                        }
+                        // In dieser Phase keine HeavyShots – er „hält an“ und zoned mit Feuer.
+                    }
                 }
-                else if (dist > resumeDistance || !hasLOS)
+
+                if (dist > resumeDistance || !hasLOS)
                 {
                     if (anim) anim.SetBool(AnimAiming, false);
                     state = State.Move;
@@ -259,6 +319,13 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
             case State.Dead:
                 break;
         }
+    }
+
+    // ---------- Helpers ----------
+    private int RandomInclusive(int min, int max)
+    {
+        // Random.Range(int, int) ist [min, max), also max+1 verwenden
+        return UnityEngine.Random.Range(min, max + 1);
     }
 
     // ---------- Movement helpers ----------
@@ -412,7 +479,6 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
         return new Vector3(p.x, p.y + 0.05f, p.z); // fallback: leicht anheben
     }
 
-
     private IEnumerator FireSequence()
     {
         lastFireTime = Time.time;
@@ -529,6 +595,39 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
             ctrl.Init(dir);
     }
 
+    private void SpawnFlameBurstAroundTarget(Transform t)
+    {
+        if (!IsServer || flameExplosionPrefab == null) return;
+
+        Debug.Log("[EnemyEliteMech] FlameBurst gespawnt");
+
+        // zufällige Richtung + Distanz um den Spieler
+        Vector2 circle = UnityEngine.Random.insideUnitCircle.normalized *
+                        UnityEngine.Random.Range(flameMinRadiusAroundPlayer, flameMaxRadiusAroundPlayer);
+        Vector3 candidate = t.position + new Vector3(circle.x, 0f, circle.y);
+
+        // Von oben auf den Boden raycasten
+        Vector3 origin = candidate + Vector3.up * flameSpawnHeight;
+        if (Physics.Raycast(origin, Vector3.down, out var hit, flameSpawnHeight * 2f, telegraphGroundMask, QueryTriggerInteraction.Ignore))
+        {
+            Vector3 spawnPos = hit.point;
+            Debug.Log("[EnemyEliteMech] FlameBurst Hit: " + hit.collider.name + " at " + spawnPos);
+
+            var go = Instantiate(flameExplosionPrefab, spawnPos, Quaternion.identity);
+            if (go.TryGetComponent<NetworkObject>(out var no))
+            {
+                if (!no.IsSpawned)
+                    no.Spawn();
+            }
+            Debug.Log("[EnemyEliteMech] FlameBurst GO: " + go.name + " layer=" + go.layer);
+        }
+        else
+        {
+            Debug.LogWarning("[EnemyEliteMech] FlameBurst Raycast hat NICHTS getroffen. Origin=" + origin);
+        }
+
+    }
+
     // ---------- (C) Telegraphie helpers ----------
     private void EnsureSplashTelegraph()
     {
@@ -557,8 +656,6 @@ public class EnemyEliteMech : NetworkBehaviour, IEnemy
             aimLaser.SetPosition(1, target.position + Vector3.up * targetHeightOffset);
         }
     }
-
-
 
     // ---------- (D) Shockwave Stomp ----------
     private IEnumerator StompSequence()

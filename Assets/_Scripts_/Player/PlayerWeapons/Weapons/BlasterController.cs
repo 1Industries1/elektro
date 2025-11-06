@@ -47,7 +47,7 @@ public class BlasterController : NetworkBehaviour
 
     // --- intern ---
     private float _nextAltFireTime;
-    private bool  _isCharging;
+    private bool _isCharging;
     private float _chargeStartTime;
     private AudioSource _chargeAudioSource;
 
@@ -75,7 +75,7 @@ public class BlasterController : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         _ownerMovement = GetComponentInParent<PlayerMovement>();
-        _upgrades      = GetComponentInParent<PlayerUpgrades>();
+        _upgrades = GetComponentInParent<PlayerUpgrades>();
 
         if (!primary) primary = GetComponentInParent<CannonController>();
         if (!bulletSpawnPoint && primary) bulletSpawnPoint = primary.bulletSpawnPoint;
@@ -102,17 +102,28 @@ public class BlasterController : NetworkBehaviour
 
     private void BuildLocalRuntime()
     {
-        if (_playerWeapons != null && _playerWeapons.BlasterRuntime != null)
+        _runtime = null; // harte Null
+
+        if (_playerWeapons != null)
         {
-            _runtime = new WeaponRuntime(_playerWeapons.blasterDef, _playerWeapons.blasterLevel.Value);
-            if (_upgrades) _upgrades.ApplyTo(_runtime);
+            if (_playerWeapons.blasterLevel.Value > 0 && _playerWeapons.BlasterRuntime != null)
+            {
+                _runtime = new WeaponRuntime(_playerWeapons.blasterDef, _playerWeapons.blasterLevel.Value);
+                if (_upgrades) _upgrades.ApplyTo(_runtime);
+            }
         }
         else if (weaponDef != null)
         {
-            _runtime = new WeaponRuntime(weaponDef, 1);
-            if (_upgrades) _upgrades.ApplyTo(_runtime);
+            var nm = NetworkManager.Singleton;
+            bool netInactive = (nm == null || !nm.IsListening);
+            if (netInactive)
+            {
+                _runtime = new WeaponRuntime(weaponDef, 1);
+                if (_upgrades) _upgrades.ApplyTo(_runtime);
+            }
         }
     }
+
 
     private void ApplySpeedHint()
     {
@@ -125,6 +136,7 @@ public class BlasterController : NetworkBehaviour
     private void Update()
     {
         if (!IsOwner) return;
+        if (_runtime == null) { _isCharging = false; return; }
         if (!autoAltFire) return;
         if (Time.time < _nextAltFireTime) return;
 
@@ -148,7 +160,7 @@ public class BlasterController : NetworkBehaviour
 
     private IEnumerator AutoChargeAndRelease()
     {
-        if (_isCharging) yield break;
+        if (_isCharging || _runtime == null) yield break;
 
         _isCharging = true;
         _chargeStartTime = Time.time;
@@ -249,6 +261,8 @@ public class BlasterController : NetworkBehaviour
     [ServerRpc]
     private void RequestChargedShotServerRpc(Vector3 position, Quaternion rotation, float heldTime, float clientCooldown)
     {
+        if (_runtime == null) return;
+        
         float now = Time.time;
         _lastAltFire.TryGetValue(OwnerClientId, out float last);
 
@@ -279,10 +293,10 @@ public class BlasterController : NetworkBehaviour
         if (_runtime == null) return;
 
         Vector3 baseFwd = rotation * Vector3.forward;
-        Vector3 upAxis  = rotation * Vector3.up;
+        Vector3 upAxis = rotation * Vector3.up;
         Vector3 rightAxis = rotation * Vector3.right;
 
-        float yaw   = Random.Range(-altInaccuracyAngle, altInaccuracyAngle);
+        float yaw = Random.Range(-altInaccuracyAngle, altInaccuracyAngle);
         float pitch = Random.Range(-altInaccuracyAngle, altInaccuracyAngle);
 
         Vector3 deviatedDir = Quaternion.AngleAxis(yaw, upAxis) * (Quaternion.AngleAxis(pitch, rightAxis) * baseFwd);
@@ -295,13 +309,13 @@ public class BlasterController : NetworkBehaviour
         BlasterBulletController bullet = bulletNetObj.GetComponent<BlasterBulletController>();
 
         // Damage-Pfade aus Runtime
-        float dmgScale   = GetRollDamageMultiplier() * (_upgrades ? _upgrades.GetDamageMultiplier() : 1f);
-        float baseNonP   = _runtime.ComputeDamageNonPierced(applyCrit: true);
-        float basePier   = _runtime.ComputeDamagePierced(applyCrit: true);
+        float dmgScale = GetRollDamageMultiplier() * (_upgrades ? _upgrades.GetDamageMultiplier() : 1f);
+        float baseNonP = _runtime.ComputeDamageNonPierced(applyCrit: true);
+        float basePier = _runtime.ComputeDamagePierced(applyCrit: true);
 
         // Charge skaliert Schaden/Speed
-        float chargeScaleDmg  = Mathf.Lerp(1f, 3f, chargePercent);
-        float chargeScaleSpd  = Mathf.Lerp(1f, 3.5f, chargePercent);
+        float chargeScaleDmg = Mathf.Lerp(1f, 3f, chargePercent);
+        float chargeScaleSpd = Mathf.Lerp(1f, 3.5f, chargePercent);
 
         float damageNonPierced = baseNonP * dmgScale * chargeScaleDmg;
         float damageAfterPierced = basePier * dmgScale * chargeScaleDmg;
@@ -323,7 +337,8 @@ public class BlasterController : NetworkBehaviour
 
         PlayAltFireSoundClientRpc(Random.Range(0.7f, 1.2f));
 
-        var clientParams = new ClientRpcParams {
+        var clientParams = new ClientRpcParams
+        {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
         };
         DoCameraShakeClientRpc(1.2f, 0.25f, clientParams);

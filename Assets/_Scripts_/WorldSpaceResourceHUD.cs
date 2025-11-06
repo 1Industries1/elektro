@@ -1,3 +1,4 @@
+// Scripts/UI/WorldSpaceResourceHUD.cs
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -10,8 +11,8 @@ public class WorldSpaceResourceHUD : MonoBehaviour
         public ResourceType type;
 
         [Header("Texts")]
-        public TextMeshProUGUI totalText;   // Zahl im Kreis (z. B. Gold: 123)
-        public TextMeshProUGUI popupText;   // "+5" Popup
+        public TextMeshProUGUI totalText;   // Zahl im Kreis (z. B. XP: 123)
+        public TextMeshProUGUI popupText;   // "+5 XP" Popup
 
         [Header("Optional")]
         public CanvasGroup popupGroup;      // für Fade
@@ -22,7 +23,7 @@ public class WorldSpaceResourceHUD : MonoBehaviour
     public List<ResourceEntry> entries = new();
 
     [Header("Gold-Preis (UI neben Gold-Kreis)")]
-    [SerializeField] private TextMeshProUGUI goldPriceText; // NEU: Preisanzeige direkt neben dem Gold-Kreis
+    [SerializeField] private TextMeshProUGUI goldPriceText; // Preisanzeige direkt neben dem Gold-Kreis
 
     [Header("Flash Settings")]
     [Tooltip("Gesamtdauer des Popup-Fades in Sekunden")]
@@ -72,11 +73,24 @@ public class WorldSpaceResourceHUD : MonoBehaviour
         if (goldPriceText) goldPriceText.gameObject.SetActive(!string.IsNullOrEmpty(goldPriceText.text));
     }
 
+    private void OnEnable()
+    {
+        // Auf XP-Events hören (nur Owner-Client feuert)
+        PlayerXP.OnLocalXPGain += HandleXPGain;
+    }
+
+    private void OnDisable()
+    {
+        PlayerXP.OnLocalXPGain -= HandleXPGain;
+    }
+
     // ====== Public API ======
 
     public void SetTotal(ResourceType type, int total)
     {
         if (!_entry.TryGetValue(type, out var e) || e.totalText == null) return;
+
+        // Priorität: Inspector-Override > Enum-Name
         string label = string.IsNullOrEmpty(e.labelOverride) ? type.ToString() : e.labelOverride;
         e.totalText.text = $"{label}: {total}";
     }
@@ -112,6 +126,9 @@ public class WorldSpaceResourceHUD : MonoBehaviour
         var tr = e.popupText.rectTransform;
         e.popupText.gameObject.SetActive(true);
 
+        // Suffix: Für XP " XP" anzeigen
+        string popupSuffix = (type == ResourceType.XP) ? " XP" : "";
+
         float dur = Mathf.Max(0.05f, flashDuration);
         rt.t = 0f;
         rt.aggregateDelta = 0;
@@ -124,8 +141,9 @@ public class WorldSpaceResourceHUD : MonoBehaviour
                 rt.pendingDelta = 0;
 
                 int show = rt.aggregateDelta;
-                e.popupText.text = show > 0 ? $"+{show}" : $"{show}";
+                e.popupText.text = show > 0 ? $"+{show}{popupSuffix}" : $"{show}{popupSuffix}";
 
+                // Beim neuen Input kurz "frischer" erscheinen lassen
                 rt.t = Mathf.Min(rt.t, dur * 0.35f);
             }
 
@@ -148,5 +166,20 @@ public class WorldSpaceResourceHUD : MonoBehaviour
         e.popupText.gameObject.SetActive(false);
         rt.aggregateDelta = 0;
         rt.routine = null;
+    }
+
+    // ====== Event-Handler für XP ======
+
+    /// <summary>
+    /// Reagiert auf lokale XP-Gewinne: Zahl im Kreis updaten und Popup anzeigen.
+    /// Unterdrückt negatives Popup beim Level-Up (nur Reset).
+    /// </summary>
+    private void HandleXPGain(int delta, int totalInLevel, bool levelChanged)
+    {
+        SetTotal(ResourceType.XP, totalInLevel);
+
+        // Kein negatives Popup, wenn es nur durch Level-Up-Reset entsteht
+        if (delta > 0 || !levelChanged)
+            Flash(ResourceType.XP, delta);
     }
 }

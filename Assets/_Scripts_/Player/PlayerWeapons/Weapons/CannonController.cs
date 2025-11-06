@@ -30,9 +30,9 @@ public class CannonController : NetworkBehaviour
     [Header("Auto Shoot")]
     public float targetRange = 20f;
     public float retargetInterval = 0.15f;
-    [Range(0f, 1f)] public float minDotToShoot = 0.95f; 
+    [Range(0f, 1f)] public float minDotToShoot = 0.95f;
     public LayerMask enemyLayer;
-    public LayerMask lineOfSightMask; 
+    public LayerMask lineOfSightMask;
 
     public Transform CurrentTarget => currentTarget;
     public Vector3 AimOrigin => bulletSpawnPoint ? bulletSpawnPoint.position : transform.position;
@@ -92,7 +92,7 @@ public class CannonController : NetworkBehaviour
         if (_playerWeapons != null)
             _playerWeapons.RuntimesRebuilt -= OnWeaponsRebuilt;
     }
-    
+
     private void OnWeaponsRebuilt()
     {
         // Level hat sich geändert -> lokale Runtime neu holen/rekonstruieren
@@ -102,21 +102,30 @@ public class CannonController : NetworkBehaviour
 
     private void BuildLocalRuntime()
     {
-        // Wenn PlayerWeapons existiert, nimm deren Runtime (Level-synchron)
-        if (_playerWeapons != null && _playerWeapons.CannonRuntime != null)
+        _runtime = null; // ganz wichtig: harte Null, nichts „behalten“
+
+        if (_playerWeapons != null)
         {
-            // Eigenes Exemplar, damit wir nicht aus Versehen Referenzen teilen
-            _runtime = new WeaponRuntime(_playerWeapons.cannonDef, _playerWeapons.cannonLevel.Value);
-            if (_upgrades)  _upgrades.ApplyTo(_runtime);
-            // Overclocks wirken bei Schussberechnung dynamisch (GetEffectiveFireRateSeconds), dmgMult additiv hier optional
+            // Nur wenn freigeschaltet
+            if (_playerWeapons.cannonLevel.Value > 0 && _playerWeapons.CannonRuntime != null)
+            {
+                _runtime = new WeaponRuntime(_playerWeapons.cannonDef, _playerWeapons.cannonLevel.Value);
+                if (_upgrades) _upgrades.ApplyTo(_runtime);
+            }
         }
         else if (weaponDef != null)
         {
-            // Fallback (z. B. im Editor ohne PlayerWeapons)
-            _runtime = new WeaponRuntime(weaponDef, 1);
-            if (_upgrades) _upgrades.ApplyTo(_runtime);
+            // Nur Editor/Offline-Fallback (kein Netcode aktiv)
+            var nm = NetworkManager.Singleton;
+            bool netInactive = (nm == null || !nm.IsListening);
+            if (netInactive)
+            {
+                _runtime = new WeaponRuntime(weaponDef, 1);
+                if (_upgrades) _upgrades.ApplyTo(_runtime);
+            }
         }
     }
+
 
     private void ApplyRangeAndSpeedHints()
     {
@@ -138,8 +147,10 @@ public class CannonController : NetworkBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, NetworkRotation.Value, Time.deltaTime * rotationLerpRate);
             return;
         }
+        if (_runtime == null) { currentTarget = null; return; } // <- kein AutoFire ohne Runtime
         AutoAimAndFire();
     }
+
 
     // ===================== AUTO AIM / AUTO FIRE =====================
 
@@ -168,13 +179,13 @@ public class CannonController : NetworkBehaviour
         // 3) Primärschuss automatisch abfeuern
         if (currentTarget != null && _runtime != null)
         {
-            Vector3 forward  = transform.forward;
+            Vector3 forward = transform.forward;
             Vector3 toTarget = (currentTarget.position - transform.position).normalized;
             float dot = Vector3.Dot(forward, toTarget);
 
             bool cdReady = Time.time >= nextFireTime;
-            bool okDot   = dot >= minDotToShoot;
-            bool los     = HasLineOfSight(currentTarget);
+            bool okDot = dot >= minDotToShoot;
+            bool los = HasLineOfSight(currentTarget);
 
             if (cdReady && okDot && los)
             {
@@ -312,10 +323,10 @@ public class CannonController : NetworkBehaviour
     {
         // Streuung
         Vector3 baseFwd = rotation * Vector3.forward;
-        Vector3 upAxis  = rotation * Vector3.up;
+        Vector3 upAxis = rotation * Vector3.up;
         Vector3 rightAxis = rotation * Vector3.right;
 
-        float yaw  = Random.Range(-inaccuracy, inaccuracy);
+        float yaw = Random.Range(-inaccuracy, inaccuracy);
         float pitch = Random.Range(-inaccuracy, inaccuracy);
 
         Vector3 deviatedDir = Quaternion.AngleAxis(yaw, upAxis) * (Quaternion.AngleAxis(pitch, rightAxis) * baseFwd);
@@ -329,17 +340,17 @@ public class CannonController : NetworkBehaviour
         var bullet = bulletNetObj.GetComponent<BulletController>();
 
         // Schaden serverseitig
-        float dmgScale   = GetRollDamageMultiplier()
+        float dmgScale = GetRollDamageMultiplier()
                          * (_upgrades ? _upgrades.GetDamageMultiplier() : 1f)
                          * (overclocks ? overclocks.GetDamageMult() : 1f);
 
         // vor erstem Pierce
         float baseDmgNP = _runtime.ComputeDamageNonPierced(applyCrit: true);
         // nach >=1x Pierce (Pierce Mastery)
-        float baseDmgP  = _runtime.ComputeDamagePierced(applyCrit: true);
+        float baseDmgP = _runtime.ComputeDamagePierced(applyCrit: true);
 
         float finalNonPierced = baseDmgNP * dmgScale;
-        float finalPierced    = baseDmgP  * dmgScale;
+        float finalPierced = baseDmgP * dmgScale;
 
         int pierceCount = Mathf.Max(0, _runtime.pierce);
 
@@ -354,7 +365,8 @@ public class CannonController : NetworkBehaviour
 
         PlayFireSoundClientRpc(Random.Range(0.8f, 1.8f));
 
-        var clientParams = new ClientRpcParams {
+        var clientParams = new ClientRpcParams
+        {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
         };
         DoCameraShakeClientRpc(0.1f, 0.15f, clientParams);
@@ -371,7 +383,7 @@ public class CannonController : NetworkBehaviour
         float now = Time.time;
         if (now - _lastFireSfxTime < fireSfxMinInterval) return;
         _lastFireSfxTime = now;
-        
+
         audioSource.pitch = pitch;
         audioSource.PlayOneShot(clip, 1f);
     }

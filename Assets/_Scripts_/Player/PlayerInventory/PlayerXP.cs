@@ -1,11 +1,15 @@
+// Scripts/Player/PlayerXP.cs
 using UnityEngine;
 using Unity.Netcode;
 using System;
-using System.Linq;
 
 [DisallowMultipleComponent]
 public class PlayerXP : NetworkBehaviour
 {
+    // ==== EVENT für lokale HUDs ====
+    // Wird NUR auf dem Owner-Client gefeuert: (delta, totalInCurrentLevel, levelChanged)
+    public static event Action<int, int, bool> OnLocalXPGain;
+
     [Header("Progression")]
     [Tooltip("Aktuelles Spielerlevel (startet bei 1).")]
     public int level = 1;
@@ -35,6 +39,10 @@ public class PlayerXP : NetworkBehaviour
     // Speichert die zuletzt gerollten 3 (encodeten) Choices für diesen Spieler (Server-seitig).
     private int[] _lastChoicesEncoded = null;
 
+    // Nur clientseitig (Owner) für Delta-/Levelwechsel-Berechnung
+    private int _lastXpClient = 0;
+    private int _lastLevelClient = 1;
+
     // ======================== Lifecycle ========================
 
     private void Awake()
@@ -50,7 +58,6 @@ public class PlayerXP : NetworkBehaviour
         costMult = Mathf.Clamp(costMult, 1.01f, 2.0f);
         baseCost = Mathf.Max(1, baseCost);
         level = Mathf.Max(1, level);
-
         RecalcCost();
     }
 #endif
@@ -182,11 +189,12 @@ public class PlayerXP : NetworkBehaviour
 
         int give = Mathf.Clamp(stacks, 1, room);
 
-        // Mehrere Level vergeben (Server-seitig, sicher)
-        ApplyLevelsSafely(_upgrades, type, give);
 
         int after = _upgrades.GetLevel(type);
         Debug.Log($"[PlayerXP] UPGRADE APPLIED → {type} {cur} → {after} (+{give})");
+
+        // ---- HIER NEU: encodedId direkt an PlayerUpgrades delegieren ----
+        _upgrades.ApplyEncodedChoice_Server(choiceId);
 
         ChoiceResultOwnerClientRpc(true, choiceId, OwnerClientId);
         _awaitingChoice = false;
@@ -196,15 +204,6 @@ public class PlayerXP : NetworkBehaviour
         if (xp >= xpToNext) OfferUpgradeChoices();
     }
 
-    /// <summary>
-    /// Vergibt N Level, ohne dass du zwingend deine PlayerUpgrades-Overload brauchst.
-    /// FIX: pro Iteration 1 Level, nicht 'levels'.
-    /// </summary>
-    private void ApplyLevelsSafely(PlayerUpgrades up, UpgradeType type, int levels)
-    {
-        for (int i = 0; i < levels; i++)
-            up.PurchaseFreeLevel_Server(type, 1); // 1, nicht 'levels'
-    }
 
     // ======================== Client: Ergebnis & HUD ========================
 
@@ -221,7 +220,20 @@ public class PlayerXP : NetworkBehaviour
     private void XpUpdateOwnerClientRpc(int lvl, int cur, int next, ulong forOwner, ClientRpcParams _ = default)
     {
         if (!(IsOwner && NetworkManager.Singleton.LocalClientId == forOwner)) return;
-        PlayerHUD.Instance?.SetXP(lvl, cur, next); // optional
+
+        // Bestehendes PlayerHUD (falls vorhanden)
+        PlayerHUD.Instance?.SetXP(lvl, cur, next);
+
+        // Delta & Levelwechsel bestimmen (vor Update der Caches)
+        bool levelChanged = (lvl != _lastLevelClient);
+        int delta = cur - _lastXpClient;
+
+        // Caches aktualisieren
+        _lastXpClient = cur;
+        _lastLevelClient = lvl;
+
+        // Event → WorldSpaceResourceHUD etc. hören zu
+        OnLocalXPGain?.Invoke(delta, cur, levelChanged);
     }
 
     // ======================== Utility (optional) ========================

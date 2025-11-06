@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 4433580d6697a824780facf5b95bae98
+timeCreated: 1511550764
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 105772
+  packageName: PBR Rock Cliffs Pack
+  packageVersion: 1.0
+  assetPath: Assets/PBR_Rock_Cliffs_Pack/Prefabs/Static_Stone_Prefabs/SnowCliffs_Stone_Prefabs_Static/Static_SnowCliffs_LargeStone_1.prefab
+  uploadId: 215101

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 6fcb1754e114c484aae2e0550fc31b76
+timeCreated: 1511548735
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 105772
+  packageName: PBR Rock Cliffs Pack
+  packageVersion: 1.0
+  assetPath: Assets/PBR_Rock_Cliffs_Pack/Prefabs/Standart_Stone_Prefabs/CrackyCliffs_Stone_Prefabs_Standart/CrackyCliffs_LargeStone_3.prefab
+  uploadId: 215101

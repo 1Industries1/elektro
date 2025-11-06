@@ -222,7 +222,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 125.3633, y: 32.21, z: 163.48279}
-  m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
+  m_LocalScale: {x: 1.1999997, y: 1.2, z: 1.1999997}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 2617225614206355051}
@@ -267,7 +267,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -307,7 +307,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
   GlobalObjectIdHash: 4071732557
-  InScenePlacedSourceGlobalObjectIdHash: 0
+  InScenePlacedSourceGlobalObjectIdHash: 3791946532
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
@@ -329,7 +329,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6e07b9c1aaefc48ad8a411fb4f808b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TreasureChest
-  goldCost: 25
+  baseGoldCost: 25
   animator: {fileID: 2233641030255947943}
   openTrigger: Open
   playerTag: Player
@@ -337,13 +337,21 @@ MonoBehaviour:
   promptUI: {fileID: 3146435554329453917}
   promptText: {fileID: 6034057248024065045}
   promptYOffset: 2
+  respawnEnabled: 1
+  respawnDelayMin: 45
+  respawnDelayMax: 100
+  hideWhileCooldown: 1
   singleUse: 1
   reopenCooldown: 1
   audioSource: {fileID: 238466553331692278}
   openClip: {fileID: 8300000, guid: f8d18faa081376b41922856e46a61192, type: 3}
   debugLogs: 0
+  LifeState:
+    m_InternalValue: 0
   Opened:
     m_InternalValue: 0
+  CurrentGoldCost:
+    m_InternalValue: 25
   chestSlowMo: 1
   chestSlowScale: 0.05
   chestSlowFadeIn: 0.5
@@ -359,7 +367,6 @@ MonoBehaviour:
   dropCountType: 1
   dropProfiles:
   - {fileID: 11400000, guid: 7ccbb234f98727f48835d04e14432e6d, type: 2}
-  - {fileID: 11400000, guid: ecc4b8cc2e9fd9842ad4f35e16420914, type: 2}
 --- !u!82 &238466553331692278
 AudioSource:
   m_ObjectHideFlags: 0
@@ -517,7 +524,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0.02389935, b: 0.1792453, a: 0.7490196}
+  m_Color: {r: 0, g: 0.013535658, b: 0.103773594, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -850,11 +857,39 @@ PrefabInstance:
       value: Animated PBR Chest _Fx_D
       objectReference: {fileID: 0}
     - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
+      propertyPath: prewarm
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
       propertyPath: lengthInSec
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
       propertyPath: moveWithTransform
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
+      propertyPath: NoiseModule.damping
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
+      propertyPath: NoiseModule.enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
+      propertyPath: NoiseModule.frequency
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
+      propertyPath: NoiseModule.separateAxes
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
+      propertyPath: NoiseModule.strength.scalar
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
+      propertyPath: ExternalForcesModule.enabled
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
@@ -867,7 +902,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 18
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 2395224568040358664, guid: 890ae7669926a2848bc4d3e31b3e0872, type: 3}
       propertyPath: InitialModule.startLifetime.scalar

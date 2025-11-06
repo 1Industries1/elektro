@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 34279be0db97e3846a2098f9b7ea63dd
+timeCreated: 1511549686
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 105772
+  packageName: PBR Rock Cliffs Pack
+  packageVersion: 1.0
+  assetPath: Assets/PBR_Rock_Cliffs_Pack/Prefabs/Static_Stone_Prefabs/Cliffs_Stone_Prefabs_Static/Static_Cliffs_MediumStone_7.prefab
+  uploadId: 215101

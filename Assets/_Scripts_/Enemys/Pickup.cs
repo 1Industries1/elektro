@@ -9,15 +9,15 @@ public class Pickup : NetworkBehaviour
 {
     public enum Mode { Magnet, Interact }
 
-    // Nur für Energy relevant
+    // Nur für XP relevant
     public enum EnergyCollectMode { Battery, Inventory, Both }
 
     [Header("Item")]
-    public ResourceType type = ResourceType.Energy;
+    public ResourceType type = ResourceType.XP;
     public int amount = 1;
 
-    [Header("Energy Handling")]
-    [Tooltip("Nur für ResourceType.Energy relevant")]
+    [Header("XP Handling")]
+    [Tooltip("Nur für ResourceType.XP relevant")]
     public EnergyCollectMode energyHandling = EnergyCollectMode.Battery;
 
     [Header("Modus")]
@@ -203,9 +203,9 @@ public class Pickup : NetworkBehaviour
         var xp  = player.GetComponent<PlayerXP>();
 
         // Verteillogik
-        if (type == ResourceType.Energy)
+        if (type == ResourceType.XP)
         {
-            // Energy == XP (VS-Style). Ignoriere Inventar, gib XP.
+            // XP == XP (VS-Style). Ignoriere Inventar, gib XP.
             if (xp != null)
             {
                 xp.Server_AddXP(amount);
@@ -213,13 +213,13 @@ public class Pickup : NetworkBehaviour
             else
             {
                 // Fallback, falls PlayerXP fehlt (damit man nichts "verliert"):
-                if (inv != null) inv.Server_Add(ResourceType.Energy, amount);
-                Debug.LogWarning("[Pickup] PlayerXP fehlt am Player – fallback auf Inventory.Add(Energy).");
+                if (inv != null) inv.Server_Add(ResourceType.XP, amount);
+                Debug.LogWarning("[Pickup] PlayerXP fehlt am Player – fallback auf Inventory.Add(XP).");
             }
         }
         else
         {
-            // Nicht-Energy: wie gehabt ins Inventar
+            // Nicht-XP: wie gehabt ins Inventar
             if (inv != null) inv.Server_Add(type, amount);
         }
 

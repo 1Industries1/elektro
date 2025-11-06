@@ -7,7 +7,7 @@ public class GrenadeLauncherController : NetworkBehaviour
 {
     [Header("WeaponDef")]
     public WeaponDefinition grenadeDef;
-    
+
     [Header("Grenade Prefab & Spawn")]
     public NetworkObject grenadePrefab;
     public Transform muzzle;
@@ -26,7 +26,7 @@ public class GrenadeLauncherController : NetworkBehaviour
     [Header("Targeting (Auto)")]
     public bool autoShootEnabled = true;
     public float targetRange = 32f;
-    [Range(0f,1f)] public float minDotToShoot = 0.80f;
+    [Range(0f, 1f)] public float minDotToShoot = 0.80f;
     public float retargetInterval = 0.15f;
     public LayerMask enemyLayer;
     public LayerMask lineOfSightMask = ~0;
@@ -66,27 +66,52 @@ public class GrenadeLauncherController : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Owner-Kontext für Multiplikatoren
         _ownerMovement = GetComponentInParent<PlayerMovement>();
         _upgrades = GetComponentInParent<PlayerUpgrades>();
 
         _weapons = GetComponentInParent<PlayerWeapons>();
         if (_weapons != null)
         {
-            _runtime = _weapons.GrenadeRuntime;
             _weapons.RuntimesRebuilt += OnRuntimesRebuilt;
+            OnRuntimesRebuilt(); // <- sofortiger Sync: setzt _runtime und enabled
+        }
+        else
+        {
+            // Optional: Editor/Offline-Fallback (nur wenn kein Netcode läuft)
+            var nm = NetworkManager.Singleton;
+            bool netInactive = (nm == null || !nm.IsListening);
+            if (netInactive && grenadeDef != null)
+            {
+                _runtime = new WeaponRuntime(grenadeDef, 1);
+                enabled = true;
+            }
+            else
+            {
+                enabled = (_runtime != null);
+            }
         }
     }
+
+    private void OnDisable()
+    {
+        _currentTarget = null;
+        StopAllCoroutines();
+    }
+
 
     private void OnDestroy()
     {
         if (_weapons != null) _weapons.RuntimesRebuilt -= OnRuntimesRebuilt;
     }
-    
+
     private void OnRuntimesRebuilt()
     {
         _runtime = _weapons != null ? _weapons.GrenadeRuntime : null;
+        if (_runtime != null && _runtime.def != null && _runtime.def.rangeMeters > 0f)
+            targetRange = _runtime.def.rangeMeters;
+        enabled = (_runtime != null);
     }
+
 
     // === replace your cooldown source with runtime ===
     private float NextCooldownRuntime()
@@ -103,10 +128,12 @@ public class GrenadeLauncherController : NetworkBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, NetworkRotation.Value, Time.deltaTime * rotationLerpRate);
             return;
         }
+        if (_runtime == null) { _currentTarget = null; return; }  // Gate
 
         if (autoShootEnabled) { AutoAim(); AutoFire(); }
         else { ManualAimWithMouse(); ManualFire(); }
     }
+
 
     // ================== AIM ==================
 
@@ -130,7 +157,7 @@ public class GrenadeLauncherController : NetworkBehaviour
     {
         // roll crit at shot-time (per salvo), then per-grenade ±5% variance stays as you had
         float dmg = (_runtime != null)
-            ? _runtime.ComputeDamageNonPierced(applyCrit:true)
+            ? _runtime.ComputeDamageNonPierced(applyCrit: true)
             : Random.Range(30f, 55f); // fallback to old average range if runtime missing
 
         float rollMul = GetRollDamageMultiplier();
@@ -305,13 +332,15 @@ public class GrenadeLauncherController : NetworkBehaviour
         Vector3 spawnPos, Vector3 initialVelocity, NetworkObjectReference targetRef,
         int count, float interval, float clientCooldown, float damageFromClient, float sizeMul)
     {
+        if (_runtime == null) return;
+
         float now = Time.time;
 
         if (!_lastSalvoFire.TryGetValue(OwnerClientId, out var last)) last = -9999f;
 
-        float baseCd = GetServerBaseCooldown();                    // CHANGED
-        float minCd  = Mathf.Max(0.01f, baseCd * (1f - fireRateJitterPct));
-        float maxCd  = Mathf.Max(0.01f, baseCd * (1f + fireRateJitterPct));
+        float baseCd = GetServerBaseCooldown();
+        float minCd = Mathf.Max(0.01f, baseCd * (1f - fireRateJitterPct));
+        float maxCd = Mathf.Max(0.01f, baseCd * (1f + fireRateJitterPct));
 
         if (clientCooldown < minCd || clientCooldown > maxCd) return;
         if (now - last < clientCooldown) return;
@@ -389,7 +418,7 @@ public class GrenadeLauncherController : NetworkBehaviour
             if (no == null || enemy == null) continue;
 
             Vector3 to = c.transform.position - origin;
-            float dist = to.magnitude; 
+            float dist = to.magnitude;
             if (dist < 0.2f) continue;
 
             float dot = Vector3.Dot(transform.forward, to.normalized);

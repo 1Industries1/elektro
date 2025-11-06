@@ -8,8 +8,9 @@ git commit -m "feat: Truhen-Prefab hinzugefügt, Loot-UI"
 git push
 
 # Optional: Meilenstein-Tag setzen und pushen
-git tag -a v0.1.1 -m "erster Playtest mit neuer Truhe"
-git push origin v0.1.1
+ERHÖHEN UM 1:
+git tag -a v0.1.2 -m "Playtest 2"
+git push origin v0.1.2
 
 
 

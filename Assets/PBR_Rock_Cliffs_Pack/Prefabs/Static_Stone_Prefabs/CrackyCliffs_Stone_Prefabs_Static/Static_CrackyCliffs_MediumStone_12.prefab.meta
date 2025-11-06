@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 6e68c7c4d686b364aa51ec81616aac39
+timeCreated: 1511550245
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 105772
+  packageName: PBR Rock Cliffs Pack
+  packageVersion: 1.0
+  assetPath: Assets/PBR_Rock_Cliffs_Pack/Prefabs/Static_Stone_Prefabs/CrackyCliffs_Stone_Prefabs_Static/Static_CrackyCliffs_MediumStone_12.prefab
+  uploadId: 215101

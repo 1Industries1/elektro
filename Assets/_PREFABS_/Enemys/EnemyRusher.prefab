@@ -1151,7 +1151,7 @@ MonoBehaviour:
   minMoveSpeed: 10
   maxMoveSpeed: 16
   rotationSpeed: 10
-  baseHealth: 25
+  baseHealth: 16
   dmgNums: {fileID: 8409553502743980558}
 --- !u!114 &8409553502743980558
 MonoBehaviour:

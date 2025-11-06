@@ -14,14 +14,32 @@ public class PlayerHUD : MonoBehaviour
     [SerializeField] private Slider xpSlider;
     [SerializeField] private TextMeshProUGUI xpText;
 
+
+    // =================== GOLD OVERLAY ===================
+    [Header("Gold Overlay")]
+    [SerializeField] private TextMeshProUGUI goldText;         // "Gold: 123"
+    [SerializeField] private TextMeshProUGUI goldPopupText;    // "+5 Gold"
+    [SerializeField] private CanvasGroup goldPopupGroup;       // optional; sonst wird alpha am Text gesetzt
+    [SerializeField] private float goldFlashDuration = 0.9f;
+    [SerializeField] private AnimationCurve goldEase = null;   // wenn null → linear
+    [SerializeField] private float goldPopupScaleFrom = 1.2f;
+    [SerializeField] private float goldPopupScaleTo = 1.0f;
+
+    // Aggregations-State fürs Gold-Popup
+    private int _goldPendingDelta;
+    private int _goldAggDelta;
+    private float _goldT;
+    private Coroutine _goldCo;
+
+
     [Header("Feedback")]
     [SerializeField] private Image damageFlash;             // red full-screen flash
     [SerializeField] private float flashDuration = 0.15f;
-    [SerializeField] private AnimationCurve flashCurve = AnimationCurve.EaseInOut(0,1,1,0);
+    [SerializeField] private AnimationCurve flashCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
     [SerializeField] private Image healFlash;               // optional green flash (assign in Inspector)
     [SerializeField] private float healFlashDuration = 0.18f;
-    [SerializeField] private AnimationCurve healFlashCurve = AnimationCurve.EaseInOut(0,1,1,0);
+    [SerializeField] private AnimationCurve healFlashCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
     [SerializeField] private RectTransform hitIndicator;    // arrow at center
     [SerializeField] private float hitIndicatorTime = 0.6f;
@@ -50,8 +68,24 @@ public class PlayerHUD : MonoBehaviour
             cg.alpha = 0f;
             hitIndicator.gameObject.SetActive(false);
         }
+
+        // GOLD-UI initial verbergen
+        if (goldPopupText) goldPopupText.gameObject.SetActive(false);
+        if (goldPopupGroup) goldPopupGroup.alpha = 0f;
+        else if (goldPopupText) goldPopupText.alpha = 0f;
     }
-    
+
+    private void OnEnable()
+    {
+        // GOLD: auf Inventar-Events hören (nur Owner-Client feuert)
+        PlayerInventory.OnLocalResourceChanged += HandleResourceChanged_LocalOwnerOnly;
+    }
+
+    private void OnDisable()
+    {
+        PlayerInventory.OnLocalResourceChanged -= HandleResourceChanged_LocalOwnerOnly;
+    }
+
     // =================== XP ===================
 
     public void SetXP(int level, int cur, int next)
@@ -85,7 +119,73 @@ public class PlayerHUD : MonoBehaviour
             // Nur HP anzeigen (ohne Prozent / Status)
             batteryText.text = $"{hp:0}/{max:0} HP";
         }
-}
+    }
+
+    // =================== GOLD HANDLING (NEU) ===================
+
+    private void HandleResourceChanged_LocalOwnerOnly(ResourceType type, int delta, int newTotal)
+    {
+        if (type != ResourceType.Gold) return;
+
+        // 1) Zahl
+        if (goldText) goldText.text = $"Gold: {newTotal}";
+
+        // 2) Popup
+        if (delta != 0 && goldPopupText)
+            GoldFlash(delta);
+    }
+
+    private void GoldFlash(int delta)
+    {
+        _goldPendingDelta += delta;
+        if (_goldCo == null) _goldCo = StartCoroutine(CoGoldFlash());
+        else _goldT = 0f; // Re-Pop bei schneller Folge
+    }
+
+    private IEnumerator CoGoldFlash()
+    {
+        var tr = goldPopupText.rectTransform;
+        goldPopupText.gameObject.SetActive(true);
+
+        float dur = Mathf.Max(0.05f, goldFlashDuration);
+        _goldT = 0f;
+        _goldAggDelta = 0;
+
+        while (_goldT < dur || _goldPendingDelta != 0)
+        {
+            if (_goldPendingDelta != 0)
+            {
+                _goldAggDelta += _goldPendingDelta;
+                _goldPendingDelta = 0;
+
+                int show = _goldAggDelta;
+                goldPopupText.text = show > 0 ? $"+{show} Gold" : $"{show} Gold";
+
+                // frischer Impuls → etwas „jünger“ erscheinen
+                _goldT = Mathf.Min(_goldT, dur * 0.35f);
+            }
+
+            float u = Mathf.Clamp01(_goldT / dur);
+            float k = (goldEase != null) ? goldEase.Evaluate(u) : u;
+
+            if (goldPopupGroup) goldPopupGroup.alpha = 1f - k;
+            else goldPopupText.alpha = 1f - k;
+
+            float s = Mathf.Lerp(goldPopupScaleFrom, goldPopupScaleTo, k);
+            tr.localScale = Vector3.one * s;
+
+            _goldT += Time.deltaTime;
+            yield return null;
+        }
+
+        if (goldPopupGroup) goldPopupGroup.alpha = 0f;
+        else goldPopupText.alpha = 0f;
+
+        goldPopupText.gameObject.SetActive(false);
+        _goldAggDelta = 0;
+        _goldCo = null;
+    }
+
 
     // =================== FEEDBACK ===================
 

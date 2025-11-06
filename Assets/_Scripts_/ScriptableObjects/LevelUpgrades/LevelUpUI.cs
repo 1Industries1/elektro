@@ -193,23 +193,24 @@ public class LevelUpUI : MonoBehaviour
     // -------------------- Public API --------------------
     public void Show(int[] choices, bool lockInput = true)
     {
-        _choices = choices;
-        _picked = false;
-        _open = true;
-        _previewType = null;
+        _choices       = choices;
+        _picked        = false;
+        _open          = true;
+        _previewType   = null;
         _previewStacks = null;
-        FindLocalUpgradesCached();
 
-        if (title) title.text = "UPGRADES";
+        var up = FindLocalUpgradesCached();
+
+        if (title)    title.text    = "UPGRADES";
         if (subtitle) subtitle.text = "Choose 1 of 3 upgrades";
 
         if (HasThreeChoices)
         {
-            Func<string, string> L = null; // oder dein Localization-Wrapper
+            Func<string, string> L = null; // dein Localization-Wrapper, falls vorhanden
 
-            choiceA.Bind(choices[0], UpgradeDescription(choices[0]), OnPick, L);
-            choiceB.Bind(choices[1], UpgradeDescription(choices[1]), OnPick, L);
-            choiceC.Bind(choices[2], UpgradeDescription(choices[2]), OnPick, L);
+            choiceA.Bind(choices[0], UpgradeDescription(choices[0]), OnPick, up, L);
+            choiceB.Bind(choices[1], UpgradeDescription(choices[1]), OnPick, up, L);
+            choiceC.Bind(choices[2], UpgradeDescription(choices[2]), OnPick, up, L);
 
             choiceA.SetPreviewHook(this);
             choiceB.SetPreviewHook(this);
@@ -246,10 +247,21 @@ public class LevelUpUI : MonoBehaviour
     // -------------------- Preview-API (von Choice-Items aufgerufen) --------------------
     public void ShowPreviewForChoice(int choiceId)
     {
-        _previewType = UpgradeRoller.ResolveFromChoice(choiceId);
-        _previewStacks = UpgradeRoller.StacksForChoice(choiceId);
+        if (UpgradeRoller.IsMasteryChoice(choiceId))
+        {
+            // keine Stat-Preview für Masteries
+            _previewType   = null;
+            _previewStacks = null;
+        }
+        else
+        {
+            _previewType   = UpgradeRoller.ResolveFromChoice(choiceId);
+            _previewStacks = UpgradeRoller.StacksForChoice(choiceId);
+        }
+
         RefreshStats();
     }
+
 
     public void ClearPreview()
     {
@@ -287,30 +299,27 @@ public class LevelUpUI : MonoBehaviour
 
         if (sfxSource && sfxPick) sfxSource.PlayOneShot(sfxPick);
 
-        var type = UpgradeRoller.ResolveFromChoice(encodedId);
-        int stacks = UpgradeRoller.StacksForChoice(encodedId);
-
         if (choiceA) choiceA.SetInteractable(false);
         if (choiceB) choiceB.SetInteractable(false);
         if (choiceC) choiceC.SetInteractable(false);
 
-        // Wichtig: Preview sofort abschalten, damit keine "Next"-Werte mehr angezeigt werden.
-        _previewType = null;
+        _previewType   = null;
         _previewStacks = null;
 
         var xp = FindLocalPlayerXP();
         if (xp != null)
         {
-            // TODO: Deine PlayerXP sollte eine Methode annehmen, die encodedId (oder type + stacks) zum Server sendet.
+            // PlayerXP: encodedId zum Server schicken (siehe unten)
             xp.ChooseUpgradeServerRpc(encodedId);
-            RefreshStats();
         }
         else
         {
             var up = FindLocalUpgrades();
-            if (up != null) up.GrantUpgradeServerRpc(type, stacks);
-            Hide(true);
+            if (up != null) up.GrantEncodedUpgradeServerRpc(encodedId);
         }
+
+        RefreshStats();
+        Hide(true);
     }
 
     private PlayerXP FindLocalPlayerXP()
@@ -393,8 +402,18 @@ public class LevelUpUI : MonoBehaviour
             int max = _upgrades.GetMaxLevel(UpgradeType.MaxHP);
             float curr = _upgrades.GetCurrentValue(UpgradeType.MaxHP);
             FillBasic(UpgradeType.MaxHP, "Max HP", curr, lvl, max,
-                      l => _upgrades.GetCurrentValueAtLevel(UpgradeType.MaxHP, l),
-                      v => FormatValue(UpgradeType.MaxHP, v));
+                    l => _upgrades.GetCurrentValueAtLevel(UpgradeType.MaxHP, l),
+                    v => FormatValue(UpgradeType.MaxHP, v));
+        }
+
+        // --- Armor (Flat Damage Reduction) ---
+        {
+            int lvl = _upgrades.GetLevel(UpgradeType.Armor);
+            int max = _upgrades.GetMaxLevel(UpgradeType.Armor);
+            float curr = _upgrades.GetCurrentValue(UpgradeType.Armor);
+            FillBasic(UpgradeType.Armor, "Armor", curr, lvl, max,
+                    l => _upgrades.GetCurrentValueAtLevel(UpgradeType.Armor, l),
+                    v => FormatValue(UpgradeType.Armor, v));
         }
 
 
@@ -552,6 +571,7 @@ public class LevelUpUI : MonoBehaviour
         switch (type)
         {
             case UpgradeType.MaxHP: return $"{v:0.#} HP";
+            case UpgradeType.Armor:     return $"{v:0.#} armor";
             case UpgradeType.Magnet: return $"{v:0.00}×";
             case UpgradeType.MoveSpeed: return $"{v:0.##} m/s";
             default: return v.ToString("0.##");
@@ -565,6 +585,7 @@ public class LevelUpUI : MonoBehaviour
         if (_upgrades == null) return;
 
         _upgrades.MaxHPLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.ArmorLevel.OnValueChanged     += OnAnyStatChanged;
         _upgrades.MagnetLevel.OnValueChanged += OnAnyStatChanged;
         _upgrades.MoveSpeedLevel.OnValueChanged += OnAnyStatChanged;
         _statsSubscribed = true;
@@ -575,6 +596,7 @@ public class LevelUpUI : MonoBehaviour
         if (!_statsSubscribed || _upgrades == null) return;
 
         _upgrades.MaxHPLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.ArmorLevel.OnValueChanged     -= OnAnyStatChanged;
         _upgrades.MagnetLevel.OnValueChanged -= OnAnyStatChanged;
         _upgrades.MoveSpeedLevel.OnValueChanged -= OnAnyStatChanged;
         _statsSubscribed = false;
@@ -638,22 +660,33 @@ public class LevelUpUI : MonoBehaviour
     // -------------------- Texte --------------------
     private string UpgradeDescription(int encodedId)
     {
-        // Stelle sicher, dass wir _upgrades haben
-        var up = FindLocalUpgradesCached();
+        var up    = FindLocalUpgradesCached();
+        int baseId = ChoiceCodec.BaseId(encodedId);
 
-        var type = UpgradeRoller.ResolveFromChoice(encodedId);
-        int stacks = UpgradeRoller.StacksForChoice(encodedId);
-        string tag = stacks switch { 1 => "(Common)", 2 => "(Rare)", 3 => "(Epic)", 4 => "(Legendary)", _ => "" };
+        // Mastery?
+        if (UpgradeRoller.IsMasteryBaseId(baseId) && up != null &&
+            UpgradeRoller.TryResolveMasteryBaseId(up, baseId, out var mDef))
+        {
+            var rarity = ChoiceCodec.GetRarity(encodedId);
+            int stacks = UpgradeRoller.StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
+            return $"{mDef.displayName} (+{stacks} Tier)";
+        }
 
-        // Dynamisch aus den tatsächlich eingestellten Werten
+        // Stat-Upgrade
+        var type       = UpgradeRoller.Resolve(baseId);
+        int stacksStat = UpgradeRoller.StacksForChoice(encodedId);
+
         return type switch
         {
-            UpgradeType.MaxHP => $"+{up.maxHPPerLevel * stacks:0.#} max HP",
-            UpgradeType.Magnet => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacks):0.#}% magnet range",
-            UpgradeType.MoveSpeed => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel, stacks):0.#}% move speed",
-            _ => $"Upgrade"
+            UpgradeType.MaxHP     => $"+{up.maxHPPerLevel        * stacksStat:0.#} max HP",
+            UpgradeType.Armor     => $"+{up.armorFlatPerLevel    * stacksStat:0.#} armor",
+            UpgradeType.Magnet    => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacksStat):0.#}% magnet range",
+            UpgradeType.MoveSpeed => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel,   stacksStat):0.#}% move speed",
+            _                     => "Upgrade"
         };
     }
+
+
 
     // Zeit/Schuss-Multiplikator → Feuerraten-Zuwachs (in %)
     private static float PctFromTimeMult(float timeMultPerLevel, int stacks)

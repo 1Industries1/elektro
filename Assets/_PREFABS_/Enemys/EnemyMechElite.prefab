@@ -2115,27 +2115,34 @@ MonoBehaviour:
   losMask:
     serializedVersion: 2
     m_Bits: 512
-  moveSpeed: 15
-  accel: 6
+  moveSpeed: 11
+  accel: 5
   rotationSpeed: 8
   stopDistance: 60
   resumeDistance: 80
   externalPullMaxSpeed: 12
   strafeChangeEvery: 4
-  strafeIntensity: 0.3
+  strafeIntensity: 0.5
   cannonPivot: {fileID: 6804363615348718046}
   muzzle: {fileID: 6804363615348718046}
   pitchLimits: {x: -15, y: 30}
   pitchSpeed: 8
   targetHeightOffset: 0.2
   heavyBulletPrefab: {fileID: 4211810131274587892, guid: f28be79baba9aa6438566ec1e6e7f6a5, type: 3}
-  fireRange: 135
+  fireRange: 110
   chargeTime: 1
-  fireCooldown: 1.5
+  fireCooldown: 1.8
   chargeFx: {fileID: 8988589322174755268, guid: 337f94315e250994a9ed0c362c91f466, type: 3}
   audioSource: {fileID: 6324071514731664225}
   chargeSfx: {fileID: 0}
   fireSfx: {fileID: 8300000, guid: a52a90cdb54d664479c4ae0f631f73af, type: 3}
+  flameExplosionPrefab: {fileID: 8378648546881499446, guid: 867c572a5be680d42a042d2349f10143, type: 3}
+  flameMinRadiusAroundPlayer: 5
+  flameMaxRadiusAroundPlayer: 12
+  flameCooldown: 2.5
+  flameSpawnHeight: 10
+  shotsPerCycleRange: {x: 1, y: 3}
+  flamesPerCycleRange: {x: 1, y: 2}
   aimLaser: {fileID: 6433228783000404850}
   splashTelegraphPrefab: {fileID: 0}
   telegraphLockFraction: 0.8
@@ -2151,7 +2158,7 @@ MonoBehaviour:
   stompCooldown: 5
   stompTelegraphPrefab: {fileID: 8626799719864895498, guid: 7170f8760bbe7fa4397003d7cbfa4dd7, type: 3}
   stompFx: {fileID: 0}
-  baseHealth: 2000
+  baseHealth: 1200
   deathDespawnDelay: 3
   dmgNums: {fileID: 1063182142841119009}
   effects: {fileID: 2884406912444404820}

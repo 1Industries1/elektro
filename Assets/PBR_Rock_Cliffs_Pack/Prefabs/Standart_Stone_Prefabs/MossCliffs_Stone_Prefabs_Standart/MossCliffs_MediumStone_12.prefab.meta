@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: d2c31e02d20d0ec4b9d92e33b9054341
+timeCreated: 1511549089
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 105772
+  packageName: PBR Rock Cliffs Pack
+  packageVersion: 1.0
+  assetPath: Assets/PBR_Rock_Cliffs_Pack/Prefabs/Standart_Stone_Prefabs/MossCliffs_Stone_Prefabs_Standart/MossCliffs_MediumStone_12.prefab
+  uploadId: 215101

@@ -12,7 +12,7 @@ using TMPro;
 public class TreasureChest : NetworkBehaviour
 {
     [Header("Kosten")]
-    public int goldCost = 30; // Preis in Gold
+    public int baseGoldCost = 30; // Startpreis in Gold
 
     [Header("References")]
     [SerializeField] private Animator animator;
@@ -21,10 +21,16 @@ public class TreasureChest : NetworkBehaviour
     [Header("Interact")]
     [SerializeField] private string playerTag = "Player";
     [SerializeField] private KeyCode interactKey = KeyCode.E;
-    [Tooltip("Optionaler lokaler Prompt (z. B. \"[E] Öffnen (30)\")")]
+    [Tooltip("lokaler Prompt (z. B. \"[E] Öffnen (30)\")")]
     [SerializeField] private GameObject promptUI;
     [SerializeField] private TMP_Text promptText;
     [SerializeField] private float promptYOffset = 1.2f;
+
+    [Header("Respawn")]
+    [SerializeField] private bool respawnEnabled = true;
+    [SerializeField] private float respawnDelayMin = 75f;
+    [SerializeField] private float respawnDelayMax = 105f;
+    [SerializeField] private bool hideWhileCooldown = true;
 
     [Header("Reuse")]
     [Tooltip("Kann die Truhe nur einmal geöffnet werden?")]
@@ -39,10 +45,31 @@ public class TreasureChest : NetworkBehaviour
     [Header("Debug")]
     [SerializeField] private bool debugLogs = true;
 
+
+    public enum ChestLifeState { Ready, CoolingDown }
+
+    public NetworkVariable<ChestLifeState> LifeState = new(
+        ChestLifeState.Ready,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    // Cache für Sicht/Interaktion
+    private Collider[] _allColliders;
+    private Renderer[] _allRenderers;
+
+
     // Öffnungs-Status (Server-Quelle der Wahrheit)
     public NetworkVariable<bool> Opened = new(false,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
+
+    // Netzwerk-synchroner aktueller Preis
+    public NetworkVariable<int> CurrentGoldCost = new NetworkVariable<int>(
+        30,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
 
     // nur Server: Cooldown für Reopen (wenn singleUse = false)
     private float _serverNextOpenTime = 0f;
@@ -91,6 +118,7 @@ public class TreasureChest : NetworkBehaviour
     public TreasureChestDropProfile[] dropProfiles;
 
     public static int totalPickups = 0;
+    private static int s_GlobalOpenedChestCount = 0;
     private int currentDropProfileIndex = 0;
 
     // Für Preview-Lock (serverseitig vorgeplante Upgrades)
@@ -127,7 +155,10 @@ public class TreasureChest : NetworkBehaviour
             audioSource = gameObject.AddComponent<AudioSource>();
 
         if (promptUI) promptUI.SetActive(false);
-        if (promptText) promptText.text = $"[E] {goldCost} Gold";
+        if (promptText) promptText.text = $"[E] {baseGoldCost} Gold";
+
+        _allColliders = GetComponentsInChildren<Collider>(true);
+        _allRenderers = GetComponentsInChildren<Renderer>(true);
 
         Log("Awake: setup done.");
     }
@@ -142,7 +173,30 @@ public class TreasureChest : NetworkBehaviour
     {
         base.OnNetworkSpawn();
         Log($"OnNetworkSpawn: IsServer={IsServer}, IsClient={IsClient}, IsSpawned={IsSpawned}, Opened={Opened.Value}");
+
+        if (IsServer)
+        {
+            // Bei Spawn sicherstellen, dass der aktuelle Preis korrekt gesetzt ist
+            CurrentGoldCost.Value = ComputeCurrentPrice();
+        }
+
+        // Client: auf Preisänderungen reagieren (HUD/Prompt aktualisieren)
+        CurrentGoldCost.OnValueChanged += OnCostChanged;
+
         TryPushPriceToLocalHud();
+        UpdatePromptText(CurrentGoldCost.Value);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+        CurrentGoldCost.OnValueChanged -= OnCostChanged;
+    }
+
+    private void OnCostChanged(int prev, int cur)
+    {
+        TryPushPriceToLocalHud();
+        UpdatePromptText(cur);
     }
 
     private void Update()
@@ -174,7 +228,7 @@ public class TreasureChest : NetworkBehaviour
             _nearbyPlayerClient = other.transform;
 
             if (promptUI) promptUI.SetActive(true);
-            if (promptText) promptText.text = $"[E] {goldCost} Gold";
+            if (promptText) promptText.text = $"[E] {CurrentGoldCost.Value} Gold";
             Log($"Client: Local player entered trigger (player NO #{noClient.NetworkObjectId}).");
         }
 
@@ -206,16 +260,47 @@ public class TreasureChest : NetworkBehaviour
         }
     }
 
+
+    // Berechnet den globalen aktuellen Preis anhand des Zählers
+    private int ComputeCurrentPrice()
+    {
+        // Preis = base * 1.5^(Anzahl geöffneter Kisten)
+        double price = baseGoldCost * System.Math.Pow(1.5, s_GlobalOpenedChestCount);
+        // Rundung auf ganze Goldstücke
+        return Mathf.Max(1, Mathf.RoundToInt((float)price));
+    }
+
+    // Server: neuen Preis an alle Chests pushen
+    private static void Server_UpdateAllChestPrices()
+    {
+        if (!NetworkManager.Singleton || !NetworkManager.Singleton.IsServer) return;
+
+        var all = GameObject.FindObjectsOfType<TreasureChest>(true);
+        foreach (var chest in all)
+        {
+            if (chest != null && chest.IsSpawned && chest.IsServer)
+            {
+                chest.CurrentGoldCost.Value = chest.ComputeCurrentPrice();
+            }
+        }
+    }
+
+    // UI-Helper
+    private void UpdatePromptText(int price)
+    {
+        if (promptText) promptText.text = $"[E] {price} Gold";
+    }
+
+
+
     // Clientseitige Block-Sicht (Opened kommt vom Server)
     private bool IsBlockedClientView()
     {
-        if (singleUse && Opened.Value)
-        {
-            Log("Client: Chest is blocked (already opened).");
-            return true;
-        }
+        if (singleUse && Opened.Value) return true;
+        if (LifeState.Value == ChestLifeState.CoolingDown) return true;
         return false;
     }
+
 
     private void SendOpenRequestToServer()
     {
@@ -250,6 +335,7 @@ public class TreasureChest : NetworkBehaviour
         Log("Client: Calling RequestOpenServerRpc...");
         RequestOpenServerRpc(playerRef);
     }
+
 
     // ===== ServerRpc: Öffnen anfordern (Trigger-Mitgliedschaft als Bedingung) =====
     [ServerRpc(RequireOwnership = false)]
@@ -286,29 +372,44 @@ public class TreasureChest : NetworkBehaviour
         var inv = playerNo.GetComponent<PlayerInventory>() ?? playerNo.GetComponentInChildren<PlayerInventory>(true);
         if (inv == null) { Warn("Server: PlayerInventory missing → abort."); return; }
 
+        // --- NEU: aktuellen (globalen) Preis verwenden
+        int price = CurrentGoldCost.Value;
+
         int curGold = inv.GetAmount(ResourceType.Gold);
-        Log($"Server: Player gold {curGold} / price {goldCost}.");
-        if (!inv.Server_Has(ResourceType.Gold, goldCost))
+        Log($"Server: Player gold {curGold} / price {price}.");
+        if (!inv.Server_Has(ResourceType.Gold, price))
         {
             var toOwner = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } } };
-            NotEnoughGoldClientRpc(goldCost, toOwner);
+            NotEnoughGoldClientRpc(price, toOwner);
             Log("Server: Not enough gold → notified owner.");
             return;
         }
 
         // (D) Abbuchen
-        bool ok = inv.Server_TryConsume(ResourceType.Gold, goldCost);
+        bool ok = inv.Server_TryConsume(ResourceType.Gold, price);
         Log($"Server: Consume gold result = {ok}.");
+        if (!ok) return; // failsafe
 
         // (E) Öffnen status/cooldown
         if (singleUse) Opened.Value = true;
         _serverNextOpenTime = Time.time + reopenCooldown;
         Log($"Server: Opened={Opened.Value}, next reopen @ {_serverNextOpenTime:F2}.");
 
+        // Globalen Count erhöhen + Preise updaten
+        s_GlobalOpenedChestCount++;
+        Log($"Server: Global opened count = {s_GlobalOpenedChestCount}.");
+        Server_UpdateAllChestPrices();
+
+        if (respawnEnabled)
+        {
+            StartCooldownServer();
+        }
+
         // (F) Drop-Profil locken
         _lockedProfile = GetNextDropProfile();
         _lockedProfileIndex = currentDropProfileIndex;
         Log($"Server: Locked profile index = {_lockedProfileIndex}.");
+
 
         // (G) Preview-Upgrades planen (optional)
         _lockedRewardWeaponIds.Clear();
@@ -336,6 +437,68 @@ public class TreasureChest : NetworkBehaviour
         Log($"Server: Starting client sequence (profile={_lockedProfileIndex}, delay={revealDelay:F2}).");
         ClientStartOpenSequenceClientRpc(revealDelay, _lockedProfileIndex, toSender);
     }
+
+    private void StartCooldownServer()
+    {
+        if (!IsServer) return;
+
+        LifeState.Value = ChestLifeState.CoolingDown;
+
+        if (hideWhileCooldown)
+            SetChestVisibilityServer(false); // Mesh + Collider aus
+
+        float delay = Random.Range(respawnDelayMin, respawnDelayMax);
+        StartCoroutine(CooldownRoutine(delay));
+    }
+
+    private IEnumerator CooldownRoutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        // Wenn singleUse true, bleibt sie dauerhaft offen (kein Respawn)
+        if (singleUse)
+            yield break;
+
+        // Reset auf "bereit"
+        Opened.Value = false;
+        LifeState.Value = ChestLifeState.Ready;
+
+        if (hideWhileCooldown)
+            SetChestVisibilityServer(true);
+
+        // Optionales „Reaktiviert“-Feedback
+        ReactivateVfxClientRpc();
+
+        // Prompt/HUD aktualisieren (Preis könnte inzwischen gestiegen sein)
+        UpdatePromptText(CurrentGoldCost.Value);
+    }
+
+    private void SetChestVisibilityServer(bool visible)
+    {
+        if (!IsServer) return;
+        SetChestVisibilityClientRpc(visible);
+    }
+
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void SetChestVisibilityClientRpc(bool visible)
+    {
+        if (_allColliders != null)
+            foreach (var c in _allColliders) if (c) c.enabled = visible;
+
+        if (promptUI) promptUI.SetActive(false); // sicherheitshalber aus
+
+        if (_allRenderers != null)
+            foreach (var r in _allRenderers) if (r) r.enabled = visible;
+    }
+
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void ReactivateVfxClientRpc()
+    {
+        // Optional: Re-Spawn FX/Anim triggern
+        // z.B.: if (animator) animator.SetTrigger("Reset");
+    }
+
+
 
     // ===== ClientRpc: Start der Open-Sequenz (VFX/UI) =====
     [ClientRpc(Delivery = RpcDelivery.Reliable)]
@@ -613,15 +776,15 @@ public class TreasureChest : NetworkBehaviour
 
     private void TryPushPriceToLocalHud()
     {
-        // Optional: HUD des lokalen Players updaten (Preis neben Gold-Kreis)
         var localPlayer = NetworkManager.Singleton?.LocalClient?.PlayerObject;
         if (!localPlayer) return;
 
         var hud = localPlayer.GetComponentInChildren<WorldSpaceResourceHUD>(true);
         if (hud != null)
         {
-            hud.SetChestPrice(goldCost);
-            Log($"Client: HUD price set to {goldCost}.");
+            hud.SetChestPrice(CurrentGoldCost.Value);
+            Log($"Client: HUD price set to {CurrentGoldCost.Value}.");
         }
     }
+
 }
