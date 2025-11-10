@@ -227,6 +227,13 @@ public class EnemySpawner : NetworkBehaviour
     }
 
     // ================== Elite – Steuerung ==================
+
+    private GameObject PickRandom(List<GameObject> list)
+    {
+        if (list == null || list.Count == 0) return null;
+        return list[Random.Range(0, list.Count)];
+    }
+
     private IEnumerator EliteLoopForCurrentWave()
     {
         if (CurrentWave.Value >= eliteStartWave && Random.value <= eliteChancePerWave)
@@ -242,11 +249,16 @@ public class EnemySpawner : NetworkBehaviour
             if (target)
             {
                 int count = Mathf.Max(1, Random.Range(eliteCountRange.x, eliteCountRange.y + 1));
-                SpawnGroup(PickWaveIndexed(elitePrefabs), count, target, ring.RandomPoint(target.position), ring,
-                           clusterRadius: 0f, isElite: true, eliteMul: eliteHealthMultiplier);
+
+                // HIER: statt PickWaveIndexed → zufälliger Elite
+                var elitePrefab = PickRandom(elitePrefabs);
+
+                SpawnGroup(elitePrefab, count, target, ring.RandomPoint(target.position), ring,
+                        clusterRadius: 0f, isElite: true, eliteMul: eliteHealthMultiplier);
             }
         }
     }
+
 
     // Öffentliche API
     public void InjectEliteNow(int count = 1, Transform preferredTarget = null)
@@ -259,9 +271,12 @@ public class EnemySpawner : NetworkBehaviour
         var ring = new Ring(eliteRingMin > 0f ? eliteRingMin : spawnRingMin,
                             eliteRingMax > 0f ? eliteRingMax : spawnRingMax);
 
-        SpawnGroup(PickWaveIndexed(elitePrefabs), Mathf.Max(1, count), target, ring.RandomPoint(target.position), ring,
-                   clusterRadius: 0f, isElite: true, eliteMul: eliteHealthMultiplier);
+        var elitePrefab = PickRandom(elitePrefabs);
+
+        SpawnGroup(elitePrefab, Mathf.Max(1, count), target, ring.RandomPoint(target.position), ring,
+                clusterRadius: 0f, isElite: true, eliteMul: eliteHealthMultiplier);
     }
+
 
     // ================== Horde Loop (Baseline) ==================
     private IEnumerator HordeLoop()

@@ -19,6 +19,7 @@ public sealed class WeaponRuntime {
     public float critChance;
     public float critMult;
     public int salvoCount;
+    public float rangeMeters;
 
     // Augments
     public bool hasImpactExplosionAug;
@@ -52,6 +53,7 @@ public sealed class WeaponRuntime {
         critMult        = def.baseCritMult;
         hasImpactExplosionAug = false;
         salvoCount      = Mathf.Max(1, def.baseSalvoCount);
+        rangeMeters     = def.rangeMeters;
 
         // Steps bis Level anwenden (Level 1 = 0 Steps)
         int stepsToApply = Mathf.Min(def.steps?.Length ?? 0, Mathf.Max(0, level - 1));

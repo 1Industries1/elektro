@@ -6,14 +6,36 @@ using UnityEngine;
 
 public static class UpgradeRoller
 {
+    // Wie "oft" ein Eintrag in den Beutel gelegt wird /// 1 ist sehr selten und 3 ist oft
+    public const int STAT_WEIGHT    = 3;
+    public const int MASTERY_WEIGHT = 2;
+    public const int WEAPON_WEIGHT  = 1;   // Waffen seltener dann 1
+
+    
     // ======== Basis-IDs (stabil) für Stats ========
     public const int MaxHP     = 4;
     public const int Armor     = 5;
     public const int Magnet    = 7;
     public const int MoveSpeed = 8;
+    public const int Stamina   = 9;
+
+    // ======== Basis-IDs (stabil) für Waffen ========
+    public const int Weapon_Cannon    = 20;
+    public const int Weapon_Blaster   = 21;
+    public const int Weapon_Grenade   = 22;
+    public const int Weapon_Lightning = 23;
+
+    // Neu: Waffenpool (IDs, nicht ScriptableObjects)
+    private static readonly int[] WeaponPool = 
+    { 
+        Weapon_Cannon, 
+        Weapon_Blaster, 
+        Weapon_Grenade, 
+        Weapon_Lightning 
+    };
 
     // Alle passiven Stat-Upgrades
-    private static readonly int[] StatPool = { MaxHP, Armor, Magnet, MoveSpeed };
+    private static readonly int[] StatPool = { MaxHP, Armor, Magnet, MoveSpeed, Stamina };
 
     // ======== Mastery-ID-Bereich ========
     // Wir mappen masteryPool[i] → baseId = MASTERIES_OFFSET + i
@@ -21,6 +43,30 @@ public static class UpgradeRoller
 
     public static bool IsMasteryBaseId(int baseId) => baseId >= MASTERIES_OFFSET;
     public static bool IsMasteryChoice(int choiceId) => IsMasteryBaseId(ChoiceCodec.BaseId(choiceId));
+
+    public static bool IsWeaponBaseId(int baseId)
+        => baseId >= Weapon_Cannon && baseId <= Weapon_Lightning;
+
+
+    public static WeaponDefinition ResolveWeaponDef(PlayerWeapons pw, int baseId)
+    {
+        if (!pw) return null;
+        return baseId switch
+        {
+            Weapon_Cannon    => pw.cannonDef,
+            Weapon_Blaster   => pw.blasterDef,
+            Weapon_Grenade   => pw.grenadeDef,
+            Weapon_Lightning => pw.lightningDef,
+            _                => null
+        };
+    }
+
+    public static string WeaponIdFromBase(PlayerWeapons pw, int baseId)
+    {
+        var def = ResolveWeaponDef(pw, baseId);
+        return def != null ? def.id : null;
+    }
+
 
     /// <summary>
     /// BaseId → MasteryDefinition aus dem PlayerUpgrades.masteryPool auflösen.
@@ -96,13 +142,23 @@ public static class UpgradeRoller
 
     // ======== 3 gültige Optionen rollen (Stats + Masteries) ========
 
-    public static int[] Roll3Valid(PlayerUpgrades up)
+    public static int[] Roll3Valid(PlayerUpgrades up, PlayerWeapons pw = null)
     {
         if (up == null)
             up = UnityEngine.Object.FindObjectOfType<PlayerUpgrades>();
 
+        if (pw == null)
+        {
+            if (up != null)
+                pw = up.GetComponent<PlayerWeapons>() ?? up.GetComponentInChildren<PlayerWeapons>(true);
+
+            if (pw == null)
+                pw = UnityEngine.Object.FindObjectOfType<PlayerWeapons>();
+        }
+
         var statCandidates    = new List<int>(StatPool.Length);
         var masteryCandidates = new List<int>();
+        var weaponCandidates  = new List<int>();
 
         // --- Stats: nur wenn noch nicht max ---
         foreach (var id in StatPool)
@@ -133,10 +189,47 @@ public static class UpgradeRoller
             }
         }
 
-        // Kombinierter Pool: Stats + Masteries
+        // --- Waffen: nur wenn noch unter MaxLevel (NEU) ---
+        if (pw != null)
+        {
+            void AddWeaponCandidate(WeaponDefinition def, int level, int baseId)
+            {
+                if (def == null) return;
+                int max = 1 + (def.steps?.Length ?? 0);
+                if (level < max)
+                    weaponCandidates.Add(baseId);
+            }
+
+            AddWeaponCandidate(pw.cannonDef,    pw.cannonLevel.Value,    Weapon_Cannon);
+            AddWeaponCandidate(pw.blasterDef,   pw.blasterLevel.Value,   Weapon_Blaster);
+            AddWeaponCandidate(pw.grenadeDef,   pw.grenadeLevel.Value,   Weapon_Grenade);
+            AddWeaponCandidate(pw.lightningDef, pw.lightningLevel.Value, Weapon_Lightning);
+        }
+
         var allCandidates = new List<int>();
-        allCandidates.AddRange(statCandidates);
-        allCandidates.AddRange(masteryCandidates);
+
+        void AddWithWeight(List<int> src, int weight)
+        {
+            foreach (var id in src)
+            {
+                for (int i = 0; i < weight; i++)
+                    allCandidates.Add(id);
+            }
+        }
+
+        // Stats = häufig
+        AddWithWeight(statCandidates, STAT_WEIGHT);
+
+        // Masteries = mittel
+        AddWithWeight(masteryCandidates, MASTERY_WEIGHT);
+
+        // Waffen = selten
+        AddWithWeight(weaponCandidates, WEAPON_WEIGHT);
+
+        // Fallback, falls irgendwas schief ging
+        if (allCandidates.Count == 0)
+            AddWithWeight(statCandidates, STAT_WEIGHT);
+
 
         // Fallback: sollte eigentlich nie leer sein
         if (allCandidates.Count == 0)
@@ -184,6 +277,32 @@ public static class UpgradeRoller
                 return ChoiceCodec.Encode(baseId, rarity);
             }
 
+            // ----- Waffe -----
+            if (IsWeaponBaseId(baseId) && pw != null)
+            {
+                var def = ResolveWeaponDef(pw, baseId);
+                if (def == null)
+                    return ChoiceCodec.Encode(MaxHP, Rarity.Common); // Fallback
+
+                int curLevel = 0;
+                if (def == pw.cannonDef)    curLevel = pw.cannonLevel.Value;
+                else if (def == pw.blasterDef)   curLevel = pw.blasterLevel.Value;
+                else if (def == pw.grenadeDef)   curLevel = pw.grenadeLevel.Value;
+                else if (def == pw.lightningDef) curLevel = pw.lightningLevel.Value;
+
+                int maxLevel = 1 + (def.steps?.Length ?? 0);
+                if (curLevel >= maxLevel)
+                    return ChoiceCodec.Encode(MaxHP, Rarity.Common);
+
+                var rarity    = WeightedRarity(r);
+                int stacks    = StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
+                stacks        = Mathf.Min(stacks, maxLevel - curLevel);
+                if (stacks <= 0) { rarity = Rarity.Common; stacks = 1; }
+
+                rarity = RarityForStacks(stacks);
+                return ChoiceCodec.Encode(baseId, rarity);
+            }
+
             // ----- Stat -----
             var type = Resolve(baseId);
             int cur  = up.GetLevel(type);
@@ -217,6 +336,7 @@ public static class UpgradeRoller
         Armor     => UpgradeType.Armor,
         Magnet    => UpgradeType.Magnet,
         MoveSpeed => UpgradeType.MoveSpeed,
+        Stamina   => UpgradeType.Stamina,
         _         => UpgradeType.MaxHP
     };
 
@@ -246,8 +366,43 @@ public static class UpgradeRoller
         // ---- Mastery-Karte ----
         if (IsMasteryBaseId(baseId) && up != null && TryResolveMasteryBaseId(up, baseId, out var mDef))
         {
-            string key  = $"mastery.{mDef.id}";
+            string key = $"mastery.{mDef.id}";
             string name = !string.IsNullOrEmpty(mDef.displayName) ? mDef.displayName : "Mastery";
+            if (localize != null)
+            {
+                var loc = localize(key);
+                if (!string.IsNullOrEmpty(loc)) name = loc;
+            }
+
+            return new ChoiceViewModel
+            {
+                upgradeKey = key,
+                upgradeName = name,
+                rarity = rarity,
+                stacks = stacks,
+                badgeText = RarityBadge[rarity],
+                rarityColor = RarityColors[rarity],
+                rarityIcon = _rarityIcons.TryGetValue(rarity, out var spr) ? spr : null
+            };
+        }
+        
+        // ---- Waffen-Karte ----
+        if (IsWeaponBaseId(baseId))
+        {
+            string key  = $"weapon.{baseId}";
+            string name = "Weapon";
+
+            PlayerWeapons pw = null;
+            if (up != null)
+                pw = up.GetComponent<PlayerWeapons>() ?? up.GetComponentInChildren<PlayerWeapons>(true);
+
+            if (pw != null)
+            {
+                var def = ResolveWeaponDef(pw, baseId);
+                if (def != null && !string.IsNullOrEmpty(def.displayName))
+                    name = def.displayName;
+            }
+
             if (localize != null)
             {
                 var loc = localize(key);
@@ -293,6 +448,7 @@ public static class UpgradeRoller
         Armor     => "upgrade.armor",
         Magnet    => "upgrade.magnet",
         MoveSpeed => "upgrade.moveSpeed",
+        Stamina   => "upgrade.stamina",
         _         => "upgrade.generic"
     };
 
@@ -302,6 +458,7 @@ public static class UpgradeRoller
         Armor     => "Armor",
         Magnet    => "Magnet",
         MoveSpeed => "Move Speed",
+        Stamina   => "Stamina",
         _         => "Upgrade"
     };
 

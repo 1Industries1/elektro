@@ -3,7 +3,7 @@ using UnityEngine;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 
-[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Rigidbody), typeof(SphereCollider))]
 public class PlayerMovement : NetworkBehaviour
 {
     [Header("Movement")]
@@ -12,11 +12,11 @@ public class PlayerMovement : NetworkBehaviour
     public float deceleration = 8f;
     [Range(0f, 1f)] public float airControl = 0.5f;
 
-    [Header("Jump & Dash (Base)")]
+    [Header("Jump & Dash")]
     [Tooltip("Start-DeltaV nach oben (m/s), massenunabhängig.")]
     public float jumpForce = 6.5f;
 
-    [Header("Dash 2.0 (nur Physik/VFX, keine Anim)")]
+    [Header("Dash")]
     public float dashForce = 12f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 0.6f;
@@ -26,16 +26,24 @@ public class PlayerMovement : NetworkBehaviour
     public bool keepVerticalVelocityOnDash = false;
     [Range(0.5f, 1.0f)] public float dashEndHorizontalDamping = 0.85f;
 
-    // --- Grounded (Variante A: Probe unter BoxCollider) ---
-    [Header("Grounded (BoxCollider-Probe) — ohne Grace")]
-    [SerializeField] private LayerMask groundLayer;   // Terrain/“Base”-Layer rein
+    [Header("Stamina")]
+    public float maxStamina = 100f;
+    public float staminaRegenPerSecond = 20f;
+    [Tooltip("Verbrauch pro Sekunde während Roll aktiv ist")]
+    public float rollStaminaCostPerSecond = 25f;
+    [Tooltip("Einmaliger Verbrauch beim Dash")]
+    public float dashStaminaCost = 30f;
+    [Tooltip("Mindest-Stamina, um eine Roll-Phase starten zu dürfen")]
+    public float minStaminaToStartRoll = 5f;
+
+    [Header("Grounded")]
+    [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float groundProbeExtra = 0.08f; // wie tief wir unter die Kugel tasten
-    [SerializeField] private float maxSlopeDeg = 65f;// Boden bis zu dieser Steilheit
+    [SerializeField] private float maxSlopeDeg = 65f; // Boden bis zu dieser Steilheit
 
     private SphereCollider sc;
 
-
-    [Header("Better Jump (Gravity)")]
+    [Header("Jump (Gravity)")]
     public float gravityScale = 1.0f;
     public float upGravityMultiplierHeld = 1.15f;
     public float upGravityMultiplierReleased = 2.0f;
@@ -48,24 +56,25 @@ public class PlayerMovement : NetworkBehaviour
     public float coyoteTime = 0.1f;
     public float jumpBufferTime = 0.12f;
 
-
-    // ===== NEW: Server-cached Zustände, die andere Systeme lesen dürfen =====
+    // ===== Server-cached Zustände =====
     public bool ServerGrounded { get; private set; }
-    public bool ServerRollHeld => srvRollHeld;       // bereits server-seitig geführt
+    public bool ServerRollHeld => srvRollHeld;   // "aktives" Rollen, nicht nur Input
     public float ServerHorizontalSpeed { get; private set; }
 
-
-    // öffentliches Standing-Flag (auf Basis eines Schwellwerts)
-    [Header("Energy Drain Settings (Movement -> Battery)")]
-    [Tooltip("Horizontale Geschw.-Schwelle, unter der wir 'Stehen' annehmen (m/s)")]
+    [Tooltip("Horizontale Geschw.-Schwelle, unter der 'Stehen' angenommen wird (m/s)")]
     public float standingSpeedThreshold = 0.15f;     // deckt sich mit Walk_Anim-Threshold
     public bool ServerStanding { get; private set; } // Grounded & sehr geringe Bewegung
-
 
     [Header("Animation")]
     [Tooltip("Animator am RobotModel (Child). Erwartet Bools: Walk_Anim, Roll_Anim.")]
     public Animator anim;                     // im Inspector setzen
     private NetworkAnimator netAnim;          // nicht zwingend benötigt für Bools, aber ok zu haben
+
+    // Animator-Cache
+    private int walkAnimHash;
+    private int rollAnimHash;
+    private bool hasWalkAnim;
+    private bool hasRollAnim;
 
     [Header("Turning")]
     public float turnSpeedDegPerSec = 720f;   // Server-seitig, sanftes Mitdrehen
@@ -113,6 +122,14 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Upgrades")]
     [SerializeField] private OverclockRuntime overclocks;
 
+    
+
+    private readonly NetworkVariable<float> stamina = new NetworkVariable<float>(
+        readPerm: NetworkVariableReadPermission.Everyone,
+        writePerm: NetworkVariableWritePermission.Server);
+
+    public float CurrentStamina => stamina.Value;
+
     // Runtime
     private Rigidbody rb;
     private bool isDashing;
@@ -128,12 +145,17 @@ public class PlayerMovement : NetworkBehaviour
     private AudioSource rollLoopSource;  // eigener Source für Loop
 
     // Input-States (Server-seitig)
-    private bool srvRollHeld;                 // LSHIFT gehalten → Roll_Anim==true
+    private bool srvRollInputHeld;            // roher LSHIFT-Input vom Client
+    private bool srvRollHeld;                 // "aktives" Rollen (nur wenn Stamina reicht)
     private bool srvJumpHeld;                 // Space gehalten
     private float lastGroundedTime = -999f;
     private float lastJumpPressedTime = -999f;
     private bool jumpedThisFrame;
     private bool wasGroundedLastFrame;
+
+    // Animator-Zustands-Cache (Server)
+    private bool srvWasWalking;
+    private bool srvWasRolling;
 
     private void Awake()
     {
@@ -149,14 +171,45 @@ public class PlayerMovement : NetworkBehaviour
             anim = GetComponentInChildren<Animator>(true);
 
         if (anim != null)
+        {
             netAnim = anim.GetComponent<NetworkAnimator>();
+
+            // Animator-Parameter einmalig inspizieren
+            foreach (var p in anim.parameters)
+            {
+                if (p.type == AnimatorControllerParameterType.Bool)
+                {
+                    if (p.name == "Walk_Anim")
+                    {
+                        hasWalkAnim = true;
+                        walkAnimHash = Animator.StringToHash(p.name);
+                    }
+                    else if (p.name == "Roll_Anim")
+                    {
+                        hasRollAnim = true;
+                        rollAnimHash = Animator.StringToHash(p.name);
+                    }
+                }
+            }
+        }
     }
 
     public override void OnNetworkSpawn()
     {
+        if (IsServer)
+        {
+            stamina.Value = Mathf.Clamp(maxStamina, 0f, maxStamina);
+        }
+
         if (IsOwner)
         {
             CameraFollow.Instance?.SetTarget(transform);
+
+            // Stamina-Änderungen → HUD
+            stamina.OnValueChanged += OnStaminaChangedOwner;
+
+            // Initialwert direkt reinschreiben
+            PlayerHUD.Instance?.SetStamina(stamina.Value, maxStamina);
         }
         else
         {
@@ -166,6 +219,15 @@ public class PlayerMovement : NetworkBehaviour
             if (audio) audio.enabled = false;
         }
     }
+
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner)
+        {
+            stamina.OnValueChanged -= OnStaminaChangedOwner;
+        }
+    }
+
 
     private void Update()
     {
@@ -182,7 +244,7 @@ public class PlayerMovement : NetworkBehaviour
         {
             Transform cam = Camera.main.transform;
             Vector3 camForward = cam.forward; camForward.y = 0; camForward.Normalize();
-            Vector3 camRight = cam.right; camRight.y = 0; camRight.Normalize();
+            Vector3 camRight = cam.right;   camRight.y = 0;   camRight.Normalize();
             moveDir = (camRight * rawInput.x + camForward * rawInput.y).normalized;
         }
         else
@@ -216,10 +278,10 @@ public class PlayerMovement : NetworkBehaviour
             NotifyJumpPressedServerRpc();
         SetJumpHeldServerRpc(Input.GetKey(KeyCode.Space));
 
-        // Roll-Anim (Owner → Server): solange LSHIFT gehalten wird
+        // Roll-Input (Owner → Server): solange LSHIFT gehalten wird
         SetRollHeldServerRpc(Input.GetKey(KeyCode.LeftShift));
 
-        // Dash (Owner → Server): nur auf KeyDown (keine Anim)
+        // Dash (Owner → Server): nur auf KeyDown (keine Anim) – LeftShift doppelt benutzt
         if (Input.GetKeyDown(KeyCode.LeftShift))
             DashServerRpc(new Vector2(moveDir.x, moveDir.z));
 
@@ -234,7 +296,7 @@ public class PlayerMovement : NetworkBehaviour
 
         jumpedThisFrame = false;
 
-        // Grounded-Tracking
+        // Grounded-Tracking (einmal pro Physik-Tick)
         bool groundedNow = IsGrounded();
         if (groundedNow)
             lastGroundedTime = Time.time;
@@ -245,6 +307,9 @@ public class PlayerMovement : NetworkBehaviour
         wasGroundedLastFrame = groundedNow;
 
         ServerGrounded = groundedNow;
+
+        // Stamina & Roll-State updaten (abhängig von Input + Kosten)
+        UpdateStaminaAndRollState();
 
         // Gepufferten Sprung ggf. ausführen
         TryConsumeBufferedJump();
@@ -298,6 +363,52 @@ public class PlayerMovement : NetworkBehaviour
         ServerStanding = ServerGrounded && ServerHorizontalSpeed < standingSpeedThreshold;
     }
 
+    private void UpdateStaminaAndRollState()
+    {
+        if (!IsServer) return;
+
+        float dt = Time.fixedDeltaTime;
+
+        bool wantsToRoll = srvRollInputHeld; // roher Input vom Client
+
+        // Aktuell rollt er?
+        if (wantsToRoll)
+        {
+            // Roll nur starten, wenn wir mindestens X Stamina haben
+            if (!srvRollHeld && stamina.Value < minStaminaToStartRoll)
+            {
+                srvRollHeld = false;
+            }
+            else
+            {
+                // Kosten pro Sekunde
+                float cost = rollStaminaCostPerSecond * dt;
+
+                if (stamina.Value > 0f)
+                {
+                    stamina.Value = Mathf.Max(0f, stamina.Value - cost);
+                    // Solange noch was da ist, bleibt Roll aktiv
+                    srvRollHeld = stamina.Value > 0f;
+                }
+                else
+                {
+                    srvRollHeld = false;
+                }
+            }
+        }
+        else
+        {
+            // Kein Roll-Input → Roll deaktivieren
+            srvRollHeld = false;
+
+            // Regeneration
+            if (staminaRegenPerSecond > 0f && stamina.Value < maxStamina)
+            {
+                stamina.Value = Mathf.Min(maxStamina, stamina.Value + staminaRegenPerSecond * dt);
+            }
+        }
+    }
+    
 
     private bool IsGrounded()
     {
@@ -328,15 +439,11 @@ public class PlayerMovement : NetworkBehaviour
         if (Physics.Raycast(worldCenter, Vector3.down, out var hit, rayDist, mask, QueryTriggerInteraction.Ignore))
         {
             float minY = Mathf.Cos(maxSlopeDeg * Mathf.Deg2Rad);
-            Debug.Log("GROUNDED!");
             return hit.normal.y >= minY;
         }
 
         return false;
     }
-
-
-
 
     private void OnDrawGizmos()
     {
@@ -349,17 +456,20 @@ public class PlayerMovement : NetworkBehaviour
             Mathf.Abs(sc.transform.lossyScale.z)
         );
         Vector3 worldCenter = sc.transform.TransformPoint(sc.center);
-        Vector3 origin = worldCenter + Vector3.down * (worldRadius - 0.01f);
-        float distance = Mathf.Max(0.04f, groundProbeExtra);
 
-        Gizmos.color = Color.yellow; Gizmos.DrawWireSphere(origin, worldRadius * 0.98f);
-        Gizmos.color = Color.white;  Gizmos.DrawLine(origin, origin + Vector3.down * distance);
-        Gizmos.color = Color.cyan;   Gizmos.DrawWireSphere(origin + Vector3.down * distance, worldRadius * 0.98f);
+        float r = worldRadius * 0.98f;
+        Vector3 feet = worldCenter + Vector3.down * (r - 0.005f);
+        float rayDist = r + Mathf.Max(0.04f, groundProbeExtra) + 0.06f;
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(feet, r * 0.98f);
+
+        Gizmos.color = Color.white;
+        Gizmos.DrawLine(worldCenter, worldCenter + Vector3.down * rayDist);
+
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(worldCenter + Vector3.down * rayDist, r * 0.98f);
     }
-
-
-
-
 
     // ===== Movement (Server) =====
     [ServerRpc]
@@ -370,7 +480,8 @@ public class PlayerMovement : NetworkBehaviour
 
         Vector3 moveDirection = new Vector3(input.x, 0, input.y).normalized;
 
-        bool grounded = IsGrounded();
+        // Grounded-Zustand aus ServerGrounded nutzen (in FixedUpdate berechnet)
+        bool grounded = ServerGrounded;
 
         // 1) Control in der Luft: beim Rollen fast voll erhalten
         float control = grounded ? 1f :
@@ -387,7 +498,7 @@ public class PlayerMovement : NetworkBehaviour
         float ocMove = overclocks ? overclocks.GetMoveSpeedMult() : 1f;
         Vector3 targetVelocity = moveDirection * moveSpeed * speedMult * control * ocMove * slow;
 
-        Vector3 currentVel   = rb.linearVelocity;
+        Vector3 currentVel = rb.linearVelocity;
         Vector3 horizontalVel = new Vector3(currentVel.x, 0, currentVel.z);
 
         // 3) Beschleunigung / Abbremsen
@@ -412,7 +523,6 @@ public class PlayerMovement : NetworkBehaviour
         rb.AddForce(velocityDiff * accelRate, ForceMode.Acceleration);
     }
 
-
     // ===== Jump (Server) =====
     [ServerRpc]
     private void NotifyJumpPressedServerRpc(ServerRpcParams rpcParams = default)
@@ -433,8 +543,17 @@ public class PlayerMovement : NetworkBehaviour
     private void SetRollHeldServerRpc(bool held, ServerRpcParams rpcParams = default)
     {
         if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
-        srvRollHeld = held;
+        // hier nur rohen Input speichern – Stamina-Logik entscheidet später,
+        // ob wirklich gerollt wird (srvRollHeld)
+        srvRollInputHeld = held;
     }
+
+    // ===== Stamina in PlayerHUD =====
+    private void OnStaminaChangedOwner(float oldValue, float newValue)
+    {
+        PlayerHUD.Instance?.SetStamina(newValue, maxStamina);
+    }
+
 
     // ===== Optional: Öffnen/Schließen (Server) =====
     [ServerRpc]
@@ -457,10 +576,6 @@ public class PlayerMovement : NetworkBehaviour
     }
 
     // ===== Animator =====
-    // Zustands-Cache (Server)
-    private bool srvWasWalking;
-    private bool srvWasRolling;
-
     private void UpdateAnimatorServer()
     {
         if (!anim) return;
@@ -468,14 +583,14 @@ public class PlayerMovement : NetworkBehaviour
         Vector3 rbVel = rb.linearVelocity;
         float horizontalSpeed = new Vector3(rbVel.x, 0, rbVel.z).magnitude;
 
-        bool grounded = IsGrounded();
+        bool grounded = ServerGrounded;
         bool walking = grounded && horizontalSpeed > 0.15f && !srvRollHeld;
         bool rolling = srvRollHeld;
 
-        SafeSetBool(anim, "Walk_Anim", walking);
-        SafeSetBool(anim, "Roll_Anim", rolling);
+        if (hasWalkAnim) anim.SetBool(walkAnimHash, walking);
+        if (hasRollAnim) anim.SetBool(rollAnimHash, rolling);
 
-        // --- NEW: State Transitions -> Audio RPCs ---
+        // --- State Transitions -> Audio RPCs ---
         if (walking && !srvWasWalking)
             StartFootstepsClientRpc();          // Walk beginnt
         else if (!walking && srvWasWalking)
@@ -498,7 +613,6 @@ public class PlayerMovement : NetworkBehaviour
         srvWasWalking = walking;
         srvWasRolling = rolling;
     }
-
 
     private void EnsureAudioSources()
     {
@@ -634,21 +748,6 @@ public class PlayerMovement : NetworkBehaviour
         StopRollLoopClient();
     }
 
-
-    private static void SafeSetBool(Animator a, string name, bool value)
-    {
-        // Vermeidet Console-Errors, falls Parameter im Controller fehlt
-        foreach (var p in a.parameters)
-        {
-            if (p.type == AnimatorControllerParameterType.Bool && p.name == name)
-            {
-                a.SetBool(name, value);
-                return;
-            }
-        }
-        // falls nicht vorhanden: ignoriere still
-    }
-
     private void TryConsumeBufferedJump()
     {
         if (jumpedThisFrame) return;
@@ -721,7 +820,11 @@ public class PlayerMovement : NetworkBehaviour
 
         if (Time.time < nextDashAllowedTime) return;
 
-        bool grounded = IsGrounded();
+        // genug Stamina für Dash?
+        if (dashStaminaCost > 0f && stamina.Value < dashStaminaCost)
+            return;
+
+        bool grounded = ServerGrounded;
         if (!grounded)
         {
             if (airDashesLeft <= 0) return;
@@ -740,5 +843,11 @@ public class PlayerMovement : NetworkBehaviour
         rb.linearVelocity = rbVel;
 
         rb.AddForce(dashDir * (0.35f * dashForce), ForceMode.VelocityChange);
+
+        // Dash-Stamina abziehen
+        if (dashStaminaCost > 0f)
+        {
+            stamina.Value = Mathf.Max(0f, stamina.Value - dashStaminaCost);
+        }
     }
 }

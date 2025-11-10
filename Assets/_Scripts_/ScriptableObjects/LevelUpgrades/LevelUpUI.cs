@@ -24,9 +24,17 @@ public class LevelUpUI : MonoBehaviour
 
     [Header("Stats Overview")]
     public GameObject statsPanel;
-    public Transform statsContent;
+
+    // Container / Header für bessere Übersicht
+    public TextMeshProUGUI statsHeader;
+    public TextMeshProUGUI weaponsHeader;
+
+    public Transform statsContentStats;    // nur Core-Stats (HP, Armor, ...)
+    public Transform statsContentWeapons;  // Waffen + DamageRow
+
     public StatRow statRowPrefab;
     public DamageRow damageRowPrefab;
+
 
     [Header("Behavior")]
     public float fadeTime = 0.12f;
@@ -43,6 +51,10 @@ public class LevelUpUI : MonoBehaviour
 
     private int _slowHandle = 0;
 
+    [Header("LevelUp Loop SFX")]
+    public AudioSource levelUpLoopSource;   // eigene AudioSource fürs Loop
+    public AudioClip levelUpLoopClip;       // optional, sonst Clip direkt auf Source im Inspector setzen
+    
     [Header("SFX")]
     public AudioSource sfxSource;
     public AudioClip sfxPick;
@@ -83,8 +95,6 @@ public class LevelUpUI : MonoBehaviour
         Instance = this;
         if (panel) panel.SetActive(false);
         if (panelGroup) panelGroup.alpha = 0f;
-
-        //if (statsPanel) statsPanel.SetActive(false);
     }
 
     private void Start()
@@ -141,6 +151,8 @@ public class LevelUpUI : MonoBehaviour
         UnsubscribeWeaponStats();
         _previewType = null;
         if (_bindCo != null) { StopCoroutine(_bindCo); _bindCo = null; }
+
+        if (levelUpLoopSource) levelUpLoopSource.Stop();
     }
 
     private void OnClientConnected(ulong _)
@@ -157,6 +169,7 @@ public class LevelUpUI : MonoBehaviour
         _weapons.cannonLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.blasterLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.grenadeLevel.OnValueChanged += OnAnyWeaponStatChanged;
+        _weapons.lightningLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.RuntimesRebuilt += OnWeaponsRebuiltUI;
 
         _weaponsSubscribed = true;
@@ -170,6 +183,7 @@ public class LevelUpUI : MonoBehaviour
         _weapons.cannonLevel.OnValueChanged -= OnAnyWeaponStatChanged;
         _weapons.blasterLevel.OnValueChanged -= OnAnyWeaponStatChanged;
         _weapons.grenadeLevel.OnValueChanged -= OnAnyWeaponStatChanged;
+        _weapons.lightningLevel.OnValueChanged -= OnAnyWeaponStatChanged;
 
         _weapons.RuntimesRebuilt -= OnWeaponsRebuiltUI;
         _weaponsSubscribed = false;
@@ -235,11 +249,22 @@ public class LevelUpUI : MonoBehaviour
         RefreshStats();
         _weapons ??= FindLocalWeapons();
         SubscribeWeaponStats();
+
+        if (levelUpLoopSource)
+        {
+            if (levelUpLoopClip) levelUpLoopSource.clip = levelUpLoopClip;
+            if (!levelUpLoopSource.isPlaying)
+                levelUpLoopSource.Play();
+        }
     }
 
     public void Hide(bool unlockInput = true)
     {
         _open = false;
+
+        if (levelUpLoopSource && levelUpLoopSource.isPlaying)
+            levelUpLoopSource.Stop();
+        
         StopAllCoroutines();
         StartCoroutine(FadeOutThenDisable(unlockInput));
     }
@@ -273,19 +298,21 @@ public class LevelUpUI : MonoBehaviour
     private StatRow GetOrCreateRow(UpgradeType type, string defaultLabel)
     {
         if (_rows.TryGetValue(type, out var row) && row != null) return row;
-        if (!statRowPrefab || !statsContent) return null;
-        row = Instantiate(statRowPrefab, statsContent);
-        // Optional: Name fürs Hierarchy-Aufräumen
+        if (!statRowPrefab || !statsContentStats) return null;
+
+        row = Instantiate(statRowPrefab, statsContentStats);
         row.name = $"Row_{type}";
         _rows[type] = row;
         return row;
     }
 
+
     private DamageRow GetOrCreateDamageRow()
     {
         if (_damageRow && _damageRow.gameObject) return _damageRow;
-        if (!damageRowPrefab || !statsContent) return null;
-        _damageRow = Instantiate(damageRowPrefab, statsContent);
+        if (!damageRowPrefab || !statsContentWeapons) return null;
+
+        _damageRow = Instantiate(damageRowPrefab, statsContentWeapons);
         _damageRow.name = "Row_Damage";
         return _damageRow;
     }
@@ -355,8 +382,9 @@ public class LevelUpUI : MonoBehaviour
     private StatRow GetOrCreateCustomRow(string key, string defaultLabel)
     {
         if (_rowsCustom.TryGetValue(key, out var row) && row) return row;
-        if (!statRowPrefab || !statsContent) return null;
-        row = Instantiate(statRowPrefab, statsContent);
+        if (!statRowPrefab || !statsContentWeapons) return null;
+
+        row = Instantiate(statRowPrefab, statsContentWeapons);
         row.name = key;
         _rowsCustom[key] = row;
         return row;
@@ -366,7 +394,8 @@ public class LevelUpUI : MonoBehaviour
     private void RefreshStats()
     {
         if (_upgrades == null) _upgrades = FindLocalUpgrades();
-        if (!_upgrades || !statsContent) return;
+        if (!_upgrades || (statsContentStats == null && statsContentWeapons == null))
+            return;
 
         bool allowPreview = _open && !_picked;
 
@@ -376,7 +405,8 @@ public class LevelUpUI : MonoBehaviour
             var row = GetOrCreateRow(type, uiName);
             if (!row) return;
 
-            bool previewThis = _previewType.HasValue && _previewType.Value == type;
+            bool previewThis = allowPreview && _previewType.HasValue && _previewType.Value == type;
+
             string nextStr = null;
 
             if (previewThis && lvl < max)
@@ -461,6 +491,30 @@ public class LevelUpUI : MonoBehaviour
             }
         }
 
+        // --- Stamina (NEU) ---
+        {
+            int lvl = _upgrades.GetLevel(UpgradeType.Stamina);
+            int max = _upgrades.GetMaxLevel(UpgradeType.Stamina);
+            float curr = _upgrades.GetCurrentValue(UpgradeType.Stamina); // max ST
+
+            var row = GetOrCreateRow(UpgradeType.Stamina, "Stamina");
+            if (row)
+            {
+                string nextStr = null;
+                if (allowPreview && _previewType.HasValue && _previewType.Value == UpgradeType.Stamina && lvl < max)
+                {
+                    int stacks = Mathf.Clamp(_previewStacks ?? 1, 1, max - lvl);
+                    float nextVal = _upgrades.GetCurrentValueAtLevel(UpgradeType.Stamina, lvl + stacks);
+                    nextStr = $"{FormatValue(UpgradeType.Stamina, nextVal)}   (Lv {lvl + stacks}/{max})";
+                }
+
+                float prog = (max > 0) ? (lvl / (float)max) : -1f;
+                row.Set("Stamina",
+                    $"{FormatValue(UpgradeType.Stamina, curr)}   {(lvl >= max ? "(MAX)" : $"(Lv {lvl}/{max})")}",
+                    nextStr, prog);
+            }
+        }
+
         // --- WEAPON LEVEL ROWS (Cannon / Blaster) ---
         _weapons ??= FindLocalWeapons();
         if (_weapons != null)
@@ -479,6 +533,11 @@ public class LevelUpUI : MonoBehaviour
                     string extra = rt != null
                         ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond):0.#}  |  {rt.shotsPerSecond:0.##}/s"
                         : null;
+
+                    if (def != null)
+                        row.SetIcon(def.uiIcon);
+                    else
+                        row.SetIcon(null);
 
                     row.Set(
                         label,
@@ -502,6 +561,11 @@ public class LevelUpUI : MonoBehaviour
                     string extra = rt != null
                         ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond):0.#}  |  {rt.shotsPerSecond:0.##}/s"
                         : null;
+
+                    if (def != null)
+                        row.SetIcon(def.uiIcon);
+                    else
+                        row.SetIcon(null);
 
                     row.Set(
                         label,
@@ -536,12 +600,95 @@ public class LevelUpUI : MonoBehaviour
                         ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond * salvo):0.#}  |  {rt.shotsPerSecond:0.##} salvos/s × {salvo}"
                         : null;
 
+                    if (def != null)
+                        row.SetIcon(def.uiIcon);
+                    else
+                        row.SetIcon(null);
+
                     row.Set(
                         label,
                         $"Lv {lvl}/{max}" + (string.IsNullOrEmpty(extra) ? "" : $"   ({extra})"),
                         null,
                         max > 0 ? (lvl / (float)max) : -1f
                     );
+                }
+            }
+            // Lightning
+            {
+                var def = _weapons.lightningDef;
+                int lvl = _weapons.lightningLevel.Value;
+                int max = 1 + (def?.steps?.Length ?? 0);
+                var row = GetOrCreateCustomRow("Weapon_Lightning", def ? def.displayName : "Lightning");
+                if (row)
+                {
+                    string label = def ? def.displayName : "Lightning";
+                    var rt = _weapons.LightningRuntime;
+                    string extra = rt != null
+                        ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond):0.#}  |  {rt.shotsPerSecond:0.##}/s"
+                        : null;
+
+                    if (def != null)
+                        row.SetIcon(def.uiIcon);
+                    else
+                        row.SetIcon(null);
+
+                    row.Set(
+                        label,
+                        $"Lv {lvl}/{max}" + (string.IsNullOrEmpty(extra) ? "" : $"   ({extra})"),
+                        null,
+                        max > 0 ? (lvl / (float)max) : -1f
+                    );
+                }
+            }
+            // --- Weapon Summary / DamageRow ---
+            {
+                var dmgRow = GetOrCreateDamageRow();
+                if (dmgRow != null)
+                {
+                    float totalDps = 0f;
+
+                    if (_weapons.CannonRuntime != null)
+                    {
+                        var rt = _weapons.CannonRuntime;
+                        totalDps += rt.damagePerShot * rt.shotsPerSecond;
+                    }
+
+                    if (_weapons.BlasterRuntime != null)
+                    {
+                        var rt = _weapons.BlasterRuntime;
+                        totalDps += rt.damagePerShot * rt.shotsPerSecond;
+                    }
+
+                    if (_weapons.GrenadeRuntime != null)
+                    {
+                        var rt = _weapons.GrenadeRuntime;
+                        int salvo = Mathf.Max(1, rt.salvoCount);
+                        totalDps += rt.damagePerShot * rt.shotsPerSecond * salvo;
+                    }
+
+                    if (_weapons.LightningRuntime != null)
+                    {
+                        var rt = _weapons.LightningRuntime;
+                        totalDps += rt.damagePerShot * rt.shotsPerSecond;
+                    }
+
+                    // Primary: Gesamtdps, Alt: kurze Auflistung der aktiven Waffen
+                    string primary = $"{totalDps:0.#} DPS total";
+
+                    string alt = "";
+                    void Append(ref string s, string add)
+                    {
+                        if (string.IsNullOrEmpty(add)) return;
+                        if (!string.IsNullOrEmpty(s)) s += "   |   ";
+                        s += add;
+                    }
+
+                    if (_weapons.CannonRuntime  != null) Append(ref alt, "Cannon");
+                    if (_weapons.BlasterRuntime != null) Append(ref alt, "Blaster");
+                    if (_weapons.GrenadeRuntime != null) Append(ref alt, "Grenade");
+                    if (_weapons.LightningRuntime != null) Append(ref alt, "Lightning");
+
+                    dmgRow.Set("Damage", primary, null, alt, null);
                 }
             }
         }
@@ -574,6 +721,7 @@ public class LevelUpUI : MonoBehaviour
             case UpgradeType.Armor:     return $"{v:0.#} armor";
             case UpgradeType.Magnet: return $"{v:0.00}×";
             case UpgradeType.MoveSpeed: return $"{v:0.##} m/s";
+            case UpgradeType.Stamina:   return $"{v:0.#} ST";
             default: return v.ToString("0.##");
         }
     }
@@ -588,6 +736,7 @@ public class LevelUpUI : MonoBehaviour
         _upgrades.ArmorLevel.OnValueChanged     += OnAnyStatChanged;
         _upgrades.MagnetLevel.OnValueChanged += OnAnyStatChanged;
         _upgrades.MoveSpeedLevel.OnValueChanged += OnAnyStatChanged;
+        _upgrades.StaminaLevel.OnValueChanged   += OnAnyStatChanged;
         _statsSubscribed = true;
     }
 
@@ -599,6 +748,7 @@ public class LevelUpUI : MonoBehaviour
         _upgrades.ArmorLevel.OnValueChanged     -= OnAnyStatChanged;
         _upgrades.MagnetLevel.OnValueChanged -= OnAnyStatChanged;
         _upgrades.MoveSpeedLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.StaminaLevel.OnValueChanged   -= OnAnyStatChanged;
         _statsSubscribed = false;
     }
 
@@ -663,13 +813,44 @@ public class LevelUpUI : MonoBehaviour
         var up    = FindLocalUpgradesCached();
         int baseId = ChoiceCodec.BaseId(encodedId);
 
-        // Mastery?
+        // Mastery
         if (UpgradeRoller.IsMasteryBaseId(baseId) && up != null &&
             UpgradeRoller.TryResolveMasteryBaseId(up, baseId, out var mDef))
         {
             var rarity = ChoiceCodec.GetRarity(encodedId);
             int stacks = UpgradeRoller.StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
             return $"{mDef.displayName} (+{stacks} Tier)";
+        }
+
+        // ===== Waffen-Beschreibung =====
+        if (UpgradeRoller.IsWeaponBaseId(baseId))
+        {
+            var pw = _weapons ?? FindLocalWeapons();
+            var def = pw != null ? UpgradeRoller.ResolveWeaponDef(pw, baseId) : null;
+            string name = def != null ? def.displayName : "Weapon";
+            int stacks  = UpgradeRoller.StacksForChoice(encodedId);
+
+            int curLevel = 0;
+            int maxLevel = def != null ? 1 + (def.steps?.Length ?? 0) : 1;
+
+            if (pw != null && def != null)
+            {
+                if (def == pw.cannonDef)    curLevel = pw.cannonLevel.Value;
+                else if (def == pw.blasterDef)   curLevel = pw.blasterLevel.Value;
+                else if (def == pw.grenadeDef)   curLevel = pw.grenadeLevel.Value;
+                else if (def == pw.lightningDef) curLevel = pw.lightningLevel.Value;
+            }
+
+            if (curLevel == 0 && stacks == 1)
+                return $"NEW WEAPON: {name}";
+            if (curLevel == 0 && stacks > 1)
+                return $"NEW WEAPON: {name}, raises it to Lv {stacks}";
+
+            // bereits vorhanden → Level Up
+            if (stacks == 1)
+                return $"{name}: +1 level (Lv {curLevel + 1}/{maxLevel})";
+            else
+                return $"{name}: +{stacks} levels (Lv {curLevel + stacks}/{maxLevel})";
         }
 
         // Stat-Upgrade
@@ -682,6 +863,7 @@ public class LevelUpUI : MonoBehaviour
             UpgradeType.Armor     => $"+{up.armorFlatPerLevel    * stacksStat:0.#} armor",
             UpgradeType.Magnet    => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacksStat):0.#}% magnet range",
             UpgradeType.MoveSpeed => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel,   stacksStat):0.#}% move speed",
+            UpgradeType.Stamina   => $"+{up.staminaMaxPerLevel   * stacksStat:0.#} max stamina\n+{up.staminaRegenPerLevel * stacksStat:0.#} stamina/s regen",
             _                     => "Upgrade"
         };
     }
@@ -724,5 +906,6 @@ public class LevelUpUI : MonoBehaviour
     {
         if (Instance == this) Instance = null;
         UnsubscribeWeaponStats();
+        if (levelUpLoopSource) levelUpLoopSource.Stop();
     }
 }

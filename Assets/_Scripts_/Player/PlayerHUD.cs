@@ -11,6 +11,10 @@ public class PlayerHUD : MonoBehaviour
     [SerializeField] private Slider batterySlider;          // now used for HP
     [SerializeField] private TextMeshProUGUI batteryText;   // now used for HP text
 
+    [Header("Stamina UI")]
+    [SerializeField] private Slider staminaSlider;
+    [SerializeField] private TextMeshProUGUI staminaText;
+
     [SerializeField] private Slider xpSlider;
     [SerializeField] private TextMeshProUGUI xpText;
 
@@ -118,6 +122,26 @@ public class PlayerHUD : MonoBehaviour
         {
             // Nur HP anzeigen (ohne Prozent / Status)
             batteryText.text = $"{hp:0}/{max:0} HP";
+        }
+    }
+
+    // =================== STAMINA UI ===================
+
+    public void SetStamina(float cur, float max)
+    {
+        cur = Mathf.Max(0f, cur);
+        max = Mathf.Max(1f, max);
+
+        if (staminaSlider)
+        {
+            staminaSlider.minValue = 0f;
+            staminaSlider.maxValue = max;
+            staminaSlider.value = cur;
+        }
+
+        if (staminaText)
+        {
+            staminaText.text = $"{cur:0}/{max:0} ST";
         }
     }
 
@@ -284,7 +308,7 @@ public class PlayerHUD : MonoBehaviour
         hitIndicator.gameObject.SetActive(false);
     }
 
-    // =================== BACKWARD COMPAT ===================
+    // =================== BACKWARD COMP ===================
     // Falls es noch Battery-Aufrufe gibt, leiten wir sie auf Health um.
 
     public void SetBatteryInstant(float charge, float max) => SetHealth(charge, max);

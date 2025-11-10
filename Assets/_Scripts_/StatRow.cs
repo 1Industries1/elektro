@@ -8,6 +8,7 @@ using System.Collections;
 public class StatRow : MonoBehaviour
 {
     [Header("Refs")]
+    public Image icon;
     public TextMeshProUGUI label;
     public TextMeshProUGUI value;
     public TextMeshProUGUI nextValue; // optional, grün
@@ -63,6 +64,21 @@ public class StatRow : MonoBehaviour
 
                 _lastProgress = target;
             }
+        }
+    }
+
+    public void SetIcon(Sprite sprite)
+    {
+        if (!icon) return;
+
+        if (sprite != null)
+        {
+            icon.sprite = sprite;
+            icon.gameObject.SetActive(true);
+        }
+        else
+        {
+            icon.gameObject.SetActive(false);
         }
     }
 

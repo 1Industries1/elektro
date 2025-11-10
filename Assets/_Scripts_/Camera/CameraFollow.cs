@@ -145,29 +145,24 @@ public class CameraFollow : MonoBehaviour
 
     private void HandleOrbit()
     {
-        bool orbiting = Input.GetMouseButton(orbitMouseButton);
+        // Mausbewegung lesen
+        float mx = Input.GetAxisRaw("Mouse X");
+        float my = Input.GetAxisRaw("Mouse Y");
 
-        if (orbiting && lockCursorWhileOrbit)
+        // Wenn die Maus sich nicht bewegt, nichts tun
+        if (Mathf.Abs(mx) < 0.0001f && Mathf.Abs(my) < 0.0001f) return;
+
+        // Cursor ggf. dauerhaft locken/verstecken, solange Orbit aktiv ist
+        if (lockCursorWhileOrbit)
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
-        else if (lockCursorWhileOrbit)
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
 
-        if (!orbiting) return;
-
-        float mx = Input.GetAxisRaw("Mouse X");
-        float my = Input.GetAxisRaw("Mouse Y");
-
-        if (Mathf.Abs(mx) < 0.0001f && Mathf.Abs(my) < 0.0001f) return;
-
-        // Nur Yaw bewegen; Pitch bleibt fix (oder wird optional bewegt, wenn lockPitch=false)
+        // Yaw (links/rechts)
         _yaw += mx * sensitivityX;
 
+        // Pitch (hoch/runter) – optional, je nach lockPitch
         if (!lockPitch)
         {
             _pitch += (invertY ? my : -my) * sensitivityY;
@@ -178,14 +173,14 @@ public class CameraFollow : MonoBehaviour
             _pitch = fixedPitchDeg;
         }
 
+        // Offset entsprechend neu berechnen
         float radius = offset.magnitude;
         offset = YawPitchToOffset(_yaw, _pitch, Mathf.Max(0.1f, radius));
 
         // Player an Kamera-Yaw ausrichten?
         if (rotateTargetWithOrbit && target != null)
         {
-            // RICHTIG: camera.forward (nicht negieren), am Boden projizieren
-            Vector3 face = transform.forward; 
+            Vector3 face = transform.forward;
             face.y = 0f;
             if (face.sqrMagnitude > 0.0001f)
             {
@@ -196,6 +191,7 @@ public class CameraFollow : MonoBehaviour
             }
         }
     }
+
 
     // ===== Hilfsfunktionen: Offset <-> Yaw/Pitch =====
     private static void OffsetToYawPitch(Vector3 off, out float yawDeg, out float pitchDeg)

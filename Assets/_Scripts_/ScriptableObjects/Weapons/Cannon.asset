@@ -38,7 +38,7 @@ MonoBehaviour:
     intValue: 0
   - name: L4
     type: 0
-    value: 0.5
+    value: 0.25
     intValue: 0
   - name: L5
     type: 1

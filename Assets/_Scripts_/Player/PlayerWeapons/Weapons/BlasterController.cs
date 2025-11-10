@@ -6,23 +6,17 @@ using UnityEngine;
 public class BlasterController : NetworkBehaviour
 {
     [Header("Refs")]
-    [Tooltip("Primärwaffen-Controller für Ziel/Rotation. (Optional, aber empfohlen)")]
-    public CannonController primary;
-    [Tooltip("Spawn-Point; wird auf primary.bulletSpawnPoint zurückgegriffen, wenn leer.")]
+    [Tooltip("Spawn-Point für Blasterprojektile. Falls leer, wird transform.position/rotation genutzt.")]
     public Transform bulletSpawnPoint;
 
     [Header("Weapon Data")]
     public WeaponDefinition weaponDef; // Blaster.asset
     private PlayerWeapons _playerWeapons;
 
-
-
     [Header("(legacy)")]
     public NetworkObject altBulletPrefab; // Fallback, wenn weaponDef.bulletPrefab leer ist
     public float fireRate = 1.5f; // legacy; Runtime übernimmt
     [Range(0f, 0.5f)] public float altFireRateJitterPct = 0.05f;
-
-
 
     [Header("Accuracy / Charge")]
     public float altInaccuracyAngle = 1f;
@@ -34,7 +28,9 @@ public class BlasterController : NetworkBehaviour
     public float clusterRadius = 4f;
     public int clusterCountThreshold = 3;
 
-    [Header("Targeting")]
+    [Header("Auto Aim / Targeting")]
+    public bool useAutoAim = true;
+    public float retargetInterval = 0.15f;
     public bool useAimLead = true;
     public float altBulletSpeedHint = 25f; // m/s
     public LayerMask enemyLayer;
@@ -53,6 +49,10 @@ public class BlasterController : NetworkBehaviour
 
     private PlayerMovement _ownerMovement;
     private PlayerUpgrades _upgrades;
+
+    // Targeting Cache
+    private Transform _currentTarget;
+    private float _nextRetargetTime;
 
     // Server: Anti-Exploit Cooldown-Tracking
     private readonly Dictionary<ulong, float> _lastAltFire = new();
@@ -77,9 +77,7 @@ public class BlasterController : NetworkBehaviour
         _ownerMovement = GetComponentInParent<PlayerMovement>();
         _upgrades = GetComponentInParent<PlayerUpgrades>();
 
-        if (!primary) primary = GetComponentInParent<CannonController>();
-        if (!bulletSpawnPoint && primary) bulletSpawnPoint = primary.bulletSpawnPoint;
-
+        // PlayerWeapons / Runtime
         _playerWeapons = GetComponentInParent<PlayerWeapons>();
         if (_playerWeapons != null)
             _playerWeapons.RuntimesRebuilt += OnWeaponsRebuilt;
@@ -124,7 +122,6 @@ public class BlasterController : NetworkBehaviour
         }
     }
 
-
     private void ApplySpeedHint()
     {
         if (_runtime != null)
@@ -140,7 +137,17 @@ public class BlasterController : NetworkBehaviour
         if (!autoAltFire) return;
         if (Time.time < _nextAltFireTime) return;
 
-        Transform tgt = GetCurrentTarget();
+        // Auto Aim / Target aktualisieren
+        if (useAutoAim)
+        {
+            if (Time.time >= _nextRetargetTime || _currentTarget == null)
+            {
+                _nextRetargetTime = Time.time + retargetInterval;
+                _currentTarget = AcquireTarget();
+            }
+        }
+
+        Transform tgt = _currentTarget;
         bool shouldAlt = false;
 
         if (tgt != null && !string.IsNullOrEmpty(eliteTag) && tgt.CompareTag(eliteTag))
@@ -173,7 +180,7 @@ public class BlasterController : NetworkBehaviour
 
         while (Time.time < endTime && IsOwner)
         {
-            Transform tgt = GetCurrentTarget();
+            Transform tgt = _currentTarget;
             if (tgt == null) break;
 
             Vector3 aimPos = PredictAimPoint(tgt, useAimLead ? altBulletSpeedHint : 0f);
@@ -184,12 +191,10 @@ public class BlasterController : NetworkBehaviour
         float heldTime = Time.time - _chargeStartTime;
 
         float baseCd = _runtime != null ? _runtime.GetCooldownSeconds() : fireRate;
-        // Jitter:
         float altCd = NextCooldown(baseCd, altFireRateJitterPct);
 
-        Vector3 pos = bulletSpawnPoint ? bulletSpawnPoint.position
-                                       : (primary ? primary.AimOrigin : transform.position);
-        Quaternion rot = primary ? primary.AimRotation : transform.rotation;
+        Vector3 pos = bulletSpawnPoint ? bulletSpawnPoint.position : transform.position;
+        Quaternion rot = transform.rotation;
 
         RequestChargedShotServerRpc(pos, rot, heldTime, altCd);
 
@@ -209,22 +214,61 @@ public class BlasterController : NetworkBehaviour
 
     // ===== Target/Aim helpers =====
 
-    private Transform GetCurrentTarget()
+    private float GetTargetRange()
     {
-        if (primary) return primary.CurrentTarget;
-        Collider[] hits = Physics.OverlapSphere(transform.position, 30f, enemyLayer, QueryTriggerInteraction.Ignore);
-        Transform best = null; float bestSqr = float.PositiveInfinity;
-        foreach (var h in hits)
+        if (_runtime != null && _runtime.rangeMeters > 0f)
+            return _runtime.rangeMeters;
+
+        if (weaponDef != null && weaponDef.rangeMeters > 0f)
+            return weaponDef.rangeMeters;
+            
+        return 12f;
+    }
+
+
+    private Transform AcquireTarget()
+    {
+        float range = GetTargetRange();
+        Collider[] hits = Physics.OverlapSphere(transform.position, range, enemyLayer, QueryTriggerInteraction.Ignore);
+        Transform best = null;
+        float bestScore = float.PositiveInfinity;
+
+        Vector3 origin = bulletSpawnPoint ? bulletSpawnPoint.position : transform.position;
+        Vector3 forward = transform.forward;
+
+        for (int i = 0; i < hits.Length; i++)
         {
-            float d = (h.transform.position - transform.position).sqrMagnitude;
-            if (d < bestSqr) { bestSqr = d; best = h.transform; }
+            Transform t = hits[i].transform;
+            if (!HasLineOfSight(t)) continue;
+
+            Vector3 to = (t.position - origin);
+            float dist = to.magnitude;
+            if (dist <= 0.1f) continue;
+
+            float dot = Vector3.Dot(forward, to.normalized);
+            float score = dist * Mathf.Lerp(2f, 1f, Mathf.InverseLerp(0.5f, 1f, dot));
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = t;
+            }
         }
         return best;
     }
 
+    private bool HasLineOfSight(Transform t)
+    {
+        Vector3 origin = bulletSpawnPoint ? bulletSpawnPoint.position : transform.position + Vector3.up * 1.2f;
+        Vector3 target = t.position + Vector3.up * 0.8f;
+        Vector3 dir = (target - origin);
+        float dist = dir.magnitude;
+        if (dist <= 0.01f) return true;
+
+        return !Physics.Raycast(origin, dir.normalized, dist, lineOfSightMask, QueryTriggerInteraction.Ignore);
+    }
+
     private bool TryAimTowards(Vector3 worldPos)
     {
-        if (primary) return primary.TryAimTowards(worldPos);
         Vector3 dir = worldPos - transform.position;
         if (dir.sqrMagnitude <= 0.0001f) return false;
         transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
@@ -240,8 +284,7 @@ public class BlasterController : NetworkBehaviour
         if (!rb) return targetPos;
 
         Vector3 v = rb.linearVelocity;
-        Vector3 p = bulletSpawnPoint ? bulletSpawnPoint.position
-                                     : (primary ? primary.AimOrigin : transform.position);
+        Vector3 p = bulletSpawnPoint ? bulletSpawnPoint.position : transform.position;
 
         Vector3 toTarget = targetPos - p;
         float distance = toTarget.magnitude;
@@ -262,7 +305,7 @@ public class BlasterController : NetworkBehaviour
     private void RequestChargedShotServerRpc(Vector3 position, Quaternion rotation, float heldTime, float clientCooldown)
     {
         if (_runtime == null) return;
-        
+
         float now = Time.time;
         _lastAltFire.TryGetValue(OwnerClientId, out float last);
 
@@ -362,8 +405,4 @@ public class BlasterController : NetworkBehaviour
         var shake = cam.GetComponent<CameraShake>();
         if (shake) shake.Shake(intensity, duration);
     }
-
-    // ===== API für Upgrades (legacy UI) =====
-    //public void SetFireRateSeconds(float seconds) => fireRate = Mathf.Max(0.01f, seconds);
-    //public float GetFireRateSeconds() => fireRate;
 }

@@ -28,7 +28,6 @@ public class CannonController : NetworkBehaviour
 
     // ==== AUTO SHOOT ====
     [Header("Auto Shoot")]
-    public float targetRange = 20f;
     public float retargetInterval = 0.15f;
     [Range(0f, 1f)] public float minDotToShoot = 0.95f;
     public LayerMask enemyLayer;
@@ -129,15 +128,22 @@ public class CannonController : NetworkBehaviour
 
     private void ApplyRangeAndSpeedHints()
     {
-        // Zielweite aus Definition; Geschwindigkeits-Hint aus Runtime (falls Level sie ändert)
-        if (weaponDef != null)
-        {
-            targetRange = weaponDef.rangeMeters > 0 ? weaponDef.rangeMeters : targetRange;
-        }
+        // Nur noch Speed-Hint aus Runtime
         if (_runtime != null)
-        {
             primaryBulletSpeedHint = _runtime.projectileSpeed > 0 ? _runtime.projectileSpeed : primaryBulletSpeedHint;
-        }
+        else if (weaponDef != null)
+            primaryBulletSpeedHint = weaponDef.projectileSpeed > 0 ? weaponDef.projectileSpeed : primaryBulletSpeedHint;
+    }
+
+    private float GetTargetRange()
+    {
+        if (_runtime != null && _runtime.rangeMeters > 0f)
+            return _runtime.rangeMeters;
+
+        if (weaponDef != null && weaponDef.rangeMeters > 0f)
+            return weaponDef.rangeMeters;
+
+        return 12f;
     }
 
     private void Update()
@@ -210,7 +216,8 @@ public class CannonController : NetworkBehaviour
 
     private Transform AcquireTarget()
     {
-        Collider[] hits = Physics.OverlapSphere(transform.position, targetRange, enemyLayer, QueryTriggerInteraction.Ignore);
+        float range = GetTargetRange();
+        Collider[] hits = Physics.OverlapSphere(transform.position, range, enemyLayer, QueryTriggerInteraction.Ignore);
         Transform best = null;
         float bestScore = float.PositiveInfinity;
 

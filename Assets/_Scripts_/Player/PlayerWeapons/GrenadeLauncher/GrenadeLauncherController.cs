@@ -25,7 +25,6 @@ public class GrenadeLauncherController : NetworkBehaviour
 
     [Header("Targeting (Auto)")]
     public bool autoShootEnabled = true;
-    public float targetRange = 32f;
     [Range(0f, 1f)] public float minDotToShoot = 0.80f;
     public float retargetInterval = 0.15f;
     public LayerMask enemyLayer;
@@ -107,8 +106,6 @@ public class GrenadeLauncherController : NetworkBehaviour
     private void OnRuntimesRebuilt()
     {
         _runtime = _weapons != null ? _weapons.GrenadeRuntime : null;
-        if (_runtime != null && _runtime.def != null && _runtime.def.rangeMeters > 0f)
-            targetRange = _runtime.def.rangeMeters;
         enabled = (_runtime != null);
     }
 
@@ -323,7 +320,16 @@ public class GrenadeLauncherController : NetworkBehaviour
         => (_runtime != null) ? Mathf.Max(0.1f, _runtime.projectileSpeed) : launchSpeed;
 
     private float GetTargetRange()
-        => (_runtime != null) ? Mathf.Max(0.5f, _runtime.def.rangeMeters) : targetRange;
+    {
+        if (_runtime != null && _runtime.rangeMeters > 0f)
+            return _runtime.rangeMeters;
+
+        if (grenadeDef != null && grenadeDef.rangeMeters > 0f)
+            return grenadeDef.rangeMeters;
+
+        return 25f;
+    }
+
 
     // ================== RPC / SPAWN ==================
 
@@ -406,7 +412,7 @@ public class GrenadeLauncherController : NetworkBehaviour
     private List<NetworkObject> AcquireTargetsForSalvo(Vector3 origin, int maxTargets)
     {
         var result = new List<NetworkObject>(maxTargets);
-        float searchRadius = targetRange;
+        float searchRadius = GetTargetRange();
 
         var cols = Physics.OverlapSphere(origin, searchRadius, enemyLayer, QueryTriggerInteraction.Ignore);
 

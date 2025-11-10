@@ -1,5 +1,163 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &995979155220443206
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2943046030160944852}
+  - component: {fileID: 2095866058880210568}
+  - component: {fileID: 253272080680645569}
+  m_Layer: 7
+  m_Name: LightningController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2943046030160944852
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 995979155220443206}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3963026483496299984}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2095866058880210568
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 995979155220443206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 202bb9f7a3d10ec47b469806ef3eac92, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  weaponDef: {fileID: 11400000, guid: f045e6e0a2afcf44bb7b5d5c3e427f73, type: 2}
+  overclocks: {fileID: 4061243089856759362}
+  retargetInterval: 0.15
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 4096
+  lineOfSightMask:
+    serializedVersion: 2
+    m_Bits: 512
+  minDotToStrike: 0.5
+  fireRateJitterPct: 0.08
+  lightningVfxPrefab: {fileID: 8974203713140315807, guid: 0251b3e7195211f459c1cfa5a1973adb, type: 3}
+  audioSource: {fileID: 253272080680645569}
+  strikeSfx: {fileID: 8300000, guid: 0fae592b8c11a9d4abee28d011b93372, type: 3}
+  NetworkRotation:
+    m_InternalValue: {x: 0, y: 0, z: 0, w: 1}
+--- !u!82 &253272080680645569
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 995979155220443206}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 0fae592b8c11a9d4abee28d011b93372, type: 3}
+  m_PlayOnAwake: 0
+  m_Volume: 0.05
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &1503684532812521460
 GameObject:
   m_ObjectHideFlags: 0
@@ -750,7 +908,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &8325214368903602847
 Transform:
   m_ObjectHideFlags: 0
@@ -869,18 +1027,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9bd6e31ef5e672344b97b0973677cba8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  primary: {fileID: 2746908290376024938}
   bulletSpawnPoint: {fileID: 972887957733530469}
   weaponDef: {fileID: 11400000, guid: 89494c543718e894f9552a76859a58e1, type: 2}
   altBulletPrefab: {fileID: 1476586629750628589, guid: d940d4f0ac4a3ca46a9a99935586aef0, type: 3}
   fireRate: 1.5
   altFireRateJitterPct: 0.1
   altInaccuracyAngle: 1
-  chargeTime: 2
+  chargeTime: 1
   autoAltFire: 1
   eliteTag: Elite
   clusterRadius: 3
   clusterCountThreshold: 2
+  useAutoAim: 1
+  retargetInterval: 0.15
   useAimLead: 1
   altBulletSpeedHint: 65
   enemyLayer:
@@ -905,7 +1064,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 7e2bc5153df75944f9efcb6041d7fa98, type: 3}
   m_PlayOnAwake: 0
-  m_Volume: 0.1
+  m_Volume: 0.01
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -1363,7 +1522,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0.7216981, g: 0.9216502, b: 1, a: 1}
-  m_Intensity: 50
+  m_Intensity: 200
   m_Range: 500
   m_SpotAngle: 90
   m_InnerSpotAngle: 25
@@ -1405,7 +1564,7 @@ Light:
   m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
-  m_BounceIntensity: 1
+  m_BounceIntensity: 100
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
@@ -1796,7 +1955,6 @@ MonoBehaviour:
   fireSFX: {fileID: 8300000, guid: 1ceb56cf4c22e264da17b8ef5de351c1, type: 3}
   fireSfxMinInterval: 0.05
   rotationLerpRate: 15
-  targetRange: 75
   retargetInterval: 0.15
   minDotToShoot: 0.95
   enemyLayer:
@@ -2059,7 +2217,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &3838174280001282848
 Transform:
   m_ObjectHideFlags: 0
@@ -2155,7 +2313,6 @@ MonoBehaviour:
   maxElevationDeg: 25
   inaccuracyAngle: 2
   autoShootEnabled: 1
-  targetRange: 220
   minDotToShoot: 0.45
   retargetInterval: 0.3
   enemyLayer:
@@ -2319,16 +2476,17 @@ Transform:
   - {fileID: 9046243704394151238}
   - {fileID: 4637037343647819799}
   - {fileID: 4482477836443022628}
+  - {fileID: 2943046030160944852}
+  - {fileID: 2653925147314416184}
+  - {fileID: 8325214368903602847}
   - {fileID: 7498628120663236216}
   - {fileID: 6656739555995357333}
-  - {fileID: 8325214368903602847}
   - {fileID: 258527420198481124}
   - {fileID: 3838174280001282848}
   - {fileID: 5391210402451881963}
   - {fileID: 6124617803656415927}
   - {fileID: 9082590373229321135}
   - {fileID: 6801341488815129918}
-  - {fileID: 2653925147314416184}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &6937276174275915804
@@ -2453,6 +2611,11 @@ MonoBehaviour:
   dashGravityFactor: 0.15
   keepVerticalVelocityOnDash: 1
   dashEndHorizontalDamping: 0.5
+  maxStamina: 100
+  staminaRegenPerSecond: 20
+  rollStaminaCostPerSecond: 15
+  dashStaminaCost: 0
+  minStaminaToStartRoll: 5
   groundLayer:
     serializedVersion: 2
     m_Bits: 512
@@ -2475,7 +2638,7 @@ MonoBehaviour:
   keepMomentumWhileRollAir: 1
   minAirControlWhileRoll: 0.95
   scaleAccelWhileRoll: 1
-  lookWithCameraWhenNoMove: 1
+  lookWithCameraWhenNoMove: 0
   faceMovementDirection: 1
   audioSource: {fileID: 6799519995716292581}
   footstepClips:
@@ -2515,7 +2678,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHP: 100
-  regenPerSecond: 0
+  regenPerSecond: 0.2
   iFrames: 0.4
   rollDR: 0.3
   armorFlat: 0
@@ -2548,13 +2711,16 @@ MonoBehaviour:
   cannonDef: {fileID: 11400000, guid: 28e276fe833bd01438dbee70425a98de, type: 2}
   blasterDef: {fileID: 11400000, guid: 89494c543718e894f9552a76859a58e1, type: 2}
   grenadeDef: {fileID: 11400000, guid: 36439c519127b2947a6abc791d73de9d, type: 2}
-  upgrades: {fileID: 0}
+  lightningDef: {fileID: 11400000, guid: f045e6e0a2afcf44bb7b5d5c3e427f73, type: 2}
+  upgrades: {fileID: 4238535403307873137}
   cannonLevel:
     m_InternalValue: 1
   blasterLevel:
     m_InternalValue: 1
   grenadeLevel:
     m_InternalValue: 1
+  lightningLevel:
+    m_InternalValue: 0
 --- !u!114 &4238535403307873137
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2573,18 +2739,21 @@ MonoBehaviour:
   maxLevel_Armor: 10
   maxLevel_Magnet: 10
   maxLevel_MoveSpeed: 10
+  maxLevel_Stamina: 10
   maxHPPerLevel: 15
   armorFlatPerLevel: 1.5
   magnetRangeMultPerLevel: 1.2
   moveSpeedMultPerLevel: 1.05
+  staminaMaxPerLevel: 20
+  staminaRegenPerLevel: 1.5
   startingMasteries: []
   masteryPool:
   - {fileID: 11400000, guid: e2c93db6469fcf44baddcd0c877ed8ea, type: 2}
   - {fileID: 11400000, guid: a9a6f45f7bba2094b8f82bc8f06b148b, type: 2}
   - {fileID: 11400000, guid: 6c73c839c7b541344aa52e27edc79b61, type: 2}
-  - {fileID: 11400000, guid: 8267b24f9163648458b29d78e3f6560c, type: 2}
-  - {fileID: 11400000, guid: 365c9a97c0584404baf1192cccb3c239, type: 2}
-  - {fileID: 11400000, guid: d07a3ea1b2d9b9a4c965327828cc3cc0, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   MaxHPLevel:
     m_InternalValue: 0
   ArmorLevel:
@@ -2592,6 +2761,8 @@ MonoBehaviour:
   MagnetLevel:
     m_InternalValue: 0
   MoveSpeedLevel:
+    m_InternalValue: 0
+  StaminaLevel:
     m_InternalValue: 0
 --- !u!114 &4061243089856759362
 MonoBehaviour:
@@ -3166,7 +3337,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1171201465392465800, guid: 4aa9f30a28a77224ba84b2a2c334c71b, type: 3}
       propertyPath: m_Name
-      value: Electro slash
+      value: ElectroSlashController
       objectReference: {fileID: 0}
     - target: {fileID: 1171201465392465800, guid: 4aa9f30a28a77224ba84b2a2c334c71b, type: 3}
       propertyPath: m_IsActive
@@ -3174,15 +3345,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1233010467109672509, guid: 4aa9f30a28a77224ba84b2a2c334c71b, type: 3}
       propertyPath: m_LocalScale.x
-      value: 3
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 1233010467109672509, guid: 4aa9f30a28a77224ba84b2a2c334c71b, type: 3}
       propertyPath: m_LocalScale.y
-      value: 3
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 1233010467109672509, guid: 4aa9f30a28a77224ba84b2a2c334c71b, type: 3}
       propertyPath: m_LocalScale.z
-      value: 3
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 1233010467109672509, guid: 4aa9f30a28a77224ba84b2a2c334c71b, type: 3}
       propertyPath: m_LocalPosition.x

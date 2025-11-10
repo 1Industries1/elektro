@@ -15,12 +15,17 @@ public class PlayerUpgrades : NetworkBehaviour
     public int maxLevel_Armor     = 10;
     public int maxLevel_Magnet    = 10;
     public int maxLevel_MoveSpeed = 12;
+    public int maxLevel_Stamina   = 10;
 
     [Header("Effect per level")]
     public float maxHPPerLevel             = 15f;
     public float armorFlatPerLevel         = 1.5f;
     [Range(1.01f, 1.5f)] public float magnetRangeMultPerLevel = 1.15f;
-    [Range(1.01f, 1.5f)] public float moveSpeedMultPerLevel   = 1.08f;
+    [Range(1.01f, 1.5f)] public float moveSpeedMultPerLevel = 1.08f;
+    
+    [Header("Stamina per level")]
+    public float staminaMaxPerLevel   = 20f;  // +max Stamina pro Level
+    public float staminaRegenPerLevel = 1.5f; // +Regen pro Sekunde pro Level
 
     [Header("Masteries (ScriptableObjects)")]
     [SerializeField] public MasteryTier[] startingMasteries;
@@ -33,11 +38,14 @@ public class PlayerUpgrades : NetworkBehaviour
     public NetworkVariable<int> ArmorLevel     = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> MagnetLevel    = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> MoveSpeedLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> StaminaLevel   = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     // Baseline-Werte
     private float _baseMaxHP;
     private float _baseArmorFlat;
     private float _baseMoveSpeed;
+    private float _baseMaxStamina;
+    private float _baseStaminaRegen;
 
     // --- Mastery-Besitz (Server + via RPC zum Owner gespiegelt) ---
     private readonly List<MasteryTier> _ownedMasteries = new();
@@ -59,6 +67,8 @@ public class PlayerUpgrades : NetworkBehaviour
         if (movement)
         {
             _baseMoveSpeed = movement.moveSpeed;
+            _baseMaxStamina   = movement.maxStamina;
+            _baseStaminaRegen = movement.staminaRegenPerSecond;
         }
 
         if (IsServer)
@@ -88,6 +98,7 @@ public class PlayerUpgrades : NetworkBehaviour
         ArmorLevel.OnValueChanged     += (_, __) => ApplyArmor();
         MoveSpeedLevel.OnValueChanged += (_, __) => ApplyMoveSpeed();
         MagnetLevel.OnValueChanged    += (_, __) => { /* UI only */ };
+        StaminaLevel.OnValueChanged   += (_, __) => ApplyStamina();
     }
 
     // ==================== Public Infos ====================
@@ -98,6 +109,7 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Armor     => ArmorLevel.Value,
         UpgradeType.Magnet    => MagnetLevel.Value,
         UpgradeType.MoveSpeed => MoveSpeedLevel.Value,
+        UpgradeType.Stamina   => StaminaLevel.Value,
         _                     => 0
     };
 
@@ -107,6 +119,7 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Armor     => maxLevel_Armor,
         UpgradeType.Magnet    => maxLevel_Magnet,
         UpgradeType.MoveSpeed => maxLevel_MoveSpeed,
+        UpgradeType.Stamina   => maxLevel_Stamina,
         _                     => 0
     };
 
@@ -142,6 +155,10 @@ public class PlayerUpgrades : NetworkBehaviour
                 if (movement) return movement.moveSpeed;
                 return Mathf.Max(0.1f, _baseMoveSpeed * Mathf.Pow(moveSpeedMultPerLevel, MoveSpeedLevel.Value));
 
+            case UpgradeType.Stamina:
+                if (movement) return movement.maxStamina;
+                return Mathf.Max(0.1f, _baseMaxStamina + StaminaLevel.Value * staminaMaxPerLevel);
+
             default:
                 return 0f;
         }
@@ -157,6 +174,7 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Armor     => $"{GetCurrentValue(t):0.#} armor",
         UpgradeType.Magnet    => $"{GetCurrentValue(t):0.00}×",
         UpgradeType.MoveSpeed => $"{GetCurrentValue(t):0.##} m/s",
+        UpgradeType.Stamina   => $"{GetCurrentValue(t):0.#} ST",
         _                     => GetCurrentValue(t).ToString("0.##")
     };
 
@@ -174,6 +192,8 @@ public class PlayerUpgrades : NetworkBehaviour
                 return Mathf.Pow(magnetRangeMultPerLevel, level);
             case UpgradeType.MoveSpeed:
                 return Mathf.Max(0.1f, _baseMoveSpeed * Mathf.Pow(moveSpeedMultPerLevel, level));
+            case UpgradeType.Stamina:
+                return Mathf.Max(0.1f, _baseMaxStamina + level * staminaMaxPerLevel);
             default:
                 return 0f;
         }
@@ -215,6 +235,7 @@ public class PlayerUpgrades : NetworkBehaviour
                 case UpgradeType.Armor:     ArmorLevel.Value++;     break;
                 case UpgradeType.Magnet:    MagnetLevel.Value++;    break;
                 case UpgradeType.MoveSpeed: MoveSpeedLevel.Value++; break;
+                case UpgradeType.Stamina:   StaminaLevel.Value++;   break;
             }
         }
     }
@@ -231,13 +252,33 @@ public class PlayerUpgrades : NetworkBehaviour
         var rarity = ChoiceCodec.GetRarity(encodedId);
         int stacks = UpgradeRoller.StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
 
-        // Mastery?
+        // Mastery
         if (UpgradeRoller.IsMasteryBaseId(baseId))
         {
             if (UpgradeRoller.TryResolveMasteryBaseId(this, baseId, out var mDef))
             {
                 int addStacks = Mathf.Max(1, stacks);
                 AddMasteryLevels(mDef, addStacks);
+            }
+            return;
+        }
+
+        // ===== Waffe =====
+        if (UpgradeRoller.IsWeaponBaseId(baseId))
+        {
+            var pw = GetComponent<PlayerWeapons>() ?? GetComponentInChildren<PlayerWeapons>(true);
+            if (pw != null)
+            {
+                string weaponId = UpgradeRoller.WeaponIdFromBase(pw, baseId);
+                if (!string.IsNullOrEmpty(weaponId))
+                {
+                    int addStacks = Mathf.Max(1, stacks);
+                    for (int i = 0; i < addStacks; i++)
+                    {
+                        // nutzt deine vorhandene Unlock/LevelLogik
+                        pw.Server_LevelUpById(weaponId, notifyOwner: true);
+                    }
+                }
             }
             return;
         }
@@ -254,6 +295,7 @@ public class PlayerUpgrades : NetworkBehaviour
         ApplyMaxHP();
         ApplyArmor();
         ApplyMoveSpeed();
+        ApplyStamina();
     }
 
     private void ApplyMaxHP()
@@ -279,9 +321,21 @@ public class PlayerUpgrades : NetworkBehaviour
     private void ApplyMoveSpeed()
     {
         if (!movement) return;
-        int   lvl  = MoveSpeedLevel.Value;
+        int lvl = MoveSpeedLevel.Value;
         float mult = Mathf.Pow(moveSpeedMultPerLevel, lvl);
         movement.moveSpeed = Mathf.Max(0.1f, _baseMoveSpeed * mult);
+    }
+    
+    private void ApplyStamina()
+    {
+        if (!movement) return;
+
+        int lvl = StaminaLevel.Value;
+        float newMaxStamina   = Mathf.Max(1f, _baseMaxStamina   + lvl * staminaMaxPerLevel);
+        float newStaminaRegen = Mathf.Max(0f, _baseStaminaRegen + lvl * staminaRegenPerLevel);
+
+        movement.maxStamina           = newMaxStamina;
+        movement.staminaRegenPerSecond = newStaminaRegen;
     }
 
     // === WeaponRuntime-Hook ===
@@ -433,5 +487,6 @@ public enum UpgradeType : int
     MaxHP     = 3,
     Armor     = 4,
     Magnet    = 6,
-    MoveSpeed = 7
+    MoveSpeed = 7,
+    Stamina   = 8
 }

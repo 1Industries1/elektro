@@ -22,6 +22,6 @@ MonoBehaviour:
   mods:
   - stat: 0
     mode: 2
-    value: 0.01
+    value: 0.06
   afterMods: []
   tacticalCharges: 1

@@ -112,8 +112,11 @@ public class PlayerXP : NetworkBehaviour
         if (_upgrades == null) _upgrades = GetComponent<PlayerUpgrades>();
         if (_upgrades == null) return;
 
+        // PlayerWeapons auf dem gleichen Player suchen (Server-Seite)
+        var pw = GetComponent<PlayerWeapons>() ?? GetComponentInChildren<PlayerWeapons>(true);
+
         // Encodete 3 Optionen bestimmen (Rarity/Stacks eingerechnet)
-        int[] choices = UpgradeRoller.Roll3Valid(_upgrades);
+        int[] choices = UpgradeRoller.Roll3Valid(_upgrades, pw);
 
         _awaitingChoice = true;
         _lastChoicesEncoded = choices;
@@ -142,7 +145,11 @@ public class PlayerXP : NetworkBehaviour
         Debug.Log($"[PlayerXP] RPC ChooseUpgrade from {sender}, choiceId={choiceId} ({UpgradeRoller.Label(choiceId)})");
 
         // Ownership prüfen
-        if (sender != OwnerClientId) { Debug.LogWarning("[PlayerXP] Reject: not owner"); return; }
+        if (sender != OwnerClientId)
+        {
+            Debug.LogWarning("[PlayerXP] Reject: not owner");
+            return;
+        }
 
         if (!_awaitingChoice)
         {
@@ -156,7 +163,8 @@ public class PlayerXP : NetworkBehaviour
         {
             Debug.LogWarning("[PlayerXP] No PlayerUpgrades found");
             ChoiceResultOwnerClientRpc(false, choiceId, OwnerClientId);
-            _awaitingChoice = false;
+            _awaitingChoice     = false;
+            _lastChoicesEncoded = null;
             return;
         }
 
@@ -165,44 +173,26 @@ public class PlayerXP : NetworkBehaviour
         {
             Debug.LogWarning("[PlayerXP] Reject: choice not in last roll");
             ChoiceResultOwnerClientRpc(false, choiceId, OwnerClientId);
-            _awaitingChoice = false;
+            _awaitingChoice     = false;
             _lastChoicesEncoded = null;
             return;
         }
 
-        // Dekodieren: Typ + Stacks (aus Rarity)
-        var type   = UpgradeRoller.ResolveFromChoice(choiceId);
-        int stacks = UpgradeRoller.StacksForChoice(choiceId);
-
-        int cur  = _upgrades.GetLevel(type);
-        int max  = _upgrades.GetMaxLevel(type);
-        int room = Mathf.Max(0, max - cur);
-
-        if (room <= 0)
-        {
-            Debug.Log($"[PlayerXP] Choice capped → {type} cur={cur}/max={max} (ignored)");
-            ChoiceResultOwnerClientRpc(false, choiceId, OwnerClientId);
-            _awaitingChoice = false;
-            _lastChoicesEncoded = null;
-            return;
-        }
-
-        int give = Mathf.Clamp(stacks, 1, room);
-
-
-        int after = _upgrades.GetLevel(type);
-        Debug.Log($"[PlayerXP] UPGRADE APPLIED → {type} {cur} → {after} (+{give})");
-
-        // ---- HIER NEU: encodedId direkt an PlayerUpgrades delegieren ----
+        // ----------------------------------------------------
+        // Zentrale Stelle: encoded Choice anwenden
+        // (Stat ODER Mastery ODER Waffe – alles in ApplyEncodedChoice_Server gekapselt)
+        // ----------------------------------------------------
         _upgrades.ApplyEncodedChoice_Server(choiceId);
 
         ChoiceResultOwnerClientRpc(true, choiceId, OwnerClientId);
-        _awaitingChoice = false;
+        _awaitingChoice     = false;
         _lastChoicesEncoded = null;
 
         // Falls durch XP-Overflow noch was pending ist, sofort die nächsten Choices anbieten
-        if (xp >= xpToNext) OfferUpgradeChoices();
+        if (xp >= xpToNext)
+            OfferUpgradeChoices();
     }
+
 
 
     // ======================== Client: Ergebnis & HUD ========================
