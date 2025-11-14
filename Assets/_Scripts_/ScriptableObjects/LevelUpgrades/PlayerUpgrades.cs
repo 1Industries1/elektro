@@ -16,16 +16,18 @@ public class PlayerUpgrades : NetworkBehaviour
     public int maxLevel_Magnet    = 10;
     public int maxLevel_MoveSpeed = 12;
     public int maxLevel_Stamina   = 10;
+    public int maxLevel_DropMoreXP   = 10;
+    public int maxLevel_DropMoreGold = 10;
 
     [Header("Effect per level")]
     public float maxHPPerLevel             = 15f;
     public float armorFlatPerLevel         = 1.5f;
     [Range(1.01f, 1.5f)] public float magnetRangeMultPerLevel = 1.15f;
     [Range(1.01f, 1.5f)] public float moveSpeedMultPerLevel = 1.08f;
-    
-    [Header("Stamina per level")]
-    public float staminaMaxPerLevel   = 20f;  // +max Stamina pro Level
-    public float staminaRegenPerLevel = 1.5f; // +Regen pro Sekunde pro Level
+    public float staminaMaxPerLevel   = 20f;
+    public float staminaRegenPerLevel = 1.5f;
+    public float xpDropBonusPerLevel   = 0.1f;
+    public float goldDropBonusPerLevel = 0.1f;
 
     [Header("Masteries (ScriptableObjects)")]
     [SerializeField] public MasteryTier[] startingMasteries;
@@ -38,7 +40,9 @@ public class PlayerUpgrades : NetworkBehaviour
     public NetworkVariable<int> ArmorLevel     = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> MagnetLevel    = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> MoveSpeedLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    public NetworkVariable<int> StaminaLevel   = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> StaminaLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> DropMoreXPLevel   = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> DropMoreGoldLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     // Baseline-Werte
     private float _baseMaxHP;
@@ -99,6 +103,8 @@ public class PlayerUpgrades : NetworkBehaviour
         MoveSpeedLevel.OnValueChanged += (_, __) => ApplyMoveSpeed();
         MagnetLevel.OnValueChanged    += (_, __) => { /* UI only */ };
         StaminaLevel.OnValueChanged   += (_, __) => ApplyStamina();
+        DropMoreXPLevel.OnValueChanged   += (_, __) => { /* UI only */ };
+        DropMoreGoldLevel.OnValueChanged += (_, __) => { /* UI only */ };
     }
 
     // ==================== Public Infos ====================
@@ -110,6 +116,8 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Magnet    => MagnetLevel.Value,
         UpgradeType.MoveSpeed => MoveSpeedLevel.Value,
         UpgradeType.Stamina   => StaminaLevel.Value,
+        UpgradeType.DropMoreXP  => DropMoreXPLevel.Value,
+        UpgradeType.DropMoreGold => DropMoreGoldLevel.Value,
         _                     => 0
     };
 
@@ -120,6 +128,8 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Magnet    => maxLevel_Magnet,
         UpgradeType.MoveSpeed => maxLevel_MoveSpeed,
         UpgradeType.Stamina   => maxLevel_Stamina,
+        UpgradeType.DropMoreXP  => maxLevel_DropMoreXP,
+        UpgradeType.DropMoreGold => maxLevel_DropMoreGold,
         _                     => 0
     };
 
@@ -159,6 +169,12 @@ public class PlayerUpgrades : NetworkBehaviour
                 if (movement) return movement.maxStamina;
                 return Mathf.Max(0.1f, _baseMaxStamina + StaminaLevel.Value * staminaMaxPerLevel);
 
+            case UpgradeType.DropMoreXP:
+                return 1f + DropMoreXPLevel.Value * xpDropBonusPerLevel;
+
+            case UpgradeType.DropMoreGold:
+                return 1f + DropMoreGoldLevel.Value * goldDropBonusPerLevel;
+
             default:
                 return 0f;
         }
@@ -167,6 +183,8 @@ public class PlayerUpgrades : NetworkBehaviour
     // Öffentliche Abfrage für andere Systeme
     public float GetDamageMultiplier() => 1f;
     public float GetMagnetRangeMult()  => Mathf.Pow(magnetRangeMultPerLevel, MagnetLevel.Value);
+    public float GetXpDropMult()   => 1f + DropMoreXPLevel.Value * xpDropBonusPerLevel;
+    public float GetGoldDropMult() => 1f + DropMoreGoldLevel.Value * goldDropBonusPerLevel;
 
     public string GetCurrentDisplay(UpgradeType t) => t switch
     {
@@ -175,6 +193,8 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Magnet    => $"{GetCurrentValue(t):0.00}×",
         UpgradeType.MoveSpeed => $"{GetCurrentValue(t):0.##} m/s",
         UpgradeType.Stamina   => $"{GetCurrentValue(t):0.#} ST",
+        UpgradeType.DropMoreXP  => $"{(GetCurrentValue(t) - 1f) * 100f:0.#}% XP",
+        UpgradeType.DropMoreGold => $"{(GetCurrentValue(t) - 1f) * 100f:0.#}% Gold",
         _                     => GetCurrentValue(t).ToString("0.##")
     };
 
@@ -194,6 +214,10 @@ public class PlayerUpgrades : NetworkBehaviour
                 return Mathf.Max(0.1f, _baseMoveSpeed * Mathf.Pow(moveSpeedMultPerLevel, level));
             case UpgradeType.Stamina:
                 return Mathf.Max(0.1f, _baseMaxStamina + level * staminaMaxPerLevel);
+            case UpgradeType.DropMoreXP:
+                return 1f + level * xpDropBonusPerLevel;
+            case UpgradeType.DropMoreGold:
+                return 1f + level * goldDropBonusPerLevel;
             default:
                 return 0f;
         }
@@ -236,6 +260,8 @@ public class PlayerUpgrades : NetworkBehaviour
                 case UpgradeType.Magnet:    MagnetLevel.Value++;    break;
                 case UpgradeType.MoveSpeed: MoveSpeedLevel.Value++; break;
                 case UpgradeType.Stamina:   StaminaLevel.Value++;   break;
+                case UpgradeType.DropMoreXP:  DropMoreXPLevel.Value++;  break;
+                case UpgradeType.DropMoreGold: DropMoreGoldLevel.Value++; break;
             }
         }
     }
@@ -273,15 +299,21 @@ public class PlayerUpgrades : NetworkBehaviour
                 if (!string.IsNullOrEmpty(weaponId))
                 {
                     int addStacks = Mathf.Max(1, stacks);
+
+                    // Für Waffen ist StacksForChoice immer 1, aber wir sind hier zukunftssicher.
                     for (int i = 0; i < addStacks; i++)
                     {
-                        // nutzt deine vorhandene Unlock/LevelLogik
-                        pw.Server_LevelUpById(weaponId, notifyOwner: true);
+                        if (pw.Server_LevelUpById(weaponId, notifyOwner: true))
+                        {
+                            var def = UpgradeRoller.ResolveWeaponDef(pw, baseId);
+                            SignalWeaponUpgradeToast(def);
+                        }
                     }
                 }
             }
             return;
         }
+
 
         // Stat-Upgrade
         var type = UpgradeRoller.Resolve(baseId);
@@ -350,6 +382,54 @@ public class PlayerUpgrades : NetworkBehaviour
                 rt.AddMastery(mt.def, Mathf.Clamp(mt.tier, 1, 3));
         }
     }
+
+
+    // ==================== Weapon-Upgrade Toasts (LevelUp / überall) ====================
+    public void SignalWeaponUpgradeToast(WeaponDefinition def)
+    {
+        if (!IsServer || def == null) return;
+
+        var pw = GetComponent<PlayerWeapons>() ?? GetComponentInChildren<PlayerWeapons>(true);
+        if (pw == null) return;
+
+        int newLevel = 1;
+
+        if (def == pw.cannonDef)         newLevel = pw.cannonLevel.Value;
+        else if (def == pw.blasterDef)   newLevel = pw.blasterLevel.Value;
+        else if (def == pw.grenadeDef)   newLevel = pw.grenadeLevel.Value;
+        else if (def == pw.lightningDef) newLevel = pw.lightningLevel.Value;
+
+        var target = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        };
+
+        WeaponUpgradeToastClientRpc(def.id, newLevel, target);
+    }
+
+
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void WeaponUpgradeToastClientRpc(string weaponId, int newLevel, ClientRpcParams rpcParams = default)
+    {
+        // Nur der eigentliche Owner zeigt UI
+        if (!IsOwner) return;
+
+        var pw = GetComponent<PlayerWeapons>() ?? GetComponentInChildren<PlayerWeapons>(true);
+        var up = this;
+        if (pw == null) return;
+
+        WeaponDefinition def = null;
+        if (pw.cannonDef   != null && pw.cannonDef.id   == weaponId) def = pw.cannonDef;
+        else if (pw.blasterDef  != null && pw.blasterDef.id  == weaponId) def = pw.blasterDef;
+        else if (pw.grenadeDef  != null && pw.grenadeDef.id  == weaponId) def = pw.grenadeDef;
+        else if (pw.lightningDef!= null && pw.lightningDef.id== weaponId) def = pw.lightningDef;
+
+        if (def == null) return;
+
+        string msg = WeaponStepDescriber.DescribeStepWithName(def, newLevel, up);
+        CenterToastUI.Instance?.Show(msg, 4f);
+    }
+
 
     // ==================== Mastery intern ====================
 
@@ -482,11 +562,15 @@ public struct MasteryTier
     [Range(1, 3)] public int tier;
 }
 
+
 public enum UpgradeType : int
 {
-    MaxHP     = 3,
-    Armor     = 4,
-    Magnet    = 6,
+    MaxHP = 3,
+    Armor = 4,
+    Magnet = 6,
     MoveSpeed = 7,
-    Stamina   = 8
+    Stamina = 8,
+    DropMoreXP = 9,
+    DropMoreGold = 10
 }
+

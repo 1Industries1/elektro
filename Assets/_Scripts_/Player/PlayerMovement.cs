@@ -13,7 +13,6 @@ public class PlayerMovement : NetworkBehaviour
     [Range(0f, 1f)] public float airControl = 0.5f;
 
     [Header("Jump & Dash")]
-    [Tooltip("Start-DeltaV nach oben (m/s), massenunabhängig.")]
     public float jumpForce = 6.5f;
 
     [Header("Dash")]
@@ -25,6 +24,21 @@ public class PlayerMovement : NetworkBehaviour
     [Range(0f, 1f)] public float dashGravityFactor = 0.15f;
     public bool keepVerticalVelocityOnDash = false;
     [Range(0.5f, 1.0f)] public float dashEndHorizontalDamping = 0.85f;
+
+    [Header("Hover / Glide")]
+    public bool enableHover = true;
+    public float maxHoverTime = 2.0f;                // wie lange maximal schweben
+    [Range(0f, 1f)] public float hoverGravityFactor = 0.2f; // 0.2 = 20% der normalen Grav
+    public float hoverFallSpeed = 5f;                // Max-Fallgeschw. beim Schweben
+    public float hoverMinVerticalSpeedToActivate = -1f; // nur aktivieren, wenn man nicht mega fällt
+
+
+    [Header("External Ability Locks")]
+    [HideInInspector] public bool externalBlockDashAndRoll;
+    [HideInInspector] public bool externalBlockHover;
+    [HideInInspector] public bool externalIgnoreMaxFallSpeed;
+
+
 
     [Header("Stamina")]
     public float maxStamina = 100f;
@@ -71,10 +85,8 @@ public class PlayerMovement : NetworkBehaviour
     private NetworkAnimator netAnim;          // nicht zwingend benötigt für Bools, aber ok zu haben
 
     // Animator-Cache
-    private int walkAnimHash;
-    private int rollAnimHash;
-    private bool hasWalkAnim;
-    private bool hasRollAnim;
+    private float hoverTimeLeft;
+    private bool isHovering;
 
     [Header("Turning")]
     public float turnSpeedDegPerSec = 720f;   // Server-seitig, sanftes Mitdrehen
@@ -156,6 +168,8 @@ public class PlayerMovement : NetworkBehaviour
     // Animator-Zustands-Cache (Server)
     private bool srvWasWalking;
     private bool srvWasRolling;
+    private int moveSpeedHash;
+    private int isRollingHash;
 
     private void Awake()
     {
@@ -168,29 +182,13 @@ public class PlayerMovement : NetworkBehaviour
             dashSpeedCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
         if (anim == null)
-            anim = GetComponentInChildren<Animator>(true);
+        anim = GetComponentInChildren<Animator>(true);
 
         if (anim != null)
         {
             netAnim = anim.GetComponent<NetworkAnimator>();
-
-            // Animator-Parameter einmalig inspizieren
-            foreach (var p in anim.parameters)
-            {
-                if (p.type == AnimatorControllerParameterType.Bool)
-                {
-                    if (p.name == "Walk_Anim")
-                    {
-                        hasWalkAnim = true;
-                        walkAnimHash = Animator.StringToHash(p.name);
-                    }
-                    else if (p.name == "Roll_Anim")
-                    {
-                        hasRollAnim = true;
-                        rollAnimHash = Animator.StringToHash(p.name);
-                    }
-                }
-            }
+            moveSpeedHash = Animator.StringToHash("MoveSpeed");
+            isRollingHash = Animator.StringToHash("IsRolling");
         }
     }
 
@@ -308,6 +306,10 @@ public class PlayerMovement : NetworkBehaviour
 
         ServerGrounded = groundedNow;
 
+        // Hover-Zeit managen
+        UpdateHoverState();
+
+
         // Stamina & Roll-State updaten (abhängig von Input + Kosten)
         UpdateStaminaAndRollState();
 
@@ -367,6 +369,13 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        // externe Fähigkeit (z.B. Ground Slam) sperrt Roll
+        if (externalBlockDashAndRoll)
+        {
+            srvRollHeld = false;
+            return;
+        }
+
         float dt = Time.fixedDeltaTime;
 
         bool wantsToRoll = srvRollInputHeld; // roher Input vom Client
@@ -408,7 +417,7 @@ public class PlayerMovement : NetworkBehaviour
             }
         }
     }
-    
+
 
     private bool IsGrounded()
     {
@@ -444,6 +453,58 @@ public class PlayerMovement : NetworkBehaviour
 
         return false;
     }
+    
+    private void UpdateHoverState()
+    {
+        // Ground-Slam oder andere Fähigkeiten können Hover sperren
+        if (externalBlockHover)
+        {
+            isHovering = false;
+            return;
+        }
+
+        if (!enableHover || !rb) 
+        {
+            isHovering = false;
+            return;
+        }
+        
+        if (!enableHover || !rb) 
+        {
+            isHovering = false;
+            return;
+        }
+
+        float dt = Time.fixedDeltaTime;
+
+        if (ServerGrounded)
+        {
+            // Beim Landen komplett auffüllen
+            hoverTimeLeft = maxHoverTime;
+            isHovering = false;
+            return;
+        }
+
+        // In der Luft: Hover nur, wenn Sprung gehalten wird + wir noch "Luft-Zeit" haben
+        if (srvJumpHeld && hoverTimeLeft > 0f)
+        {
+            // Optional: nur hover, wenn wir noch nicht extrem schnell nach unten fallen
+            if (rb.linearVelocity.y >= hoverMinVerticalSpeedToActivate)
+            {
+                isHovering = true;
+                hoverTimeLeft = Mathf.Max(0f, hoverTimeLeft - dt);
+            }
+            else
+            {
+                isHovering = false;
+            }
+        }
+        else
+        {
+            isHovering = false;
+        }
+    }
+
 
     private void OnDrawGizmos()
     {
@@ -483,9 +544,22 @@ public class PlayerMovement : NetworkBehaviour
         // Grounded-Zustand aus ServerGrounded nutzen (in FixedUpdate berechnet)
         bool grounded = ServerGrounded;
 
-        // 1) Control in der Luft: beim Rollen fast voll erhalten
-        float control = grounded ? 1f :
-            (keepRollBoostInAir && srvRollHeld ? Mathf.Max(airControl, minAirControlWhileRoll) : airControl);
+        // 1) Control in der Luft (inkl. Hover)
+        float control;
+        if (!grounded)
+        {
+            if (isHovering)
+                control = 1f; // volle Kontrolle beim Schweben
+            else if (keepRollBoostInAir && srvRollHeld)
+                control = Mathf.Max(airControl, minAirControlWhileRoll);
+            else
+                control = airControl;
+        }
+        else
+        {
+            control = 1f;
+        }
+
 
         // 2) Speed-Multiplikator durch Rollen
         float speedMult = srvRollHeld ? rollSpeedMultiplier : 1f;
@@ -584,35 +658,41 @@ public class PlayerMovement : NetworkBehaviour
         float horizontalSpeed = new Vector3(rbVel.x, 0, rbVel.z).magnitude;
 
         bool grounded = ServerGrounded;
-        bool walking = grounded && horizontalSpeed > 0.15f && !srvRollHeld;
-        bool rolling = srvRollHeld;
+        bool rolling  = srvRollHeld;  // kommt aus deiner Stamina/LSHIFT-Logik
 
-        if (hasWalkAnim) anim.SetBool(walkAnimHash, walking);
-        if (hasRollAnim) anim.SetBool(rollAnimHash, rolling);
+        // 1) MoveSpeed für Blend Tree (idle <-> walk)
+        // Im Stand ruhig hart auf 0 clampen, dann zittert Idle nicht.
+        float speedForAnim = grounded ? horizontalSpeed : 0f;
+        anim.SetFloat(moveSpeedHash, speedForAnim);
 
-        // --- State Transitions -> Audio RPCs ---
+        // 2) Roll-Bool
+        anim.SetBool(isRollingHash, rolling);
+
+        // --- Audio-Logik kannst du wie gehabt lassen, nur Walking neu bestimmen ---
+        bool walking = grounded && horizontalSpeed > standingSpeedThreshold && !rolling;
+
         if (walking && !srvWasWalking)
-            StartFootstepsClientRpc();          // Walk beginnt
+            StartFootstepsClientRpc();
         else if (!walking && srvWasWalking)
-            StopFootstepsClientRpc();           // Walk endet
+            StopFootstepsClientRpc();
 
         if (!grounded && srvWasWalking)
             StopFootstepsClientRpc();
 
         if (rolling && !srvWasRolling)
         {
-            StopFootstepsClientRpc();           // Sicherheit: Steps aus
-            PlayRollStartClientRpc();           // Roll-Start + Loop
+            StopFootstepsClientRpc();
+            PlayRollStartClientRpc();
         }
         else if (!rolling && srvWasRolling)
         {
-            StopRollLoopClientRpc();            // Roll-Loop aus
-            // Falls direkt in Walk übergeht, startet oben sowieso wieder
+            StopRollLoopClientRpc();
         }
 
         srvWasWalking = walking;
         srvWasRolling = rolling;
     }
+
 
     private void EnsureAudioSources()
     {
@@ -778,6 +858,7 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!rb) return;
 
+        // Dash hat eigene Grav-Logik
         if (isDashing)
         {
             Vector3 g = Physics.gravity * dashGravityFactor;
@@ -785,11 +866,30 @@ public class PlayerMovement : NetworkBehaviour
 
             if (maxFallSpeed > 0f && rb.linearVelocity.y < -maxFallSpeed)
             {
-                Vector3 rbVel = rb.linearVelocity; rbVel.y = -maxFallSpeed; rb.linearVelocity = rbVel;
+                Vector3 rbVel = rb.linearVelocity; 
+                rbVel.y = -maxFallSpeed; 
+                rb.linearVelocity = rbVel;
             }
             return;
         }
 
+        // >>> Hover-Block: wenn aktiv, sehr geringe Grav + begrenzte Fallgeschwindigkeit
+        if (isHovering)
+        {
+            Vector3 gHover = Physics.gravity * hoverGravityFactor;
+            rb.AddForce(gHover, ForceMode.Acceleration);
+
+            // Fallgeschwindigkeit stark begrenzen
+            if (rb.linearVelocity.y < -hoverFallSpeed)
+            {
+                Vector3 v = rb.linearVelocity;
+                v.y = -hoverFallSpeed;
+                rb.linearVelocity = v;
+            }
+            return;
+        }
+
+        // Normale "Better Gravity"
         float vy = rb.linearVelocity.y;
         float mult = gravityScale;
 
@@ -805,11 +905,16 @@ public class PlayerMovement : NetworkBehaviour
         if (extraG.sqrMagnitude > 0f)
             rb.AddForce(extraG, ForceMode.Acceleration);
 
-        if (maxFallSpeed > 0f && rb.linearVelocity.y < -maxFallSpeed)
+        if (maxFallSpeed > 0f 
+            && !externalIgnoreMaxFallSpeed   // <– NEU
+            && rb.linearVelocity.y < -maxFallSpeed)
         {
-            Vector3 rbVel2 = rb.linearVelocity; rbVel2.y = -maxFallSpeed; rb.linearVelocity = rbVel2;
+            Vector3 rbVel2 = rb.linearVelocity; 
+            rbVel2.y = -maxFallSpeed; 
+            rb.linearVelocity = rbVel2;
         }
     }
+
 
     // ===== Dash (Server) – nur Physik/VFX =====
     [ServerRpc]
@@ -817,6 +922,9 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
         if (!rb) return;
+
+        // Externe Fähigkeit (Slam) sperrt Dash
+        if (externalBlockDashAndRoll) return;
 
         if (Time.time < nextDashAllowedTime) return;
 

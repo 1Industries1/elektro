@@ -11,15 +11,22 @@ public class OverclockQuickslotHUD : MonoBehaviour
     [Header("UI-Referenzen (im Canvas)")]
     [SerializeField] private Image             slot0Icon;
     [SerializeField] private Image             slot1Icon;
-    [SerializeField] private TextMeshProUGUI   slot0Charges;   // TMP
-    [SerializeField] private TextMeshProUGUI   slot1Charges;   // TMP
+    [SerializeField] private TextMeshProUGUI   slot0Charges;
+    [SerializeField] private TextMeshProUGUI slot1Charges;
+    
+    [Header("Overclock-Dauer (optional)")]
+    [SerializeField] private Slider overclockSlider;
+    [SerializeField] private GameObject overclockSliderRoot; // Container, den du an/aus schaltest
+
 
     [Header("Overclock-Definitionen (aus deinem Projekt)")]
-    [Tooltip("Zieh hier deine OverclockDef-Assets aus Assets/_Scripts_/ScriptableObjects hinein.")]
-    [SerializeField] private List<OverclockDef> knownDefs = new();   // <<— einfach im Inspector befüllen
+    [SerializeField] private List<OverclockDef> knownDefs = new();
 
     private OverclockRuntime rt;
     private bool subscribed;
+    private bool overclockActive;
+    private float overclockEndTime;
+    private float overclockDuration;
 
     // interner Cache (id -> def), aus knownDefs gebaut
     private Dictionary<string, OverclockDef> _defsById;
@@ -27,6 +34,12 @@ public class OverclockQuickslotHUD : MonoBehaviour
     private void OnEnable()
     {
         BuildDefCacheIfNeeded();
+
+        if (overclockSliderRoot == null && overclockSlider != null)
+            overclockSliderRoot = overclockSlider.gameObject;
+
+        if (overclockSliderRoot != null)
+            overclockSliderRoot.SetActive(false);
 
         TryBindNow();
         if (rt == null)
@@ -36,16 +49,35 @@ public class OverclockQuickslotHUD : MonoBehaviour
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
+    private void Update()
+    {
+        if (!overclockActive || overclockSlider == null) return;
+
+        float remaining = Mathf.Max(0f, overclockEndTime - Time.time);
+        overclockSlider.value = remaining;
+
+        if (remaining <= 0f)
+        {
+            overclockActive = false;
+            if (overclockSliderRoot != null)
+                overclockSliderRoot.SetActive(false);
+        }
+    }
+
+
+
     private void OnDisable()
     {
         if (rt != null && subscribed)
         {
             rt.OnQuickslotsUpdated -= Refresh;
+            rt.OnOverclockStarted  -= HandleOverclockStarted;
             subscribed = false;
         }
         if (NetworkManager.Singleton != null)
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
     }
+
 
     private void OnClientConnected(ulong _) => TryBindNow();
 
@@ -75,6 +107,7 @@ public class OverclockQuickslotHUD : MonoBehaviour
         if (rt != null && !subscribed)
         {
             rt.OnQuickslotsUpdated += Refresh;
+            rt.OnOverclockStarted  += HandleOverclockStarted;
             subscribed = true;
             Refresh();
         }
@@ -129,6 +162,23 @@ public class OverclockQuickslotHUD : MonoBehaviour
             }
         }
     }
+
+    private void HandleOverclockStarted(float dur)
+    {
+        if (overclockSlider == null) return;
+
+        overclockDuration = Mathf.Max(0.01f, dur);
+        overclockEndTime = Time.time + overclockDuration;
+        overclockActive = true;
+
+        overclockSlider.minValue = 0f;
+        overclockSlider.maxValue = overclockDuration;
+        overclockSlider.value    = overclockDuration; // startet voll
+
+        if (overclockSliderRoot != null)
+            overclockSliderRoot.SetActive(true);
+    }
+
 
     private OverclockDef ResolveDefById(string id)
     {

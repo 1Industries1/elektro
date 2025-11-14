@@ -17,8 +17,8 @@ MonoBehaviour:
   tags: 97
   uiIcon: {fileID: -1308886238, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: -928037741104161360, guid: 5155f2aa90e192f46b39019e462048db, type: 3}
-  projectileSpeed: 100
-  rangeMeters: 80
+  projectileSpeed: 150
+  rangeMeters: 85
   projectileSize: 1
   knockback: 0
   baseDamage: 35
@@ -30,11 +30,11 @@ MonoBehaviour:
   steps:
   - name: L2
     type: 1
-    value: 0.5
+    value: 0.75
     intValue: 0
   - name: L3
     type: 1
-    value: 0.5
+    value: 0.6
     intValue: 0
   - name: L4
     type: 0
@@ -53,6 +53,6 @@ MonoBehaviour:
     value: 0.5
     intValue: 0
   - name: L8
-    type: 7
-    value: 1
+    type: 0
+    value: 0.5
     intValue: 0

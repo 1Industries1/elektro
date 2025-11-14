@@ -52,6 +52,8 @@ public class OverclockRuntime : NetworkBehaviour
     public readonly Dictionary<string, int> clientQuickCharges = new();  // id -> charges
     public string clientSlotId0, clientSlotId1;                          // Reihenfolge für UI
     public event System.Action OnQuickslotsUpdated;
+    public event System.Action<float> OnOverclockStarted; // duration in Sekunden
+
 
     // ===== Öffentliche Helpers =====
     public float GetEffectiveFireRateSeconds(float baseSeconds)
@@ -81,8 +83,9 @@ public class OverclockRuntime : NetworkBehaviour
             quickslots.Add(def);
 
         int cur = quickCharges.TryGetValue(def.id, out var c) ? c : 0;
-        // Beispiel: maximal 2 Charges; passe nach Bedarf an
-        quickCharges[def.id] = Mathf.Min(2, cur + def.tacticalCharges);
+
+        // maximal 5 Charges; passe nach Bedarf an
+        quickCharges[def.id] = Mathf.Min(5, cur + def.tacticalCharges);
 
         BroadcastQuickslots_Server();
     }
@@ -148,6 +151,14 @@ public class OverclockRuntime : NetworkBehaviour
         OnQuickslotsUpdated?.Invoke();
     }
 
+    [ClientRpc]
+    private void OverclockStartedClientRpc(float duration, ClientRpcParams rpcParams = default)
+    {
+        // Nur der lokale Owner reagiert (zur Sicherheit)
+        OnOverclockStarted?.Invoke(duration);
+    }
+
+
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
@@ -179,6 +190,17 @@ public class OverclockRuntime : NetworkBehaviour
         });
 
         RecalculateAggregates_Server();
+
+        if (!isAfter)
+        {
+            var ownerId = NetworkObject.OwnerClientId;
+            var rpcParams = new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams { TargetClientIds = new[] { ownerId } }
+            };
+
+            OverclockStartedClientRpc(def.duration, rpcParams);
+        }
 
         if (!isAfter && def.afterEffectDuration > 0f)
             StartCoroutine(BeginAfterEffectLater(def, now + def.duration));

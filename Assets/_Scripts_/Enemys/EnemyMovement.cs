@@ -18,8 +18,12 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
     [SerializeField] private float minMoveSpeed = 3f;
     [SerializeField] private float maxMoveSpeed = 7f;
     [SerializeField] private float rotationSpeed = 3f;
+    [SerializeField] private float terrainStickYOffset = 0.05f;   // wie weit über Terrain kleben
+    [SerializeField] private float maxTerrainFallDistance = 5f;   // wie weit er unter Terrain sein darf, bevor wir hart korrigieren
+
     [SerializeField] private float baseHealth = 1f;
     [SerializeField] private EnemyDamageNumbers dmgNums;
+    
 
     private float moveSpeed;
     private Transform target;
@@ -68,7 +72,11 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
             if (distanceToTarget > attackRange)
                 MoveTowardsTarget(target);
         }
+
+        // GANZ WICHTIG: nach der Bewegung Terrain-Sicherung ausführen
+        StickToTerrain();
     }
+
 
     void FindTarget()
     {
@@ -88,6 +96,31 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
         }
         target = closest;
     }
+
+    private void StickToTerrain()
+    {
+        // Nur wenn ein Terrain vorhanden ist
+        Terrain terrain = Terrain.activeTerrain;
+        if (terrain == null) return;
+
+        Vector3 pos = rb.position;
+
+        // Terrainhöhe an dieser X/Z-Position
+        float terrainY = terrain.SampleHeight(pos) + terrain.transform.position.y;
+
+        // Wenn der Enemy zu weit unter dem Terrain liegt: hochziehen
+        if (pos.y < terrainY - maxTerrainFallDistance)
+        {
+            pos.y = terrainY + terrainStickYOffset;
+            rb.position = pos;
+
+            // Vertikale Geschwindigkeit killen, damit er nicht direkt wieder runterfliegt
+            Vector3 vel = rb.linearVelocity;
+            vel.y = 0f;
+            rb.linearVelocity = vel;
+        }
+    }
+
 
     void RotateTowardsTarget(Transform target)
     {

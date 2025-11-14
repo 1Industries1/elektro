@@ -201,26 +201,41 @@ public class Pickup : NetworkBehaviour
         // Komponenten am Player
         var inv = player.GetComponent<PlayerInventory>();
         var xp  = player.GetComponent<PlayerXP>();
+        var up  = player.GetComponent<PlayerUpgrades>();
+        
+        // Multiplikatoren aus Upgrades
+        float xpMult   = up != null ? up.GetXpDropMult()   : 1f;
+        float goldMult = up != null ? up.GetGoldDropMult() : 1f;
 
         // Verteillogik
         if (type == ResourceType.XP)
         {
+            int finalAmount = amount;
+            finalAmount = Mathf.Max(1, Mathf.RoundToInt(amount * xpMult));
+            
             // XP == XP (VS-Style). Ignoriere Inventar, gib XP.
             if (xp != null)
             {
-                xp.Server_AddXP(amount);
+                xp.Server_AddXP(finalAmount);
             }
             else
             {
                 // Fallback, falls PlayerXP fehlt (damit man nichts "verliert"):
-                if (inv != null) inv.Server_Add(ResourceType.XP, amount);
+                if (inv != null) inv.Server_Add(ResourceType.XP, finalAmount);
                 Debug.LogWarning("[Pickup] PlayerXP fehlt am Player – fallback auf Inventory.Add(XP).");
             }
         }
         else
         {
-            // Nicht-XP: wie gehabt ins Inventar
-            if (inv != null) inv.Server_Add(type, amount);
+            int finalAmount = amount;
+
+            // Gold skalieren, alles andere unverändert
+            if (type == ResourceType.Gold)
+            {
+                finalAmount = Mathf.Max(1, Mathf.RoundToInt(amount * goldMult));
+            }
+
+            if (inv != null) inv.Server_Add(type, finalAmount);
         }
 
         // FX nur dem Owner dieses Players schicken

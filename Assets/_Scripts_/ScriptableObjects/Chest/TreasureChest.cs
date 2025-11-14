@@ -546,6 +546,7 @@ public class TreasureChest : NetworkBehaviour
         if (pw.cannonDef != null && pw.cannonDef.id == weaponId) def = pw.cannonDef;
         else if (pw.blasterDef != null && pw.blasterDef.id == weaponId) def = pw.blasterDef;
         else if (pw.grenadeDef != null && pw.grenadeDef.id == weaponId) def = pw.grenadeDef;
+        else if (pw.lightningDef != null && pw.lightningDef.id == weaponId) def = pw.lightningDef;
 
         if (def != null && def.uiIcon != null)
             UIChestManager.NotifyItemReceived(def.uiIcon);
@@ -665,7 +666,8 @@ public class TreasureChest : NetworkBehaviour
         if (!IsServer || inventory == null) { Warn("GiveRewardsServer: invalid state."); return; }
 
         int rewardCount = GetRewardCount();
-        var weapons = inventory.GetComponent<PlayerWeapons>();
+        var weapons  = inventory.GetComponent<PlayerWeapons>();
+        var upgrades = inventory.GetComponent<PlayerUpgrades>(); // <– NEU
 
         for (int i = 0; i < rewardCount; i++)
         {
@@ -673,6 +675,7 @@ public class TreasureChest : NetworkBehaviour
 
             if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && weapons != null)
             {
+                // Geplante Upgrades
                 if (_lockedRewardWeaponIds.Count > 0)
                 {
                     string id = _lockedRewardWeaponIds[0];
@@ -681,7 +684,11 @@ public class TreasureChest : NetworkBehaviour
                     if (weapons.Server_LevelUpById(id, notifyOwner: false))
                     {
                         Log($"Server: Upgraded planned weapon '{id}'.");
-                        SignalWeaponUpgradeToastToOwner(weapons, ResolveDefById(weapons, id), inventory.OwnerClientId);
+                        var def = ResolveDefById(weapons, id);
+
+                        if (upgrades != null)
+                            upgrades.SignalWeaponUpgradeToast(def);   // <– HIER
+
                         continue;
                     }
                     else
@@ -690,23 +697,22 @@ public class TreasureChest : NetworkBehaviour
                     }
                 }
 
+                // Zufälliges Waffen-Upgrade
                 if (weapons.Server_TryLevelUpRandomWeapon(out var upgradedDef))
                 {
                     Log($"Server: Random weapon upgrade → '{upgradedDef?.id}'.");
-                    SignalWeaponUpgradeToastToOwner(weapons, upgradedDef, inventory.OwnerClientId);
+                    if (upgrades != null)
+                        upgrades.SignalWeaponUpgradeToast(upgradedDef);    // <– HIER
                     continue;
                 }
             }
 
-            // weitere Drop-Typen hier (Stubs)
-            // if (possibleDrops.HasFlag(DropType.Evolution)) { ... }
-            // if (possibleDrops.HasFlag(DropType.UpgradePassive)) { ... }
-            // if (possibleDrops.HasFlag(DropType.NewWeapon)) { ... }
-            // if (possibleDrops.HasFlag(DropType.NewPassive)) { ... }
+            // ... andere Drop-Typen ...
         }
 
         _lockedRewardWeaponIds.Clear();
     }
+
 
     private WeaponDefinition ResolveDefById(PlayerWeapons pw, string id)
     {
@@ -714,45 +720,10 @@ public class TreasureChest : NetworkBehaviour
         if (pw.cannonDef != null && pw.cannonDef.id == id) return pw.cannonDef;
         if (pw.blasterDef != null && pw.blasterDef.id == id) return pw.blasterDef;
         if (pw.grenadeDef != null && pw.grenadeDef.id == id) return pw.grenadeDef;
+        if (pw.lightningDef != null && pw.lightningDef.id == id) return pw.lightningDef;
         return null;
     }
 
-    // SERVER: nach erfolgreichem Waffen-Upgrade … Owner-Toast triggern
-    private void SignalWeaponUpgradeToastToOwner(PlayerWeapons weapons, WeaponDefinition def, ulong ownerClientId)
-    {
-        if (weapons == null || def == null) return;
-
-        int newLevel = 1;
-        if (def == weapons.cannonDef) newLevel = weapons.cannonLevel.Value;
-        else if (def == weapons.blasterDef) newLevel = weapons.blasterLevel.Value;
-        else if (def == weapons.grenadeDef) newLevel = weapons.grenadeLevel.Value;
-
-        var target = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams { TargetClientIds = new[] { ownerClientId } }
-        };
-        Log($"Server: Send upgrade toast for '{def.id}' L{newLevel} to owner {ownerClientId}.");
-        Owner_ShowWeaponUpgradeToastClientRpc(def.id, newLevel, target);
-    }
-
-    [ClientRpc(Delivery = RpcDelivery.Reliable)]
-    private void Owner_ShowWeaponUpgradeToastClientRpc(string weaponId, int newLevel, ClientRpcParams clientRpcParams = default)
-    {
-        var playerObj = NetworkManager.Singleton?.LocalClient?.PlayerObject;
-        if (!playerObj) return;
-
-        var pw = playerObj.GetComponent<PlayerWeapons>() ?? playerObj.GetComponentInChildren<PlayerWeapons>(true);
-        var up = playerObj.GetComponent<PlayerUpgrades>() ?? playerObj.GetComponentInChildren<PlayerUpgrades>(true);
-        if (pw == null) return;
-
-        WeaponDefinition def = null;
-        if (pw.cannonDef != null && pw.cannonDef.id == weaponId) def = pw.cannonDef;
-        else if (pw.blasterDef != null && pw.blasterDef.id == weaponId) def = pw.blasterDef;
-        else if (pw.grenadeDef != null && pw.grenadeDef.id == weaponId) def = pw.grenadeDef;
-
-        string msg = WeaponStepDescriber.DescribeStepWithName(def, newLevel, up);
-        CenterToastUI.Instance?.Show(msg, 4f);
-    }
 
     // Button/Callback aus UI (z. B. „Fertig“) → Rewards wirklich gutschreiben
     [ServerRpc(RequireOwnership = false)]

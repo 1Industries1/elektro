@@ -515,6 +515,41 @@ public class LevelUpUI : MonoBehaviour
             }
         }
 
+        // --- Drop More XP ---
+        {
+            int lvl = _upgrades.GetLevel(UpgradeType.DropMoreXP);
+            int max = _upgrades.GetMaxLevel(UpgradeType.DropMoreXP);
+            float curr = _upgrades.GetCurrentValue(UpgradeType.DropMoreXP);
+
+            FillBasic(
+                UpgradeType.DropMoreXP,
+                "XP Drops",
+                curr,
+                lvl,
+                max,
+                l => _upgrades.GetCurrentValueAtLevel(UpgradeType.DropMoreXP, l),
+                v => FormatValue(UpgradeType.DropMoreXP, v)
+            );
+        }
+
+        // --- Drop More Gold ---
+        {
+            int lvl = _upgrades.GetLevel(UpgradeType.DropMoreGold);
+            int max = _upgrades.GetMaxLevel(UpgradeType.DropMoreGold);
+            float curr = _upgrades.GetCurrentValue(UpgradeType.DropMoreGold);
+
+            FillBasic(
+                UpgradeType.DropMoreGold,
+                "Gold Drops",
+                curr,
+                lvl,
+                max,
+                l => _upgrades.GetCurrentValueAtLevel(UpgradeType.DropMoreGold, l),
+                v => FormatValue(UpgradeType.DropMoreGold, v)
+            );
+        }
+
+
         // --- WEAPON LEVEL ROWS (Cannon / Blaster) ---
         _weapons ??= FindLocalWeapons();
         if (_weapons != null)
@@ -722,6 +757,8 @@ public class LevelUpUI : MonoBehaviour
             case UpgradeType.Magnet: return $"{v:0.00}×";
             case UpgradeType.MoveSpeed: return $"{v:0.##} m/s";
             case UpgradeType.Stamina:   return $"{v:0.#} ST";
+            case UpgradeType.DropMoreXP:  return $"{(v - 1f) * 100f:0.#}% XP";
+            case UpgradeType.DropMoreGold:return $"{(v - 1f) * 100f:0.#}% Gold";
             default: return v.ToString("0.##");
         }
     }
@@ -737,6 +774,8 @@ public class LevelUpUI : MonoBehaviour
         _upgrades.MagnetLevel.OnValueChanged += OnAnyStatChanged;
         _upgrades.MoveSpeedLevel.OnValueChanged += OnAnyStatChanged;
         _upgrades.StaminaLevel.OnValueChanged   += OnAnyStatChanged;
+        _upgrades.DropMoreXPLevel.OnValueChanged   += OnAnyStatChanged;
+        _upgrades.DropMoreGoldLevel.OnValueChanged += OnAnyStatChanged;
         _statsSubscribed = true;
     }
 
@@ -748,7 +787,9 @@ public class LevelUpUI : MonoBehaviour
         _upgrades.ArmorLevel.OnValueChanged     -= OnAnyStatChanged;
         _upgrades.MagnetLevel.OnValueChanged -= OnAnyStatChanged;
         _upgrades.MoveSpeedLevel.OnValueChanged -= OnAnyStatChanged;
-        _upgrades.StaminaLevel.OnValueChanged   -= OnAnyStatChanged;
+        _upgrades.StaminaLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.DropMoreXPLevel.OnValueChanged -= OnAnyStatChanged;
+        _upgrades.DropMoreGoldLevel.OnValueChanged -= OnAnyStatChanged;
         _statsSubscribed = false;
     }
 
@@ -841,16 +882,17 @@ public class LevelUpUI : MonoBehaviour
                 else if (def == pw.lightningDef) curLevel = pw.lightningLevel.Value;
             }
 
-            if (curLevel == 0 && stacks == 1)
+            if (curLevel == 0)
                 return $"NEW WEAPON: {name}";
-            if (curLevel == 0 && stacks > 1)
-                return $"NEW WEAPON: {name}, raises it to Lv {stacks}";
 
-            // bereits vorhanden → Level Up
-            if (stacks == 1)
-                return $"{name}: +1 level (Lv {curLevel + 1}/{maxLevel})";
-            else
-                return $"{name}: +{stacks} levels (Lv {curLevel + stacks}/{maxLevel})";
+            // Nutze WeaponStepDescriber für eine kurze "was bringt L+1?"-Beschreibung
+            string body = WeaponStepDescriber.DescribeStep(def, curLevel + 1, up);
+
+            if (!string.IsNullOrEmpty(body))
+                return body; // z.B. "+25% damage  (DPS 120 → 150)"
+            
+            // Fallback, falls kein Step vorhanden
+            return $"{name}: +1 level (Lv {curLevel + 1}/{maxLevel})";
         }
 
         // Stat-Upgrade
@@ -864,6 +906,8 @@ public class LevelUpUI : MonoBehaviour
             UpgradeType.Magnet    => $"+{PctFromDamageMult(up.magnetRangeMultPerLevel, stacksStat):0.#}% magnet range",
             UpgradeType.MoveSpeed => $"+{PctFromDamageMult(up.moveSpeedMultPerLevel,   stacksStat):0.#}% move speed",
             UpgradeType.Stamina   => $"+{up.staminaMaxPerLevel   * stacksStat:0.#} max stamina\n+{up.staminaRegenPerLevel * stacksStat:0.#} stamina/s regen",
+            UpgradeType.DropMoreXP  => $"+{up.xpDropBonusPerLevel   * stacksStat * 100f:0.#}% XP drops",
+            UpgradeType.DropMoreGold=> $"+{up.goldDropBonusPerLevel * stacksStat * 100f:0.#}% Gold drops",
             _                     => "Upgrade"
         };
     }

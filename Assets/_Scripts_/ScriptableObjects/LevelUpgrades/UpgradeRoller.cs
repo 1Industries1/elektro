@@ -18,6 +18,8 @@ public static class UpgradeRoller
     public const int Magnet    = 7;
     public const int MoveSpeed = 8;
     public const int Stamina   = 9;
+    public const int DropMoreXP   = 10;
+    public const int DropMoreGold = 11;
 
     // ======== Basis-IDs (stabil) für Waffen ========
     public const int Weapon_Cannon    = 20;
@@ -35,7 +37,7 @@ public static class UpgradeRoller
     };
 
     // Alle passiven Stat-Upgrades
-    private static readonly int[] StatPool = { MaxHP, Armor, Magnet, MoveSpeed, Stamina };
+    private static readonly int[] StatPool = { MaxHP, Armor, Magnet, MoveSpeed, Stamina, DropMoreXP, DropMoreGold };
 
     // ======== Mastery-ID-Bereich ========
     // Wir mappen masteryPool[i] → baseId = MASTERIES_OFFSET + i
@@ -121,12 +123,12 @@ public static class UpgradeRoller
         { Rarity.Common,    Hex("#000000ff") },
         { Rarity.Rare,      Hex("#2c80eeff") },
         { Rarity.Epic,      Hex("#952BFFFF") },
-        { Rarity.Legendary, Hex("#FCC653FF") },
+        { Rarity.Legendary, Hex("#b9820bff") },
     };
 
     public static readonly Dictionary<Rarity, string> RarityBadge = new()
     {
-        { Rarity.Common,    "Common"     },
+        { Rarity.Common,    ""     },
         { Rarity.Rare,      "Rare"       },
         { Rarity.Epic,      "Epic"       },
         { Rarity.Legendary, "LEGENDARY"  },
@@ -285,7 +287,7 @@ public static class UpgradeRoller
                     return ChoiceCodec.Encode(MaxHP, Rarity.Common); // Fallback
 
                 int curLevel = 0;
-                if (def == pw.cannonDef)    curLevel = pw.cannonLevel.Value;
+                if (def == pw.cannonDef)         curLevel = pw.cannonLevel.Value;
                 else if (def == pw.blasterDef)   curLevel = pw.blasterLevel.Value;
                 else if (def == pw.grenadeDef)   curLevel = pw.grenadeLevel.Value;
                 else if (def == pw.lightningDef) curLevel = pw.lightningLevel.Value;
@@ -294,14 +296,14 @@ public static class UpgradeRoller
                 if (curLevel >= maxLevel)
                     return ChoiceCodec.Encode(MaxHP, Rarity.Common);
 
-                var rarity    = WeightedRarity(r);
-                int stacks    = StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
-                stacks        = Mathf.Min(stacks, maxLevel - curLevel);
-                if (stacks <= 0) { rarity = Rarity.Common; stacks = 1; }
+                // Rarity bleibt für Drop-Chance / Optik,
+                // aber LEVEL-UP ist IMMER +1
+                var rarity = WeightedRarity(r);
 
-                rarity = RarityForStacks(stacks);
+                // keine Stack-Clamping-Logik mehr
                 return ChoiceCodec.Encode(baseId, rarity);
             }
+
 
             // ----- Stat -----
             var type = Resolve(baseId);
@@ -337,6 +339,8 @@ public static class UpgradeRoller
         Magnet    => UpgradeType.Magnet,
         MoveSpeed => UpgradeType.MoveSpeed,
         Stamina   => UpgradeType.Stamina,
+        DropMoreXP  => UpgradeType.DropMoreXP,
+        DropMoreGold => UpgradeType.DropMoreGold,
         _         => UpgradeType.MaxHP
     };
 
@@ -344,9 +348,16 @@ public static class UpgradeRoller
 
     public static int StacksForChoice(int choiceId)
     {
+        int baseId = ChoiceCodec.BaseId(choiceId);
+
+        // Waffen: IMMER nur 1 Level pro Choice
+        if (IsWeaponBaseId(baseId))
+            return 1;
+
         var rarity = ChoiceCodec.GetRarity(choiceId);
         return StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
     }
+
 
     public static Rarity RarityForStacks(int stacks)
     {
@@ -409,17 +420,26 @@ public static class UpgradeRoller
                 if (!string.IsNullOrEmpty(loc)) name = loc;
             }
 
+            // Waffen bekommen IMMER Legendary-Farbe (gold),
+            // Rarity bleibt aber im Badge sichtbar.
+            Color weaponColor = RarityColors[Rarity.Legendary];
+
+            //string badge = $"Weapon {RarityBadge[rarity]}";
+            string badge = $"Weapon";
+            // z.B. "Weapon Common", "Weapon Rare", ...
+
             return new ChoiceViewModel
             {
                 upgradeKey   = key,
                 upgradeName  = name,
                 rarity       = rarity,
-                stacks       = stacks,
-                badgeText    = RarityBadge[rarity],
-                rarityColor  = RarityColors[rarity],
+                stacks       = StacksForChoice(choiceId),   // für Waffen immer 1
+                badgeText    = badge,
+                rarityColor  = weaponColor,
                 rarityIcon   = _rarityIcons.TryGetValue(rarity, out var spr) ? spr : null
             };
         }
+
 
         // ---- Stat-Karte ----
         string statKey  = UpgradeKey(baseId);
@@ -449,6 +469,8 @@ public static class UpgradeRoller
         Magnet    => "upgrade.magnet",
         MoveSpeed => "upgrade.moveSpeed",
         Stamina   => "upgrade.stamina",
+        DropMoreXP  => "upgrade.dropMoreXP",
+        DropMoreGold => "upgrade.dropMoreGold",
         _         => "upgrade.generic"
     };
 
@@ -459,6 +481,8 @@ public static class UpgradeRoller
         Magnet    => "Magnet",
         MoveSpeed => "Move Speed",
         Stamina   => "Stamina",
+        DropMoreXP  => "XP Drops",
+        DropMoreGold => "Gold Drops",
         _         => "Upgrade"
     };
 
@@ -481,7 +505,7 @@ public static class UpgradeRoller
             Rarity.Common    => "#ffffffff",
             Rarity.Rare      => "#0071aaff",
             Rarity.Epic      => "#952bffff",
-            Rarity.Legendary => "#fcc653ff",
+            Rarity.Legendary => "#d69d22ff",
             _                => "#ffffffff"
         };
         return $"<color={hex}>";
