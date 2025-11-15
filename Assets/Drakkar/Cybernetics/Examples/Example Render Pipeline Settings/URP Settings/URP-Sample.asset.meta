@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 67d61150626082e4e8f672ac0c39f0ce
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Examples/Example Render Pipeline Settings/URP
+    Settings/URP-Sample.asset
+  uploadId: 790672

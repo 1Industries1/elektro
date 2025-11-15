@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7c724a5e218a75341ad770840e410c18
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Examples/Materials/URP/Demon.mat
+  uploadId: 790672

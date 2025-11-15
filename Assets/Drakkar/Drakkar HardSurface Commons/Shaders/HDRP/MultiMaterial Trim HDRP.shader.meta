@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: dccaa569fd17e5346a9a9e45148ae144
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Drakkar HardSurface Commons/Shaders/HDRP/MultiMaterial
+    Trim HDRP.shader
+  uploadId: 790672

@@ -37,6 +37,7 @@ public class PlayerMovement : NetworkBehaviour
     [HideInInspector] public bool externalBlockDashAndRoll;
     [HideInInspector] public bool externalBlockHover;
     [HideInInspector] public bool externalIgnoreMaxFallSpeed;
+    [HideInInspector] public bool externalForceFullAirControl;
 
 
 
@@ -370,11 +371,11 @@ public class PlayerMovement : NetworkBehaviour
         if (!IsServer) return;
 
         // externe Fähigkeit (z.B. Ground Slam) sperrt Roll
-        if (externalBlockDashAndRoll)
-        {
-            srvRollHeld = false;
-            return;
-        }
+        //if (externalBlockDashAndRoll)
+        //{
+        //    srvRollHeld = false;
+        //    return;
+        //}
 
         float dt = Time.fixedDeltaTime;
 
@@ -549,7 +550,9 @@ public class PlayerMovement : NetworkBehaviour
         if (!grounded)
         {
             if (isHovering)
-                control = 1f; // volle Kontrolle beim Schweben
+                control = 1f;
+            else if (externalForceFullAirControl)
+                control = 1f; // NEU: z.B. während Slam → volle Kontrolle
             else if (keepRollBoostInAir && srvRollHeld)
                 control = Mathf.Max(airControl, minAirControlWhileRoll);
             else

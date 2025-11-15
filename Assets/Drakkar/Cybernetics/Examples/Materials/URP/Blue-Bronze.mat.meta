@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 78f8b2b92ab8dc04d9c96d59f323c869
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Examples/Materials/URP/Blue-Bronze.mat
+  uploadId: 790672

@@ -9,8 +9,9 @@ git push
 
 # Optional: Meilenstein-Tag setzen und pushen
 ERHÖHEN UM 1:
-git tag -a v0.1.3 -m "Masteries"
-git push origin v0.1.3
+
+git tag -a v0.1.4 -m "Superjump"
+git push origin v0.1.4
 
 
 

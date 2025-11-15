@@ -55,7 +55,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   minDotToStrike: 0.5
-  fireRateJitterPct: 0.08
+  fireRateJitterPct: 0
   lightningVfxPrefab: {fileID: 8974203713140315807, guid: 0251b3e7195211f459c1cfa5a1973adb, type: 3}
   audioSource: {fileID: 253272080680645569}
   strikeSfx: {fileID: 8300000, guid: 0fae592b8c11a9d4abee28d011b93372, type: 3}
@@ -2579,7 +2579,7 @@ MonoBehaviour:
   moveSpeed: 15
   acceleration: 4
   deceleration: 4
-  airControl: 0.5
+  airControl: 1
   jumpForce: 14
   dashForce: 100
   dashDuration: 0.4
@@ -2629,6 +2629,7 @@ MonoBehaviour:
   externalBlockDashAndRoll: 0
   externalBlockHover: 0
   externalIgnoreMaxFallSpeed: 0
+  externalForceFullAirControl: 0
   maxStamina: 100
   staminaRegenPerSecond: 20
   rollStaminaCostPerSecond: 15
@@ -2761,7 +2762,7 @@ MonoBehaviour:
   maxLevel_DropMoreXP: 10
   maxLevel_DropMoreGold: 10
   maxHPPerLevel: 15
-  armorFlatPerLevel: 1.5
+  armorFlatPerLevel: 0.25
   magnetRangeMultPerLevel: 1.2
   moveSpeedMultPerLevel: 1.05
   staminaMaxPerLevel: 20
@@ -2866,12 +2867,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerGroundSlamAbility
   slamKey: 102
-  superJumpUpVelocity: 100
-  slamDownVelocity: 80
+  superJumpUpVelocity: 50
+  slamDownVelocity: 75
   slamCooldown: 2
+  maxSuperJumpTime: 0.8
+  autoSlamAfterApexDelay: 0.05
+  directionalSlam: 1
+  slamAngleFromHorizontal: 12
   slamImpactVfx: {fileID: 6063518424537689786, guid: bad5794a53f5c3645bb444b3a040ba01, type: 3}
   slamImpactUpKick: 2
   slamImpactRadius: 6
+  slamImpactDamage: 50
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 4096
+  audioSource: {fileID: 6799519995716292581}
+  superJumpSfx: {fileID: 8300000, guid: 95497ebee9fb2d24d9609539508e147d, type: 3}
+  slamStartSfx: {fileID: 8300000, guid: 55399b314b1572a40a6708ccf8c00351, type: 3}
+  slamImpactSfx: {fileID: 8300000, guid: a8df845236f358b4eb367ce2a68c8946, type: 3}
+  slamSfxVolume: 0.5
 --- !u!114 &5225748196820303031
 MonoBehaviour:
   m_ObjectHideFlags: 0

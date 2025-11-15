@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b0c86250a00186d4e9119c26fdcfa2ee
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Examples/Materials/URP/Cyberflutter.mat
+  uploadId: 790672

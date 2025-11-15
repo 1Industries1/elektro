@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d67eeb21f23a86b43bd2c8c193152316
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Examples/Materials/Built-In/Vector.mat
+  uploadId: 790672

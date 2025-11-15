@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 34a46a11b85f0f549b7302e6f0839acd
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Drakkar HardSurface Commons/Shaders/Built-In/MultiMaterial
+    Trim.shader
+  uploadId: 790672

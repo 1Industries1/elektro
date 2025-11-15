@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b046ca3de5e9a0f4c96974db8bdf27aa
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Examples/Materials/URP/Mark I.mat
+  uploadId: 790672

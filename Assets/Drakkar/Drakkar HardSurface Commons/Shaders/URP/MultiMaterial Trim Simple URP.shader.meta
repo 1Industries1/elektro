@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: dc66a7de28257284193ff3b00c91920a
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Drakkar HardSurface Commons/Shaders/URP/MultiMaterial
+    Trim Simple URP.shader
+  uploadId: 790672

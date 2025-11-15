@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: b8529a8a73d79e5418596e2de7f715cf
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Cyberflutter/Shaders/URP/BuzzWings.shader
+  uploadId: 790672

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 810f89a54a60dcd49aad06d9b2f42643
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 324722
+  packageName: Drakkar Cybernetics - Cyberflutter
+  packageVersion: 1.0.1
+  assetPath: Assets/Drakkar/Cybernetics/Examples/Example Render Pipeline Settings/HDRP
+    Settings/HDRPDefaultResources/DefaultLookDevProfile.asset
+  uploadId: 790672
