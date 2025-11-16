@@ -674,7 +674,7 @@ MonoBehaviour:
   inaccuracyAngle: 0
   audioSource: {fileID: 9223212118158675686}
   shootSfx: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
-  baseHealth: 500
+  baseHealth: 450
   dmgNums: {fileID: 1585517448443601885}
 --- !u!114 &1585517448443601885
 MonoBehaviour:

@@ -11,6 +11,7 @@ public class PlayerWeapons : NetworkBehaviour
     public WeaponDefinition blasterDef;
     public WeaponDefinition grenadeDef;
     public WeaponDefinition lightningDef;
+    public WeaponDefinition orbitalDef;
 
     [Header("Refs")]
     [SerializeField] private PlayerUpgrades upgrades;
@@ -19,6 +20,7 @@ public class PlayerWeapons : NetworkBehaviour
     public NetworkVariable<int> blasterLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> grenadeLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> lightningLevel= new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> orbitalLevel  = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     public event Action RuntimesRebuilt;
 
@@ -26,6 +28,7 @@ public class PlayerWeapons : NetworkBehaviour
     public WeaponRuntime BlasterRuntime { get; private set; }
     public WeaponRuntime GrenadeRuntime { get; private set; }
     public WeaponRuntime LightningRuntime { get; private set; }
+    public WeaponRuntime OrbitalRuntime  { get; private set; }
 
     void Rebuild()
     {
@@ -33,6 +36,7 @@ public class PlayerWeapons : NetworkBehaviour
         BlasterRuntime = (blasterDef != null && blasterLevel.Value > 0) ? new WeaponRuntime(blasterDef, blasterLevel.Value) : null;
         GrenadeRuntime = (grenadeDef != null && grenadeLevel.Value > 0) ? new WeaponRuntime(grenadeDef, grenadeLevel.Value) : null;
         LightningRuntime= (lightningDef!= null && lightningLevel.Value> 0) ? new WeaponRuntime(lightningDef, lightningLevel.Value): null;
+        OrbitalRuntime  = (orbitalDef  != null && orbitalLevel.Value  > 0) ? new WeaponRuntime(orbitalDef,  orbitalLevel.Value)  : null;
 
         if (!upgrades)
         {
@@ -48,6 +52,7 @@ public class PlayerWeapons : NetworkBehaviour
             if (BlasterRuntime != null) upgrades.ApplyTo(BlasterRuntime);
             if (GrenadeRuntime != null) upgrades.ApplyTo(GrenadeRuntime);
             if (LightningRuntime != null) upgrades.ApplyTo(LightningRuntime);
+            if (OrbitalRuntime   != null) upgrades.ApplyTo(OrbitalRuntime);
         }
 
         RuntimesRebuilt?.Invoke();
@@ -61,6 +66,7 @@ public class PlayerWeapons : NetworkBehaviour
     private void OnBlasterLevelChanged(int _, int __) => Rebuild();
     private void OnGrenadeLevelChanged(int _, int __) => Rebuild();
     private void OnLightningLevelChanged(int _, int __) => Rebuild();
+    private void OnOrbitalLevelChanged(int _, int __)   => Rebuild();
 
     public override void OnNetworkSpawn()
     {
@@ -68,14 +74,16 @@ public class PlayerWeapons : NetworkBehaviour
         blasterLevel.OnValueChanged += OnBlasterLevelChanged;
         grenadeLevel.OnValueChanged += OnGrenadeLevelChanged;
         lightningLevel.OnValueChanged += OnLightningLevelChanged;
+        orbitalLevel.OnValueChanged   += OnOrbitalLevelChanged;
 
         if (IsServer)
         {
             /////////////// Mit welchen Waffen gestartet wird ///////////////
             cannonLevel.Value  = 0;
             blasterLevel.Value = 0;
-            grenadeLevel.Value = 0;
-            lightningLevel.Value = 1;
+            grenadeLevel.Value = 1;
+            lightningLevel.Value = 0;
+            orbitalLevel.Value   = 0;
         }
 
         Rebuild();
@@ -88,6 +96,7 @@ public class PlayerWeapons : NetworkBehaviour
         blasterLevel.OnValueChanged -= OnBlasterLevelChanged;
         grenadeLevel.OnValueChanged -= OnGrenadeLevelChanged;
         lightningLevel.OnValueChanged -= OnLightningLevelChanged;
+        orbitalLevel.OnValueChanged   -= OnOrbitalLevelChanged;
     }
 
     int MaxLevel(WeaponDefinition def) => 1 + (def?.steps?.Length ?? 0);
@@ -99,6 +108,8 @@ public class PlayerWeapons : NetworkBehaviour
         if (blasterDef != null && blasterLevel.Value > 0 && blasterLevel.Value < MaxLevel(blasterDef)) list.Add((blasterDef, "blaster", blasterLevel.Value));
         if (grenadeDef != null && grenadeLevel.Value > 0 && grenadeLevel.Value < MaxLevel(grenadeDef)) list.Add((grenadeDef, "grenade", grenadeLevel.Value));
         if (lightningDef != null && lightningLevel.Value > 0 && lightningLevel.Value < MaxLevel(lightningDef)) list.Add((lightningDef, "lightning", lightningLevel.Value));
+        if (orbitalDef  != null && orbitalLevel.Value  > 0 && orbitalLevel.Value  < MaxLevel(orbitalDef))   list.Add((orbitalDef,  "orbital",  orbitalLevel.Value));
+
         return list;
     }
 
@@ -129,10 +140,15 @@ public class PlayerWeapons : NetworkBehaviour
             grenadeLevel.Value = Mathf.Min(grenadeLevel.Value + 1, MaxLevel(grenadeDef));
             upgraded = grenadeDef;
         }
-        else if (choice.slot == "lightning") // <- NEU
+        else if (choice.slot == "lightning")
         {
             lightningLevel.Value = Mathf.Min(lightningLevel.Value + 1, MaxLevel(lightningDef));
             upgraded = lightningDef;
+        }
+        else if (choice.slot == "orbital")
+        {
+            orbitalLevel.Value = Mathf.Min(orbitalLevel.Value + 1, MaxLevel(orbitalDef));
+            upgraded = orbitalDef;
         }
 
         var target = new ClientRpcParams
@@ -178,11 +194,17 @@ public class PlayerWeapons : NetworkBehaviour
             if (grenadeLevel.Value == 0) { grenadeLevel.Value = 1; did = true; }
             else if (grenadeLevel.Value < max) { grenadeLevel.Value++; did = true; }
         }
-        else if (lightningDef != null && lightningDef.id == weaponId) // <- NEU
+        else if (lightningDef != null && lightningDef.id == weaponId)
         {
             int max = MaxLevel(lightningDef);
             if (lightningLevel.Value == 0)       { lightningLevel.Value = 1; did = true; }
             else if (lightningLevel.Value < max) { lightningLevel.Value++;   did = true; }
+        }
+        else if (orbitalDef != null && orbitalDef.id == weaponId)
+        {
+            int max = MaxLevel(orbitalDef);
+            if (orbitalLevel.Value == 0)           { orbitalLevel.Value = 1; did = true; }
+            else if (orbitalLevel.Value < max)     { orbitalLevel.Value++;    did = true; }
         }
 
         if (did && notifyOwner)
@@ -207,8 +229,6 @@ public class PlayerWeapons : NetworkBehaviour
     [ClientRpc]
     void OwnerNotifyUpgradeClientRpc(string weaponId, ClientRpcParams _ = default)
     {
-        // wir sind gezielt nur beim Owner gelandet
-        // (zusätzliche IsOwner-Guard ist nett, aber nicht mehr zwingend)
         if (!IsOwner) return;
 
         WeaponDefinition def = null;
@@ -216,6 +236,7 @@ public class PlayerWeapons : NetworkBehaviour
         else if (blasterDef != null && blasterDef.id == weaponId) def = blasterDef;
         else if (grenadeDef != null && grenadeDef.id == weaponId) def = grenadeDef;
         else if (lightningDef != null && lightningDef.id == weaponId) def = lightningDef;
+        else if (orbitalDef  != null && orbitalDef.id  == weaponId) def = orbitalDef; 
 
         if (def != null && def.uiIcon != null)
             UIChestManager.NotifyItemReceived(def.uiIcon);

@@ -170,6 +170,7 @@ public class LevelUpUI : MonoBehaviour
         _weapons.blasterLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.grenadeLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.lightningLevel.OnValueChanged += OnAnyWeaponStatChanged;
+        _weapons.orbitalLevel.OnValueChanged += OnAnyWeaponStatChanged;
         _weapons.RuntimesRebuilt += OnWeaponsRebuiltUI;
 
         _weaponsSubscribed = true;
@@ -184,6 +185,7 @@ public class LevelUpUI : MonoBehaviour
         _weapons.blasterLevel.OnValueChanged -= OnAnyWeaponStatChanged;
         _weapons.grenadeLevel.OnValueChanged -= OnAnyWeaponStatChanged;
         _weapons.lightningLevel.OnValueChanged -= OnAnyWeaponStatChanged;
+        _weapons.orbitalLevel.OnValueChanged -= OnAnyWeaponStatChanged;
 
         _weapons.RuntimesRebuilt -= OnWeaponsRebuiltUI;
         _weaponsSubscribed = false;
@@ -675,6 +677,40 @@ public class LevelUpUI : MonoBehaviour
                     );
                 }
             }
+            // Orbital
+            {
+                var def = _weapons.orbitalDef;
+                int lvl = _weapons.orbitalLevel.Value;
+                int max = 1 + (def?.steps?.Length ?? 0);
+                var row = GetOrCreateCustomRow("Weapon_Orbital", def ? def.displayName : "Orbital");
+                if (row)
+                {
+                    string label = def ? def.displayName : "Orbital";
+                    var rt = _weapons.OrbitalRuntime;
+
+                    // Sehr grobe DPS-Schätzung: damagePerShot * shotsPerSecond * salvoCount
+                    // (salvoCount = Anzahl Orbs)
+                    int salvo = rt != null ? Mathf.Max(1, rt.salvoCount) :
+                                (def != null ? Mathf.Max(1, def.baseSalvoCount) : 1);
+
+                    string extra = rt != null
+                        ? $"DPS≈ {(rt.damagePerShot * rt.shotsPerSecond * salvo):0.#}  |  {rt.shotsPerSecond:0.##} ticks/s × {salvo}"
+                        : null;
+
+                    if (def != null)
+                        row.SetIcon(def.uiIcon);
+                    else
+                        row.SetIcon(null);
+
+                    row.Set(
+                        label,
+                        $"Lv {lvl}/{max}" + (string.IsNullOrEmpty(extra) ? "" : $"   ({extra})"),
+                        null,
+                        max > 0 ? (lvl / (float)max) : -1f
+                    );
+                }
+            }
+
             // --- Weapon Summary / DamageRow ---
             {
                 var dmgRow = GetOrCreateDamageRow();
@@ -707,6 +743,13 @@ public class LevelUpUI : MonoBehaviour
                         totalDps += rt.damagePerShot * rt.shotsPerSecond;
                     }
 
+                    if (_weapons.OrbitalRuntime != null)
+                    {
+                        var rt = _weapons.OrbitalRuntime;
+                        int salvo = Mathf.Max(1, rt.salvoCount);
+                        totalDps += rt.damagePerShot * rt.shotsPerSecond * salvo;
+                    }
+
                     // Primary: Gesamtdps, Alt: kurze Auflistung der aktiven Waffen
                     string primary = $"{totalDps:0.#} DPS total";
 
@@ -722,17 +765,14 @@ public class LevelUpUI : MonoBehaviour
                     if (_weapons.BlasterRuntime != null) Append(ref alt, "Blaster");
                     if (_weapons.GrenadeRuntime != null) Append(ref alt, "Grenade");
                     if (_weapons.LightningRuntime != null) Append(ref alt, "Lightning");
+                    if (_weapons.OrbitalRuntime != null) Append(ref alt, "Orbital");
 
                     dmgRow.Set("Damage", primary, null, alt, null);
                 }
             }
         }
 
-
     }
-
-
-
 
 
     private float PredictNextValueWithStacks(UpgradeType type, int stacks)
@@ -880,6 +920,7 @@ public class LevelUpUI : MonoBehaviour
                 else if (def == pw.blasterDef)   curLevel = pw.blasterLevel.Value;
                 else if (def == pw.grenadeDef)   curLevel = pw.grenadeLevel.Value;
                 else if (def == pw.lightningDef) curLevel = pw.lightningLevel.Value;
+                else if (def == pw.orbitalDef)   curLevel = pw.orbitalLevel.Value;
             }
 
             if (curLevel == 0)

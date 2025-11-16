@@ -756,6 +756,154 @@ Transform:
   m_Children: []
   m_Father: {fileID: 4482477836443022628}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2944911921363430825
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4322967398615626251}
+  - component: {fileID: 1684975679620337315}
+  - component: {fileID: 9027358544116371524}
+  m_Layer: 7
+  m_Name: OrbitalWeaponController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4322967398615626251
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2944911921363430825}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3963026483496299984}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1684975679620337315
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2944911921363430825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c59ab6a1de12f3048b45c9f94556e440, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrbitalWeaponController
+  weaponDef: {fileID: 11400000, guid: db112a74d0b27904d9e0d9f4495c3925, type: 2}
+  overclocks: {fileID: 4061243089856759362}
+  orbPrefab: {fileID: 9173814573962899407, guid: 1e65136a9bfec0f43975a9154b890d14, type: 3}
+  orbitRadius: 1
+  orbitAngularSpeedDeg: 120
+  damageTickInterval: 0.25
+--- !u!82 &9027358544116371524
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2944911921363430825}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 0.2
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &3108706700312568540
 GameObject:
   m_ObjectHideFlags: 0
@@ -1031,7 +1179,7 @@ MonoBehaviour:
   weaponDef: {fileID: 11400000, guid: 89494c543718e894f9552a76859a58e1, type: 2}
   altBulletPrefab: {fileID: 1476586629750628589, guid: d940d4f0ac4a3ca46a9a99935586aef0, type: 3}
   fireRate: 1.5
-  altFireRateJitterPct: 0.1
+  altFireRateJitterPct: 0
   altInaccuracyAngle: 1
   chargeTime: 1
   autoAltFire: 1
@@ -1965,7 +2113,7 @@ MonoBehaviour:
     m_Bits: 512
   useAimLead: 1
   primaryBulletSpeedHint: 75
-  fireRateJitterPct: 0.257
+  fireRateJitterPct: 0
   NetworkRotation:
     m_InternalValue: {x: 0, y: 0, z: 0, w: 1}
 --- !u!82 &4534682290821181466
@@ -2308,7 +2456,7 @@ MonoBehaviour:
   fireRate: 2
   salvoCount: 4
   salvoInterval: 0.05
-  fireRateJitterPct: 0.245
+  fireRateJitterPct: 0
   launchSpeed: 10
   maxElevationDeg: 25
   inaccuracyAngle: 2
@@ -2478,6 +2626,7 @@ Transform:
   - {fileID: 4637037343647819799}
   - {fileID: 4482477836443022628}
   - {fileID: 2943046030160944852}
+  - {fileID: 4322967398615626251}
   - {fileID: 2653925147314416184}
   - {fileID: 8325214368903602847}
   - {fileID: 7498628120663236216}
@@ -2731,6 +2880,7 @@ MonoBehaviour:
   blasterDef: {fileID: 11400000, guid: 89494c543718e894f9552a76859a58e1, type: 2}
   grenadeDef: {fileID: 11400000, guid: 36439c519127b2947a6abc791d73de9d, type: 2}
   lightningDef: {fileID: 11400000, guid: f045e6e0a2afcf44bb7b5d5c3e427f73, type: 2}
+  orbitalDef: {fileID: 11400000, guid: db112a74d0b27904d9e0d9f4495c3925, type: 2}
   upgrades: {fileID: 4238535403307873137}
   cannonLevel:
     m_InternalValue: 1
@@ -2739,6 +2889,8 @@ MonoBehaviour:
   grenadeLevel:
     m_InternalValue: 1
   lightningLevel:
+    m_InternalValue: 0
+  orbitalLevel:
     m_InternalValue: 0
 --- !u!114 &4238535403307873137
 MonoBehaviour:

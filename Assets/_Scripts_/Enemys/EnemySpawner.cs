@@ -250,7 +250,6 @@ public class EnemySpawner : NetworkBehaviour
     // ================== Wave-Phasensteuerung ==================
     private IEnumerator WaveLoop()
     {
-        // Gemeinsame Initial-Delay-Logik (nur einmal für alle Loops)
         yield return WaitInitialDelayIfNeeded();
 
         while (true)
@@ -265,36 +264,43 @@ public class EnemySpawner : NetworkBehaviour
             double activeEnd = ServerTime + Mathf.Max(1f, waveActiveSeconds);
             CurrentPhaseEndsServerTime.Value = activeEnd;
 
-            // Boss-Waves: nur Bosse, keine Burst-/Random-Elite-Spawns
             if (IsBossWave(wave))
             {
+                // --- BOSSWAVE: fixe Boss-Anzahl spawnen ---
                 int bossCount = GetBossCountForWave(wave);
                 if (bossCount > 0)
                 {
                     InjectEliteNow(bossCount);
                 }
+
+                // WICHTIG:
+                // NICHT nach Zeit enden, sondern warten bis alle Gegner tot sind
+                while (EnemiesAlive.Value > 0)
+                    yield return null;
             }
             else
             {
+                // --- Normale Wellen wie bisher ---
                 RestartRoutine(ref _burstRoutine, BurstLoop());
                 RestartRoutine(ref _eliteRoutine, EliteLoopForCurrentWave());
-            }
 
-            while (ServerTime < activeEnd)
-                yield return null;
-
-            if (waitForClearBeforeBreak)
-            {
-                float timeout = 10f;
-                float t = 0f;
-                while (EnemiesAlive.Value > 0 && t < timeout)
-                {
-                    t += Time.deltaTime;
+                // normale aktive Phase läuft per Zeit
+                while (ServerTime < activeEnd)
                     yield return null;
+
+                if (waitForClearBeforeBreak)
+                {
+                    float timeout = 10f;
+                    float t = 0f;
+                    while (EnemiesAlive.Value > 0 && t < timeout)
+                    {
+                        t += Time.deltaTime;
+                        yield return null;
+                    }
                 }
             }
 
-            // Pause
+            // === Pause / Break-Phase (für alle Waves gleich) ===
             StopRoutine(ref _burstRoutine);
             StopRoutine(ref _eliteRoutine);
 
@@ -309,6 +315,7 @@ public class EnemySpawner : NetworkBehaviour
                 yield return null;
         }
     }
+
 
     // ================== Burst-Packs ==================
     private IEnumerator BurstLoop()

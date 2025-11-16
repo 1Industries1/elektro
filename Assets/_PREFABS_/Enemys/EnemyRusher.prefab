@@ -1147,10 +1147,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lastHitByClientId: 0
   detectionRange: 9999999
-  attackRange: 5
+  attackRange: 8
   minMoveSpeed: 10
   maxMoveSpeed: 22
   rotationSpeed: 10
+  terrainStickYOffset: 0.05
+  maxTerrainFallDistance: 5
   baseHealth: 16
   dmgNums: {fileID: 8409553502743980558}
 --- !u!114 &8409553502743980558
@@ -1180,7 +1182,7 @@ MonoBehaviour:
   enemyBulletPrefab: {fileID: 4211810131274587892, guid: 083d75882754f8741ad9210a4fb08cfb, type: 3}
   bulletSpawnPoint: {fileID: 2444407334845499373}
   fireRate: 1
-  shootingRange: 2
+  shootingRange: 5
   inaccuracyAngle: 10
   shootSound: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
 --- !u!114 &622694244708683426

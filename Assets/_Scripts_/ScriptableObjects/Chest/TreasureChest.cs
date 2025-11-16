@@ -547,6 +547,7 @@ public class TreasureChest : NetworkBehaviour
         else if (pw.blasterDef != null && pw.blasterDef.id == weaponId) def = pw.blasterDef;
         else if (pw.grenadeDef != null && pw.grenadeDef.id == weaponId) def = pw.grenadeDef;
         else if (pw.lightningDef != null && pw.lightningDef.id == weaponId) def = pw.lightningDef;
+        else if (pw.orbitalDef != null && pw.orbitalDef.id == weaponId) def = pw.orbitalDef;
 
         if (def != null && def.uiIcon != null)
             UIChestManager.NotifyItemReceived(def.uiIcon);
@@ -721,6 +722,7 @@ public class TreasureChest : NetworkBehaviour
         if (pw.blasterDef != null && pw.blasterDef.id == id) return pw.blasterDef;
         if (pw.grenadeDef != null && pw.grenadeDef.id == id) return pw.grenadeDef;
         if (pw.lightningDef != null && pw.lightningDef.id == id) return pw.lightningDef;
+        if (pw.orbitalDef   != null && pw.orbitalDef.id   == id) return pw.orbitalDef;
         return null;
     }
 

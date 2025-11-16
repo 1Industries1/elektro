@@ -22,7 +22,7 @@ MonoBehaviour:
   projectileSize: 1
   knockback: 0
   baseDamage: 35
-  shotsPerSecond: 1
+  shotsPerSecond: 1.5
   basePierce: 0
   baseSalvoCount: 1
   baseCritChance: 0
@@ -30,15 +30,15 @@ MonoBehaviour:
   steps:
   - name: L2
     type: 1
-    value: 0.75
+    value: 0.5
     intValue: 0
   - name: L3
     type: 1
-    value: 0.6
+    value: 0.5
     intValue: 0
   - name: L4
     type: 0
-    value: 0.25
+    value: 0.3
     intValue: 0
   - name: L5
     type: 1

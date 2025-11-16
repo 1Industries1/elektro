@@ -74,6 +74,12 @@ public sealed class WeaponRuntime {
                 case StepType.AddSalvoCount:
                     salvoCount += Mathf.Max(0, s.intValue);
                     break;
+                case StepType.AddRangePct:
+                    rangeMeters *= (1f + s.value);
+                    break;
+                case StepType.AddProjSpeedPct:
+                    projectileSpeed *= (1f + s.value);
+                    break;
             }
         }
 
@@ -94,6 +100,8 @@ public sealed class WeaponRuntime {
         critMult       = Mathf.Max(1f, critMult);
         pierce         = Mathf.Max(0, pierce);
         salvoCount     = Mathf.Clamp(salvoCount, 1, 16);
+        rangeMeters    = Mathf.Max(0.1f, rangeMeters);
+        projectileSpeed= Mathf.Max(0.01f, projectileSpeed);
     }
 
     public float GetCooldownSeconds() => 1f / shotsPerSecond;

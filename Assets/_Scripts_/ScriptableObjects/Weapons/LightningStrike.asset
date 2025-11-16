@@ -22,7 +22,7 @@ MonoBehaviour:
   projectileSize: 1
   knockback: 0
   baseDamage: 20
-  shotsPerSecond: 2
+  shotsPerSecond: 1.25
   basePierce: 0
   baseSalvoCount: 1
   baseCritChance: 0

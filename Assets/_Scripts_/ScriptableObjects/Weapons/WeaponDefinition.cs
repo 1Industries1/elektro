@@ -11,7 +11,9 @@ public enum StepType
     AddCritMult,
     TwinBarrel,           // +25% effektive DPS
     ImpactExplosionAug,   // Blaster: AOE am letzten Pierce (2.5m, 50% dmg)
-    AddSalvoCount
+    AddSalvoCount,
+    AddRangePct,          // skaliert rangeMeters von PlasmaOrb
+    AddProjSpeedPct 
 }
 
 [System.Serializable]

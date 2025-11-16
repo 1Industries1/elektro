@@ -4,14 +4,14 @@ Regelmäßig committen & pushen (Offsite-Backup):
 
 git status
 git add -A
-git commit -m "feat: Truhen-Prefab hinzugefügt, Loot-UI"
+git commit -m "new"
 git push
 
 # Optional: Meilenstein-Tag setzen und pushen
 ERHÖHEN UM 1:
 
-git tag -a v0.1.4 -m "Superjump"
-git push origin v0.1.4
+git tag -a v0.1.5 -m "new Enemy Wasp"
+git push origin v0.1.5
 
 
 

@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ca412dda5f0ade449e7d21f2154383c, type: 3}
+  m_Name: OrbitalPlasma
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponDefinition
+  id: orbital
+  displayName: Orbital Plasma
+  tags: 256
+  uiIcon: {fileID: 21300000, guid: e4ead233617350f49a80e58079e69e0a, type: 3}
+  bulletPrefab: {fileID: 0}
+  projectileSpeed: 15
+  rangeMeters: 8
+  projectileSize: 5
+  knockback: 5
+  baseDamage: 15
+  shotsPerSecond: 4
+  basePierce: 0
+  baseSalvoCount: 2
+  baseCritChance: 0
+  baseCritMult: 1.5
+  steps:
+  - name: L2
+    type: 8
+    value: 0
+    intValue: 1
+  - name: L3
+    type: 9
+    value: 0.5
+    intValue: 0
+  - name: L4
+    type: 10
+    value: 0.5
+    intValue: 0
+  - name: L5
+    type: 8
+    value: 0
+    intValue: 2
+  - name: L6
+    type: 8
+    value: 0
+    intValue: 1

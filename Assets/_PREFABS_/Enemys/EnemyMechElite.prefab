@@ -2158,7 +2158,7 @@ MonoBehaviour:
   stompCooldown: 5
   stompTelegraphPrefab: {fileID: 8626799719864895498, guid: 7170f8760bbe7fa4397003d7cbfa4dd7, type: 3}
   stompFx: {fileID: 0}
-  baseHealth: 1200
+  baseHealth: 650
   deathDespawnDelay: 3
   dmgNums: {fileID: 1063182142841119009}
   effects: {fileID: 2884406912444404820}

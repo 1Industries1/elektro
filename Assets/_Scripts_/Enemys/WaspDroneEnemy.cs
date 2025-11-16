@@ -54,7 +54,7 @@ public class WaspDroneEnemy : NetworkBehaviour, IEnemy
     [SerializeField] private float buzzPreferredDistance = 6f;
     [SerializeField] private float buzzDistanceTolerance = 2f;
     [SerializeField] private float buzzSpeed = 9f;
-    [SerializeField, Range(0f, 1f)] private float orbitWeight = 0.4f;
+    [SerializeField, Range(0f, 1f)] private float orbitWeight = 0.4f; // 1 = Wasp macht eher Kreise um Player, statt zu pushen
     [SerializeField] private float verticalWobbleAmplitude = 1.0f;
     [SerializeField] private float verticalWobbleSpeed = 2.5f;
     [SerializeField] private float hoverHeightRelativeToTarget = 1.5f;
@@ -71,7 +71,7 @@ public class WaspDroneEnemy : NetworkBehaviour, IEnemy
     [SerializeField] private float sweepTotalAngle = 90f; // Grad, z.B. 90 = 45° links nach 45° rechts
     [SerializeField] private float laserLength = 40f;
     [SerializeField] private float sweepHitRadius = 0.75f; // „Breite“ des Lasers
-    [SerializeField] private float sweepDamagePerSecond = 40f; // DPS (Server_TakeDamage + iFrames balancieren)
+    [SerializeField] private float sweepDamageOnHit = 50f; // DPS (Server_TakeDamage + iFrames balancieren)
 
     private float nextSweepTime;
     private float windupTimer;
@@ -313,7 +313,7 @@ public class WaspDroneEnemy : NetworkBehaviour, IEnemy
             var ph = hit.collider.GetComponentInParent<PlayerHealth>();
             if (ph != null)
             {
-                float dmg = sweepDamagePerSecond * Time.fixedDeltaTime;
+                float dmg = sweepDamageOnHit;
                 ph.Server_TakeDamage(dmg, OwnerClientId);
             }
         }
@@ -324,8 +324,8 @@ public class WaspDroneEnemy : NetworkBehaviour, IEnemy
         nextSweepTime = Time.time + UnityEngine.Random.Range(sweepCooldownMin, sweepCooldownMax);
     }
 
-    // ---------- Movement / Orientation ----------
 
+    // ---------- Movement / Orientation ----------
     private void MoveTowardsPosition(Vector3 targetPos, float speed)
     {
         Vector3 dir = (targetPos - rb.position);

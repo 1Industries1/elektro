@@ -118,7 +118,7 @@ SphereCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -176,31 +176,31 @@ MonoBehaviour:
   dmgNums: {fileID: 8409553502743980558}
   lastHitByClientId: 0
   laserVisuals: {fileID: 6447810116876798542}
-  patrolRadius: 10
+  patrolRadius: 25
   patrolSpeed: 2
   patrolHeight: 3
-  detectionRange: 35
+  detectionRange: 70
   buzzPreferredDistance: 30
   buzzDistanceTolerance: 3
   buzzSpeed: 3
-  orbitWeight: 0.4
+  orbitWeight: 0.7
   verticalWobbleAmplitude: 1
   verticalWobbleSpeed: 1
   hoverHeightRelativeToTarget: 1.5
   heightLerpSpeed: 6
   sweepCooldownMin: 3.5
-  sweepCooldownMax: 6
+  sweepCooldownMax: 8
   sweepWindupTime: 1
-  sweepDuration: 3
-  sweepTotalAngle: 70
+  sweepDuration: 1.6
+  sweepTotalAngle: 80
   laserLength: 120
   sweepHitRadius: 0.75
-  sweepDamagePerSecond: 2
+  sweepDamageOnHit: 6
   rotationSpeed: 10
   idleYawRotateSpeed: 45
   tiltAmplitude: 2
   tiltSpeed: 2
-  lookAtTargetWeight: 0.7
+  lookAtTargetWeight: 0.9
 --- !u!114 &6447810116876798542
 MonoBehaviour:
   m_ObjectHideFlags: 0

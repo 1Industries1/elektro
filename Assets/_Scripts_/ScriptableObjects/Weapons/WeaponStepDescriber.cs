@@ -107,6 +107,12 @@ public static class WeaponStepDescriber
         StepType.AddSalvoCount =>
             "+{INT} salvo(s)  (now {SALVO_NEW} {SALVO_PLURAL}; DPS {DPS_OLD} → {DPS_NEW})",
 
+        StepType.AddRangePct =>
+            "+{VALUE_PCT}% range",
+
+        StepType.AddProjSpeedPct =>
+            "+{VALUE_PCT}% projectile / orbit speed",
+
         _ => "Upgrade acquired"
     };
 
