@@ -6,6 +6,9 @@ using UnityEngine;
 
 public static class UpgradeRoller
 {
+
+    private static readonly System.Random _rng = new System.Random();
+
     // Wie "oft" ein Eintrag in den Beutel gelegt wird /// 1 ist sehr selten und 3 ist oft
     public const int STAT_WEIGHT    = 3;
     public const int MASTERY_WEIGHT = 2;
@@ -26,15 +29,7 @@ public static class UpgradeRoller
     public const int Weapon_Blaster   = 21;
     public const int Weapon_Grenade   = 22;
     public const int Weapon_Lightning = 23;
-
-    // Neu: Waffenpool (IDs, nicht ScriptableObjects)
-    private static readonly int[] WeaponPool = 
-    { 
-        Weapon_Cannon, 
-        Weapon_Blaster, 
-        Weapon_Grenade, 
-        Weapon_Lightning 
-    };
+    public const int Weapon_Orbital = 24;
 
     // Alle passiven Stat-Upgrades
     private static readonly int[] StatPool = { MaxHP, Armor, Magnet, MoveSpeed, Stamina, DropMoreXP, DropMoreGold };
@@ -59,6 +54,7 @@ public static class UpgradeRoller
             Weapon_Blaster   => pw.blasterDef,
             Weapon_Grenade   => pw.grenadeDef,
             Weapon_Lightning => pw.lightningDef,
+            Weapon_Orbital   => pw.orbitalDef,
             _                => null
         };
     }
@@ -206,6 +202,7 @@ public static class UpgradeRoller
             AddWeaponCandidate(pw.blasterDef,   pw.blasterLevel.Value,   Weapon_Blaster);
             AddWeaponCandidate(pw.grenadeDef,   pw.grenadeLevel.Value,   Weapon_Grenade);
             AddWeaponCandidate(pw.lightningDef, pw.lightningLevel.Value, Weapon_Lightning);
+            AddWeaponCandidate(pw.orbitalDef, pw.orbitalLevel.Value, Weapon_Orbital);
         }
 
         var allCandidates = new List<int>();
@@ -237,12 +234,11 @@ public static class UpgradeRoller
         if (allCandidates.Count == 0)
             allCandidates.AddRange(StatPool);
 
-        // Fisher–Yates-Shuffle
-        var r   = new System.Random();
+        // Fisher–Yates-Shuffle mit gemeinsamem RNG
         var bag = new List<int>(allCandidates);
         for (int i = bag.Count - 1; i > 0; i--)
         {
-            int j = r.Next(i + 1);
+            int j = _rng.Next(i + 1);
             (bag[i], bag[j]) = (bag[j], bag[i]);
         }
 
@@ -255,7 +251,7 @@ public static class UpgradeRoller
             if (picks.Count == 3) break;
         }
         while (picks.Count < 3)
-            picks.Add(allCandidates[r.Next(allCandidates.Count)]);
+            picks.Add(allCandidates[_rng.Next(allCandidates.Count)]);
 
         int EncodeClamped(int baseId)
         {
@@ -270,7 +266,7 @@ public static class UpgradeRoller
                 if (curTier >= maxTier)
                     return ChoiceCodec.Encode(MaxHP, Rarity.Common);
 
-                var rarity = WeightedRarity(r);
+                var rarity = WeightedRarity(); // ohne Parameter
                 int stacks = StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
                 stacks = Mathf.Min(stacks, maxTier - curTier);
                 if (stacks <= 0) { rarity = Rarity.Common; stacks = 1; }
@@ -284,7 +280,7 @@ public static class UpgradeRoller
             {
                 var def = ResolveWeaponDef(pw, baseId);
                 if (def == null)
-                    return ChoiceCodec.Encode(MaxHP, Rarity.Common); // Fallback
+                    return ChoiceCodec.Encode(MaxHP, Rarity.Common);
 
                 int curLevel = 0;
                 if (def == pw.cannonDef)         curLevel = pw.cannonLevel.Value;
@@ -296,14 +292,9 @@ public static class UpgradeRoller
                 if (curLevel >= maxLevel)
                     return ChoiceCodec.Encode(MaxHP, Rarity.Common);
 
-                // Rarity bleibt für Drop-Chance / Optik,
-                // aber LEVEL-UP ist IMMER +1
-                var rarity = WeightedRarity(r);
-
-                // keine Stack-Clamping-Logik mehr
+                var rarity = WeightedRarity();
                 return ChoiceCodec.Encode(baseId, rarity);
             }
-
 
             // ----- Stat -----
             var type = Resolve(baseId);
@@ -313,7 +304,7 @@ public static class UpgradeRoller
             if (cur >= max)
                 return ChoiceCodec.Encode(baseId, Rarity.Common);
 
-            var rarityStat = WeightedRarity(r);
+            var rarityStat = WeightedRarity();
             int stacksStat = StacksPerRarity.TryGetValue(rarityStat, out var sStat) ? sStat : 1;
             stacksStat = Mathf.Min(stacksStat, max - cur);
             if (stacksStat <= 0) { rarityStat = Rarity.Common; stacksStat = 1; }
@@ -492,11 +483,30 @@ public static class UpgradeRoller
         var baseId = ChoiceCodec.BaseId(choiceId);
         var rarity = ChoiceCodec.GetRarity(choiceId);
 
-        string baseLabel = UpgradeNameFallback(baseId);
-        string badge     = RarityBadge[rarity];
+        string baseLabel;
+
+        if (IsWeaponBaseId(baseId))
+        {
+            // Ohne Kontext zu PlayerWeapons kommen wir hier nicht an den echten Waffennamen.
+            // Falls du willst, kannst du hier einfach "Weapon" lassen.
+            baseLabel = "Weapon";
+        }
+        else if (IsMasteryBaseId(baseId))
+        {
+            // Masteries klar kennzeichnen
+            baseLabel = "Mastery";
+        }
+        else
+        {
+            // Normale Stats wie bisher
+            baseLabel = UpgradeNameFallback(baseId);
+        }
+
+        string badge = RarityBadge[rarity];
 
         return $"{ColorTag(rarity)}{baseLabel} {badge}</color>";
     }
+
 
     public static string ColorTag(Rarity r)
     {
@@ -513,9 +523,9 @@ public static class UpgradeRoller
 
     // ======== intern ========
 
-    private static Rarity WeightedRarity(System.Random r)
+    private static Rarity WeightedRarity()
     {
-        float x   = (float)r.NextDouble();
+        float x   = (float)_rng.NextDouble();
         float acc = 0f;
 
         var order = new[] { Rarity.Common, Rarity.Rare, Rarity.Epic, Rarity.Legendary };
@@ -526,6 +536,7 @@ public static class UpgradeRoller
         }
         return Rarity.Common;
     }
+
 
     private static Color Hex(string rgba)
     {

@@ -12,6 +12,9 @@ public class EnemyBulletController : NetworkBehaviour
     [SerializeField] private float damage = 0.1f;
     [SerializeField] private float lifetime = 5f;
 
+    [Header("Visuals")]
+    [SerializeField] private TrailRenderer trail;   // Referenz im Inspector setzen
+
     private Rigidbody rb;
     private float spawnTime;
 
@@ -30,13 +33,11 @@ public class EnemyBulletController : NetworkBehaviour
         if (!IsServer) return;
 
         if (Time.time - spawnTime > lifetime)
-            NetworkObject.Despawn();
+        {
+            DespawnWithTrail();
+        }
     }
 
-    /// <summary>
-    /// Kann vom Spawner aufgerufen werden, um Werte zu überschreiben.
-    /// Wenn ein Wert null/negativ ist, bleibt der Inspector-Wert bestehen.
-    /// </summary>
     public void Init(Vector3 direction, float newSpeed = -1f, float newDamage = -1f, float newLifetime = -1f)
     {
         if (!IsServer) return;
@@ -62,6 +63,26 @@ public class EnemyBulletController : NetworkBehaviour
             }
         }
 
-        NetworkObject.Despawn();
+        DespawnWithTrail();
+    }
+
+    private void DespawnWithTrail()
+    {
+        // Nur einmal ausführen
+        if (!IsSpawned) return;
+
+        if (trail != null)
+        {
+            // Trail vom Bullet lösen
+            trail.transform.SetParent(null);
+
+            // Emission stoppen, damit keine neuen Punkte hinzukommen
+            trail.emitting = false;
+
+            // Trail-Objekt nach seiner eigenen Länge zerstören
+            Destroy(trail.gameObject, trail.time);
+        }
+
+        //NetworkObject.Despawn();
     }
 }

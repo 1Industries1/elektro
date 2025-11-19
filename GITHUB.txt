@@ -10,8 +10,8 @@ git push
 # Optional: Meilenstein-Tag setzen und pushen
 ERHÖHEN UM 1:
 
-git tag -a v0.1.5 -m "new Enemy Wasp"
-git push origin v0.1.5
+git tag -a v0.1.6 -m "new Weapon: PlasmaOrb"
+git push origin v0.1.6
 
 
 

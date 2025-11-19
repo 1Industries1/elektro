@@ -482,7 +482,6 @@ GameObject:
   - component: {fileID: -2474535040198073020}
   - component: {fileID: 1411359686327814201}
   - component: {fileID: 1585517448443601885}
-  - component: {fileID: 5580531534147634881}
   - component: {fileID: 550950079701456648}
   - component: {fileID: 1522036757684437610}
   - component: {fileID: 2913323573280078055}
@@ -491,6 +490,7 @@ GameObject:
   - component: {fileID: -2398430874698207531}
   - component: {fileID: 9223212118158675686}
   - component: {fileID: 5782244146976485846}
+  - component: {fileID: 8235427535540591843}
   m_Layer: 12
   m_Name: EnemySniper
   m_TagString: Enemy
@@ -657,9 +657,9 @@ MonoBehaviour:
   strafeSpeed: 4
   rotationSpeed: 3
   distanceTolerance: 100
-  dashSpeed: 75
+  dashSpeed: 20
   dashWindup: 1
-  dashDuration: 2.5
+  dashDuration: 1.5
   dashCooldown: 3
   dashTelegraphFx: {fileID: 0}
   cannonPivot: {fileID: 8859112732521408619}
@@ -688,21 +688,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31ca04619fb51f346a03a0f5aa6f0df6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &5580531534147634881
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7018259160673714555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e27393ecb4651b54ca9e06f38c44ad18, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _rb: {fileID: 209952355502235215}
-  _audioSource: {fileID: 5782244146976485846}
-  _deathSound: {fileID: 8300000, guid: 9ea0e51bdc252384e8cdd476387c9ca6, type: 3}
 --- !u!114 &550950079701456648
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1002,3 +987,19 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &8235427535540591843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7018259160673714555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd6cbcf2b8f9c2449ac77cc23ee30c4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyOutOfBoundsKill
+  minY: -45
+  maxDistanceFromOrigin: 0
+  origin: {x: 0, y: 0, z: 0}
+  checkInterval: 1.5

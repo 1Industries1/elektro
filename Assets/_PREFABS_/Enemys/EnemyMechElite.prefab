@@ -1927,6 +1927,7 @@ GameObject:
   - component: {fileID: 4081839811036244495}
   - component: {fileID: 971851490097984706}
   - component: {fileID: 6324071514731664225}
+  - component: {fileID: 5687407765714405126}
   m_Layer: 12
   m_Name: EnemyMechElite
   m_TagString: Enemy
@@ -2367,6 +2368,22 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &5687407765714405126
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6552234008730724997}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd6cbcf2b8f9c2449ac77cc23ee30c4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyOutOfBoundsKill
+  minY: -45
+  maxDistanceFromOrigin: 0
+  origin: {x: 0, y: 0, z: 0}
+  checkInterval: 1.5
 --- !u!1 &6637169602297702265
 GameObject:
   m_ObjectHideFlags: 0

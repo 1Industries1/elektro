@@ -3018,9 +3018,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b3264665616fcc44875e5fe7829a763, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerGroundSlamAbility
-  slamKey: 102
-  superJumpUpVelocity: 50
-  slamDownVelocity: 75
+  slamKey: 32
+  superJumpUpVelocity: 15
+  slamDownVelocity: 50
   slamCooldown: 2
   maxSuperJumpTime: 0.8
   autoSlamAfterApexDelay: 0.05
