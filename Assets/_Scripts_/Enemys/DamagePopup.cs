@@ -17,6 +17,10 @@ public class DamagePopup : MonoBehaviour
     public AnimationCurve scaleOverLife = AnimationCurve.EaseInOut(0, 0.8f, 1, 1.1f);
     public AnimationCurve alphaOverLife = AnimationCurve.EaseInOut(0, 1f, 1, 0f);
 
+    [Header("Colors")]
+    [SerializeField] private Color normalColor = new Color(1f, 0.9f, 0.9f);
+    [SerializeField] private Color critColor   = new Color(1f, 0.85f, 0.2f);
+
     private float _t;
     private Color _baseColor;
     private Vector3 _vel;
@@ -24,8 +28,10 @@ public class DamagePopup : MonoBehaviour
     void Awake()
     {
         if (!text) text = GetComponentInChildren<TMP_Text>(true);
-        if (text == null) Debug.LogWarning("[DamagePopup] TMP_Text fehlt!");
-        else _baseColor = text.color;
+        if (text == null)
+            Debug.LogWarning("[DamagePopup] TMP_Text fehlt!");
+        else
+            _baseColor = text.color;
     }
 
     // colorOverride und lifetimeOverride sind optional (nullable)
@@ -40,10 +46,9 @@ public class DamagePopup : MonoBehaviour
             text.text = Mathf.RoundToInt(amount).ToString();
         }
 
-        // Default-Farbe je nach Crit
-        Color defaultColor = isCrit ? new Color(1f, 0.85f, 0.2f) : new Color(1f, 0.3f, 0.3f);
+        // Default-Farbe aus dem Inspector je nach Crit
+        Color defaultColor = isCrit ? critColor : normalColor;
 
-        // FIX: kein .Value – Ergebnis von ?? ist bereits Color
         _baseColor = colorOverride ?? defaultColor;
 
         // Motion

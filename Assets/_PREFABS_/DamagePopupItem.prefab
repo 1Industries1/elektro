@@ -48,8 +48,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   text: {fileID: 96139019132433617}
   startOffset: {x: 0, y: 0.2, z: 0}
-  moveDirection: {x: 0.1, y: 0.75, z: 0}
-  moveSpeed: 1.5
+  moveDirection: {x: 0.1, y: 0.4, z: 0}
+  moveSpeed: 1
   gravity: 2
   lifetime: 1
   scaleOverLife:
@@ -109,6 +109,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  normalColor: {r: 1, g: 0.3019608, b: 0.3019608, a: 1}
+  critColor: {r: 0.6509434, g: 0.00000012415761, b: 0, a: 1}
 --- !u!114 &5203612238216768117
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -188,8 +190,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 1
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 90967c8b835547e47b68ce284793810e, type: 2}
-  m_sharedMaterial: {fileID: -6535881968553196672, guid: 90967c8b835547e47b68ce284793810e, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ee34ddff35f127f48bff453871180d65, type: 2}
+  m_sharedMaterial: {fileID: 2140032, guid: ee34ddff35f127f48bff453871180d65, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -213,8 +215,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.8
-  m_fontSizeBase: 0.8
+  m_fontSize: 0.6
+  m_fontSizeBase: 0.6
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18

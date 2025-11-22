@@ -316,7 +316,7 @@ public class PlayerGroundSlamAbility : NetworkBehaviour
         if (slamImpactVfx != null)
         {
             var go = Instantiate(slamImpactVfx, transform.position, Quaternion.identity);
-            Destroy(go, 5f);
+            Destroy(go, 6f);
         }
 
         // ======================
