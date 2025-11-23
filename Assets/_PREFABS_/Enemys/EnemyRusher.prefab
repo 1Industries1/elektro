@@ -1024,6 +1024,7 @@ GameObject:
   - component: {fileID: 4953538076136587905}
   - component: {fileID: 7895223603817820146}
   - component: {fileID: 554644363868244485}
+  - component: {fileID: 1027700268978121615}
   m_Layer: 12
   m_Name: EnemyRusher
   m_TagString: Enemy
@@ -1149,7 +1150,7 @@ MonoBehaviour:
   detectionRange: 9999999
   attackRange: 8
   minMoveSpeed: 10
-  maxMoveSpeed: 22
+  maxMoveSpeed: 30
   rotationSpeed: 10
   terrainStickYOffset: 0.05
   maxTerrainFallDistance: 5
@@ -1335,6 +1336,23 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &1027700268978121615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5059212516318057732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91ebfe5239340a84d8d63f82f42f1022, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TouchDamage
+  dps: 2
+  tickInterval: 0.25
+  playerMask:
+    serializedVersion: 2
+    m_Bits: 128
 --- !u!1 &5197158647726793845
 GameObject:
   m_ObjectHideFlags: 0

@@ -6,6 +6,9 @@ public class CameraFollow : MonoBehaviour
 {
     public static CameraFollow Instance;
 
+    // Wird von UI-Skripten benutzt, um die Kameradrehung temporär zu sperren
+    public static bool OrbitLockedByUI { get; private set; }
+
     [Header("Target & Follow")]
     public Transform target;
     public float smoothTime = 0.3f;
@@ -70,6 +73,11 @@ public class CameraFollow : MonoBehaviour
 
     public void RestoreStoredOffset(float duration) => ZoomTo(_storedOffset, duration);
 
+    public static void SetOrbitLockedByUI(bool locked)
+    {
+        OrbitLockedByUI = locked;
+    }
+
     // Smoothes Zoomen zu einem Offset in 'duration' Sekunden
     public void ZoomTo(Vector3 targetOffset, float duration)
     {
@@ -101,7 +109,8 @@ public class CameraFollow : MonoBehaviour
 
     private void Update()
     {
-        if (enableOrbit && target != null)
+        // Kamera darf sich nur drehen, wenn Orbit aktiviert ist UND nicht per UI gesperrt ist
+        if (enableOrbit && target != null && !OrbitLockedByUI)
             HandleOrbit();
 
         if (!_lockUserZoom)
@@ -113,7 +122,7 @@ public class CameraFollow : MonoBehaviour
             Vector3 targetPosition = target.position + offset;
             transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime);
 
-            // LookAt (Rotation des Holders richtet die Child-Camera aus)
+            // LookAt
             Vector3 lookDir = target.position - transform.position;
             if (lookDir.sqrMagnitude > 0.001f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir, Vector3.up), 1f);

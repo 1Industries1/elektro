@@ -53,6 +53,20 @@ public class EnemySpawner : NetworkBehaviour
     public int bossWave2 = 10;
     public int bossWave2Count = 5;
 
+    public enum BossCleanupMode
+    {
+        None,           // nichts machen – nur normale Break
+        AutoKill,       // Rest-Gegner nach Timeout automatisch töten
+        TeleportToPlayer // Rest-Gegner nach Timeout zum Spieler ziehen
+    }
+
+    [Header("Boss-Wave Cleanup")]
+    public BossCleanupMode bossCleanupMode = BossCleanupMode.AutoKill;
+    [Tooltip("Wie lange nach Wave-Ende gewartet wird, bevor vor einer Boss-Wave aufgeräumt wird.")]
+    public float bossCleanupMaxWaitSeconds = 10f;
+    [Tooltip("Radius um den Spieler, in dem restliche Gegner bei TeleportToPlayer platziert werden.")]
+    public float bossCleanupTeleportRadius = 6f;
+
     // ================== Boden-Snap ==================
     [Header("Boden-Snap (Raycast nach unten)")]
     public bool useGroundSnap = true;
@@ -105,6 +119,9 @@ public class EnemySpawner : NetworkBehaviour
     private Coroutine _burstRoutine;
     private Coroutine _eliteRoutine;
     private bool _initialDelayDone = false;
+
+    private readonly List<IEnemy> _aliveEnemies = new List<IEnemy>();
+    private int _bossesRemaining = 0;
 
     // ------------------ Small utilities ------------------
     private double ServerTime
@@ -270,12 +287,12 @@ public class EnemySpawner : NetworkBehaviour
                 int bossCount = GetBossCountForWave(wave);
                 if (bossCount > 0)
                 {
-                    InjectEliteNow(bossCount);
+                    _bossesRemaining = 0; // sicherheitshalber resetten
+                    InjectEliteNow(bossCount, null, true); // Bosse markieren
                 }
 
-                // WICHTIG:
-                // NICHT nach Zeit enden, sondern warten bis alle Gegner tot sind
-                while (EnemiesAlive.Value > 0)
+                // Boss-Wave endet, wenn alle Bosse tot sind
+                while (_bossesRemaining > 0)
                     yield return null;
             }
             else
@@ -311,8 +328,38 @@ public class EnemySpawner : NetworkBehaviour
             double breakEnd = ServerTime + Mathf.Max(1f, waveBreakSeconds);
             CurrentPhaseEndsServerTime.Value = breakEnd;
 
+            // Normale Pause
             while (ServerTime < breakEnd)
                 yield return null;
+
+            // === Vor Boss-Wave: Cleanup mit Timeout ===
+            int nextWave = CurrentWave.Value + 1;
+            if (IsBossWave(nextWave) && bossCleanupMode != BossCleanupMode.None)
+            {
+                float maxWait = Mathf.Max(0f, bossCleanupMaxWaitSeconds);
+                float t = 0f;
+
+                // Spieler hat noch etwas Zeit, die letzten Gegner zu killen
+                while (EnemiesAlive.Value > 0 && t < maxWait)
+                {
+                    t += Time.deltaTime;
+                    yield return null;
+                }
+
+                // Timeout und immer noch Gegner da?
+                if (EnemiesAlive.Value > 0)
+                {
+                    switch (bossCleanupMode)
+                    {
+                        case BossCleanupMode.AutoKill:
+                            ForceKillRemainingEnemies();
+                            break;
+                        case BossCleanupMode.TeleportToPlayer:
+                            TeleportRemainingEnemiesToPlayer();
+                            break;
+                    }
+                }
+            }
         }
     }
 
@@ -404,7 +451,7 @@ public class EnemySpawner : NetworkBehaviour
     }
 
     // Öffentliche API
-    public void InjectEliteNow(int count = 1, Transform preferredTarget = null)
+    public void InjectEliteNow(int count = 1, Transform preferredTarget = null, bool isBoss = false)
     {
         if (!IsServer || elitePrefabs == null || elitePrefabs.Count == 0)
             return;
@@ -426,7 +473,8 @@ public class EnemySpawner : NetworkBehaviour
             ring,
             clusterRadius: 0f,
             isElite: true,
-            eliteMul: eliteHealthMultiplier);
+            eliteMul: eliteHealthMultiplier,
+            isBoss: isBoss);
     }
 
     // ================== Horde Loop (Baseline) ==================
@@ -573,7 +621,7 @@ public class EnemySpawner : NetworkBehaviour
 
     // ================== Einheitliche Spawn-Utilities ==================
     private void SpawnGroup(GameObject prefab, int count, Transform target, Vector3 center, Ring ring,
-                            float clusterRadius, bool isElite, float eliteMul)
+                            float clusterRadius, bool isElite, float eliteMul, bool isBoss = false)
     {
         if (!IsServer || !prefab) return;
 
@@ -595,11 +643,11 @@ public class EnemySpawner : NetworkBehaviour
             }
 
             pos = SnapIfNeeded(pos);
-            SpawnEnemy(prefab, pos, target, isElite, eliteMul);
+            SpawnEnemy(prefab, pos, target, isElite, eliteMul, isBoss);
         }
     }
 
-    private void SpawnEnemy(GameObject prefab, Vector3 pos, Transform target, bool isElite, float eliteMul)
+    private void SpawnEnemy(GameObject prefab, Vector3 pos, Transform target, bool isElite, float eliteMul, bool isBoss = false)
     {
         if (!IsServer || prefab == null) return;
 
@@ -619,7 +667,16 @@ public class EnemySpawner : NetworkBehaviour
             float baseHp = enemyComp.GetBaseHealth();
             float hpMultiplier = (1f + enemyHealthPerMinuteMultiplier * MinutesSinceStart) * Mathf.Max(1f, eliteMul);
             enemyComp.SetHealth(baseHp * hpMultiplier);
+
             enemyComp.OnEnemyDied += OnEnemyKilled_Horde;
+
+            _aliveEnemies.Add(enemyComp);
+
+            if (isBoss)
+            {
+                _bossesRemaining++;
+                enemyComp.OnEnemyDied += OnBossDied;
+            }
         }
 
         EnemiesAlive.Value = EnemiesAlive.Value + 1;
@@ -628,6 +685,8 @@ public class EnemySpawner : NetworkBehaviour
     private void OnEnemyKilled_Horde(IEnemy enemy)
     {
         enemy.OnEnemyDied -= OnEnemyKilled_Horde;
+
+        _aliveEnemies.Remove(enemy);
 
         ulong killerId = enemy.LastHitByClientId;
         if (NetworkManager.Singleton != null &&
@@ -638,6 +697,42 @@ public class EnemySpawner : NetworkBehaviour
         }
 
         EnemiesAlive.Value = Mathf.Max(0, EnemiesAlive.Value - 1);
+    }
+
+    private void OnBossDied(IEnemy enemy)
+    {
+        enemy.OnEnemyDied -= OnBossDied;
+        _bossesRemaining = Mathf.Max(0, _bossesRemaining - 1);
+    }
+
+    private void ForceKillRemainingEnemies()
+    {
+        var copy = _aliveEnemies.ToArray();
+        foreach (var enemy in copy)
+        {
+            if (enemy == null) continue;
+
+            // Annahme: SetHealth(0) triggert normalen Death-Flow + OnEnemyDied
+            enemy.SetHealth(0f);
+        }
+    }
+
+    private void TeleportRemainingEnemiesToPlayer()
+    {
+        Transform target = ResolveAnyAlivePlayer();
+        if (!target) return;
+
+        foreach (var enemy in _aliveEnemies)
+        {
+            if (enemy == null) continue;
+
+            var mb = enemy as MonoBehaviour;
+            if (!mb) continue;
+
+            Vector2 offset2D = Random.insideUnitCircle * bossCleanupTeleportRadius;
+            Vector3 newPos = target.position + new Vector3(offset2D.x, 0f, offset2D.y);
+            mb.transform.position = SnapIfNeeded(newPos);
+        }
     }
 
     // ================== Gizmos ==================

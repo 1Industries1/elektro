@@ -81,10 +81,10 @@ public static class WeaponStepDescriber
     private static string DefaultTemplateFor(StepType t) => t switch
     {
         StepType.AddDamagePct =>
-            "+{VALUE_PCT}% damage  (DPS {DPS_OLD} → {DPS_NEW})",
+            "+{VALUE_PCT}% damage",
 
         StepType.AddFireRatePct =>
-            "+{VALUE_PCT}% fire rate  ({SPS_OLD} → {SPS_NEW} salvos/s, DPS {DPS_OLD} → {DPS_NEW})",
+            "+{VALUE_PCT}% fire rate",
 
         StepType.AddPierce =>
             $"+{{INT}} {{PIERCE_PLURAL}}",
@@ -99,13 +99,13 @@ public static class WeaponStepDescriber
             "+{VALUE_PCT}% crit multiplier",
 
         StepType.TwinBarrel =>
-            "Twin Barrel: +25% fire rate  (DPS {DPS_OLD} → {DPS_NEW})",
+            "Twin Barrel: +25% fire rate",
 
         StepType.ImpactExplosionAug =>
             "Impact Blast: 2.5 m AoE at last pierce (50% damage)",
 
         StepType.AddSalvoCount =>
-            "+{INT} salvo(s)  (now {SALVO_NEW} {SALVO_PLURAL}; DPS {DPS_OLD} → {DPS_NEW})",
+            "+{INT} salvo(s)  (now {SALVO_NEW} {SALVO_PLURAL})",
 
         StepType.AddRangePct =>
             "+{VALUE_PCT}% range",
@@ -115,6 +115,7 @@ public static class WeaponStepDescriber
 
         _ => "Upgrade acquired"
     };
+
 
     public static string DescribeStepWithName(WeaponDefinition def, int newLevel, PlayerUpgrades upgrades = null)
     {

@@ -25,9 +25,7 @@ public class LevelUpUI : MonoBehaviour
 
     [Header("Stats Overview")]
     public GameObject statsPanel;
-
     public Transform statsContentStats;    // nur Core-Stats (HP, Armor, ...)
-
     public StatRow statRowPrefab;
 
     [Header("Behavior")]
@@ -178,6 +176,8 @@ public class LevelUpUI : MonoBehaviour
         _open          = true;
         _previewType   = null;
         _previewStacks = null;
+
+        CameraFollow.SetOrbitLockedByUI(true);
 
         var up = FindLocalUpgradesCached();
 
@@ -478,6 +478,8 @@ public class LevelUpUI : MonoBehaviour
 
         _previewType = null;
         _previewStacks = null;
+
+        CameraFollow.SetOrbitLockedByUI(false);
     }
 
     private void LockLocalInput(bool state)
@@ -571,6 +573,7 @@ public class LevelUpUI : MonoBehaviour
         float factor = Mathf.Pow(1f / Mathf.Max(0.0001f, timeMultPerLevel), Mathf.Max(1, stacks));
         return (factor - 1f) * 100f;
     }
+
 
     private static float PctFromDamageMult(float dmgMultPerLevel, int stacks)
     {

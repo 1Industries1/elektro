@@ -1945,7 +1945,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 6, y: 6, z: 6}
+  m_LocalScale: {x: 5, y: 5, z: 5}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 6397031134358248117}
@@ -2159,7 +2159,7 @@ MonoBehaviour:
   stompCooldown: 5
   stompTelegraphPrefab: {fileID: 8626799719864895498, guid: 7170f8760bbe7fa4397003d7cbfa4dd7, type: 3}
   stompFx: {fileID: 0}
-  baseHealth: 650
+  baseHealth: 400
   deathDespawnDelay: 3
   dmgNums: {fileID: 1063182142841119009}
   effects: {fileID: 2884406912444404820}
@@ -2204,13 +2204,13 @@ MonoBehaviour:
   drops:
   - prefab: {fileID: 4447019598221353416, guid: 3f5ef3b492b1a9043aee199a411bccc3, type: 3}
     dropChance: 1
-    countRange: {x: 45, y: 60}
-    spawnImpulse: 6
+    countRange: {x: 40, y: 60}
+    spawnImpulse: 4
   - prefab: {fileID: 87859245550732243, guid: 86254c1f507849e478ef69f3a6e199e1, type: 3}
     dropChance: 1
     countRange: {x: 20, y: 35}
-    spawnImpulse: 8
-  spawnRadius: 6
+    spawnImpulse: 6
+  spawnRadius: 4
   groundMask:
     serializedVersion: 2
     m_Bits: 512

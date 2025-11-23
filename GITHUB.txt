@@ -10,8 +10,8 @@ git push
 # Optional: Meilenstein-Tag setzen und pushen
 ERHÖHEN UM 1:
 
-git tag -a v0.1.7 -m "PlayerWeapons displayed on Screen"
-git push origin v0.1.7
+git tag -a v0.1.8 -m "New Exploder Enemy"
+git push origin v0.1.8
 
 
 

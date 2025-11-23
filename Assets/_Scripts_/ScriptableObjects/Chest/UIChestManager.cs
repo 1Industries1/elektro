@@ -76,6 +76,9 @@ public class UIChestManager : MonoBehaviour
             instance.dropProfile = chest != null ? chest.GetCurrentDropProfile() : null; // Fallback
 
         instance.gameObject.SetActive(true);
+
+        // >>> Kamera-Orbit sperren, solange Chest-UI offen ist
+        CameraFollow.SetOrbitLockedByUI(true);
         
         // Begin wird ausschließlich in ClientStartOpenSequenceClientRpc() aufgerufen.
         //instance.Begin();
@@ -360,6 +363,7 @@ public class UIChestManager : MonoBehaviour
             currentChest = null;
         }
 
+        CameraFollow.SetOrbitLockedByUI(false);
         gameObject.SetActive(false);
     }
 

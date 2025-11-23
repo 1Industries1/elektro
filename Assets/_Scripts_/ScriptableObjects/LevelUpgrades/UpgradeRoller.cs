@@ -42,7 +42,7 @@ public static class UpgradeRoller
     public static bool IsMasteryChoice(int choiceId) => IsMasteryBaseId(ChoiceCodec.BaseId(choiceId));
 
     public static bool IsWeaponBaseId(int baseId)
-        => baseId >= Weapon_Cannon && baseId <= Weapon_Lightning;
+        => baseId >= Weapon_Cannon && baseId <= Weapon_Orbital;
 
 
     public static WeaponDefinition ResolveWeaponDef(PlayerWeapons pw, int baseId)
@@ -282,19 +282,14 @@ public static class UpgradeRoller
                 if (def == null)
                     return ChoiceCodec.Encode(MaxHP, Rarity.Common);
 
-                int curLevel = 0;
-                if (def == pw.cannonDef)         curLevel = pw.cannonLevel.Value;
-                else if (def == pw.blasterDef)   curLevel = pw.blasterLevel.Value;
-                else if (def == pw.grenadeDef)   curLevel = pw.grenadeLevel.Value;
-                else if (def == pw.lightningDef) curLevel = pw.lightningLevel.Value;
-
                 int maxLevel = 1 + (def.steps?.Length ?? 0);
-                if (curLevel >= maxLevel)
-                    return ChoiceCodec.Encode(MaxHP, Rarity.Common);
+                // optional: maxLevel kannst du sogar komplett weglassen,
+                // wenn du es sonst nicht brauchst.
 
                 var rarity = WeightedRarity();
                 return ChoiceCodec.Encode(baseId, rarity);
             }
+
 
             // ----- Stat -----
             var type = Resolve(baseId);

@@ -717,16 +717,16 @@ MonoBehaviour:
   - prefab: {fileID: 4447019598221353416, guid: 3f5ef3b492b1a9043aee199a411bccc3, type: 3}
     dropChance: 1
     countRange: {x: 10, y: 20}
-    spawnImpulse: 8
+    spawnImpulse: 3
   - prefab: {fileID: 87859245550732243, guid: 86254c1f507849e478ef69f3a6e199e1, type: 3}
     dropChance: 0.8
     countRange: {x: 15, y: 20}
-    spawnImpulse: 8
-  spawnRadius: 6
+    spawnImpulse: 4
+  spawnRadius: 4
   groundMask:
     serializedVersion: 2
     m_Bits: 512
-  groundCheckDown: 6
+  groundCheckDown: 8
 --- !u!114 &2913323573280078055
 MonoBehaviour:
   m_ObjectHideFlags: 0

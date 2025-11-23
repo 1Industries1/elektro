@@ -308,13 +308,24 @@ public class ExploderEnemy : NetworkBehaviour, IEnemy
     [ClientRpc]
     private void StartChargeClientRpc()
     {
-        // einfaches visuelles Feedback: Emission hochdrehen / skalieren
-        if (bodyRenderer == null) return;
+        if (bodyRenderer == null)
+        {
+            Debug.LogWarning($"{name}: bodyRenderer ist NULL!");
+            return;
+        }
 
         var mat = bodyRenderer.material;
+
+        if (!mat.HasProperty(emissionColorProperty))
+        {
+            Debug.LogWarning($"{name}: Material hat keine Property '{emissionColorProperty}'");
+            return;
+        }
+
         mat.EnableKeyword("_EMISSION");
-        mat.SetColor(emissionColorProperty, chargeEmissionColor);
+        mat.SetColor(emissionColorProperty, chargeEmissionColor * 5f); // extra hell
     }
+
 
     private void ResetEmission()
     {
