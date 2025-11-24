@@ -667,6 +667,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hitEffectPrefab: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
   deathEffectPrefab: {fileID: 6396558596094104492, guid: a0783f2030ad1c7419cad37adf854bd5, type: 3}
+  hitSound: {fileID: 8300000, guid: 2072ec475b894694cb1d7923066f330c, type: 3}
+  deathSound: {fileID: 8300000, guid: 2072ec475b894694cb1d7923066f330c, type: 3}
+  hitVolume: 1
+  deathVolume: 1
 --- !u!114 &9004171911591392580
 MonoBehaviour:
   m_ObjectHideFlags: 0

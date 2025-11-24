@@ -6,6 +6,7 @@ using Unity.Netcode;
 public class EnemyMovement : NetworkBehaviour, IEnemy
 {
     private Rigidbody rb;
+    private PullReceiver _pull;
     private bool isDead = false;
 
 
@@ -37,8 +38,8 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         dmgNums = GetComponent<EnemyDamageNumbers>();
+        _pull = GetComponent<PullReceiver>() ?? GetComponentInParent<PullReceiver>();
     }
 
     public override void OnNetworkSpawn()
@@ -59,24 +60,44 @@ public class EnemyMovement : NetworkBehaviour, IEnemy
     {
         if (!IsServer || isDead) return;
 
-        // Immer aktuell den nächsten Spieler suchen
-        FindTarget();
-        if (target == null) return;
-
-        float distanceToTarget = Vector3.Distance(transform.position, target.position);
-
-        if (distanceToTarget < detectionRange)
+        // Schritt 1: Pull-Schritt berechnen
+        Vector3 pullStep = Vector3.zero;
+        if (_pull != null)
         {
-            RotateTowardsTarget(target);
-
-            if (distanceToTarget > attackRange)
-                MoveTowardsTarget(target);
+            // maxSpeed kannst du frei tunen
+            pullStep = _pull.ConsumeStep(Time.fixedDeltaTime, maxSpeed: 20f);
         }
 
-        // GANZ WICHTIG: nach der Bewegung Terrain-Sicherung ausführen
+        // Schritt 2: normales Verhalten
+        FindTarget();
+        Vector3 moveStep = Vector3.zero;
+
+        if (target != null)
+        {
+            float distanceToTarget = Vector3.Distance(transform.position, target.position);
+
+            if (distanceToTarget < detectionRange)
+            {
+                RotateTowardsTarget(target);
+
+                if (distanceToTarget > attackRange)
+                {
+                    Vector3 direction = (target.position - transform.position).normalized;
+                    direction.y = 0;
+                    moveStep = direction * moveSpeed * Time.fixedDeltaTime;
+                }
+            }
+        }
+
+        // Schritt 3: beides kombinieren (Eigenbewegung + Sog)
+        Vector3 finalStep = moveStep + pullStep;
+        if (finalStep.sqrMagnitude > 0f)
+        {
+            rb.MovePosition(rb.position + finalStep);
+        }
+
         StickToTerrain();
     }
-
 
     void FindTarget()
     {

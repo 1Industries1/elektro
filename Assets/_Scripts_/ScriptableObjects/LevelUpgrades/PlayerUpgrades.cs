@@ -398,7 +398,8 @@ public class PlayerUpgrades : NetworkBehaviour
         else if (def == pw.blasterDef)   newLevel = pw.blasterLevel.Value;
         else if (def == pw.grenadeDef)   newLevel = pw.grenadeLevel.Value;
         else if (def == pw.lightningDef) newLevel = pw.lightningLevel.Value;
-        else if (def == pw.orbitalDef)        newLevel = pw.orbitalLevel.Value;
+        else if (def == pw.orbitalDef)   newLevel = pw.orbitalLevel.Value;
+        else if (def == pw.blackHoleDef) newLevel = pw.blackHoleLevel.Value;
 
         var target = new ClientRpcParams
         {
@@ -425,6 +426,7 @@ public class PlayerUpgrades : NetworkBehaviour
         else if (pw.grenadeDef  != null && pw.grenadeDef.id  == weaponId) def = pw.grenadeDef;
         else if (pw.lightningDef!= null && pw.lightningDef.id== weaponId) def = pw.lightningDef;
         else if (pw.orbitalDef   != null && pw.orbitalDef.id   == weaponId) def = pw.orbitalDef;
+        else if (pw.blackHoleDef != null && pw.blackHoleDef.id == weaponId) def = pw.blackHoleDef;
 
         if (def == null) return;
 

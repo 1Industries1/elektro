@@ -12,6 +12,7 @@ public class PlayerWeapons : NetworkBehaviour
     public WeaponDefinition grenadeDef;
     public WeaponDefinition lightningDef;
     public WeaponDefinition orbitalDef;
+    public WeaponDefinition blackHoleDef;
 
     [Header("Refs")]
     [SerializeField] private PlayerUpgrades upgrades;
@@ -21,6 +22,7 @@ public class PlayerWeapons : NetworkBehaviour
     public NetworkVariable<int> grenadeLevel  = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> lightningLevel= new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> orbitalLevel  = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> blackHoleLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     public event Action RuntimesRebuilt;
 
@@ -29,6 +31,7 @@ public class PlayerWeapons : NetworkBehaviour
     public WeaponRuntime GrenadeRuntime   { get; private set; }
     public WeaponRuntime LightningRuntime { get; private set; }
     public WeaponRuntime OrbitalRuntime   { get; private set; }
+    public WeaponRuntime BlackHoleRuntime { get; private set; }
 
     private enum WeaponSlot
     {
@@ -36,7 +39,8 @@ public class PlayerWeapons : NetworkBehaviour
         Blaster,
         Grenade,
         Lightning,
-        Orbital
+        Orbital,
+        BlackHole
     }
 
     private void EnsureUpgradesRef()
@@ -55,6 +59,7 @@ public class PlayerWeapons : NetworkBehaviour
         GrenadeRuntime   = (grenadeDef   != null && grenadeLevel.Value   > 0) ? new WeaponRuntime(grenadeDef,   grenadeLevel.Value)   : null;
         LightningRuntime = (lightningDef != null && lightningLevel.Value > 0) ? new WeaponRuntime(lightningDef, lightningLevel.Value) : null;
         OrbitalRuntime   = (orbitalDef   != null && orbitalLevel.Value   > 0) ? new WeaponRuntime(orbitalDef,   orbitalLevel.Value)   : null;
+        BlackHoleRuntime = (blackHoleDef != null && blackHoleLevel.Value > 0) ? new WeaponRuntime(blackHoleDef, blackHoleLevel.Value) : null;
 
         EnsureUpgradesRef();
 
@@ -66,6 +71,7 @@ public class PlayerWeapons : NetworkBehaviour
             if (GrenadeRuntime   != null) upgrades.ApplyTo(GrenadeRuntime);
             if (LightningRuntime != null) upgrades.ApplyTo(LightningRuntime);
             if (OrbitalRuntime   != null) upgrades.ApplyTo(OrbitalRuntime);
+            if (BlackHoleRuntime != null) upgrades.ApplyTo(BlackHoleRuntime);
         }
 
         RuntimesRebuilt?.Invoke();
@@ -79,6 +85,7 @@ public class PlayerWeapons : NetworkBehaviour
     private void OnGrenadeLevelChanged(int _, int __)   => Rebuild();
     private void OnLightningLevelChanged(int _, int __) => Rebuild();
     private void OnOrbitalLevelChanged(int _, int __)   => Rebuild();
+    private void OnBlackHoleLevelChanged(int _, int __) => Rebuild();
 
     public override void OnNetworkSpawn()
     {
@@ -87,17 +94,18 @@ public class PlayerWeapons : NetworkBehaviour
         grenadeLevel.OnValueChanged   += OnGrenadeLevelChanged;
         lightningLevel.OnValueChanged += OnLightningLevelChanged;
         orbitalLevel.OnValueChanged   += OnOrbitalLevelChanged;
+        blackHoleLevel.OnValueChanged += OnBlackHoleLevelChanged;
 
         if (IsServer)
         {
             // Mit welcher Waffe gestartet wird
-            cannonLevel.Value    = 1;
+            cannonLevel.Value    = 0;
             blasterLevel.Value   = 0;
             grenadeLevel.Value   = 0;
             lightningLevel.Value = 0;
             orbitalLevel.Value   = 0;
+            blackHoleLevel.Value = 0;
         }
-
         Rebuild();
     }
 
@@ -108,6 +116,7 @@ public class PlayerWeapons : NetworkBehaviour
         grenadeLevel.OnValueChanged   -= OnGrenadeLevelChanged;
         lightningLevel.OnValueChanged -= OnLightningLevelChanged;
         orbitalLevel.OnValueChanged   -= OnOrbitalLevelChanged;
+        blackHoleLevel.OnValueChanged -= OnBlackHoleLevelChanged;
     }
 
     private int MaxLevel(WeaponDefinition def) => 1 + (def?.steps?.Length ?? 0);
@@ -130,6 +139,10 @@ public class PlayerWeapons : NetworkBehaviour
 
         if (orbitalDef   != null && orbitalLevel.Value   > 0 && orbitalLevel.Value   < MaxLevel(orbitalDef))
             list.Add((orbitalDef,   WeaponSlot.Orbital,  orbitalLevel.Value));
+
+        if (blackHoleDef   != null && blackHoleLevel.Value   > 0 && blackHoleLevel.Value   < MaxLevel(blackHoleDef))
+            list.Add((blackHoleDef,   WeaponSlot.BlackHole,  blackHoleLevel.Value));
+
 
         return list;
     }
@@ -166,6 +179,10 @@ public class PlayerWeapons : NetworkBehaviour
             case WeaponSlot.Orbital:
                 orbitalLevel.Value = Mathf.Min(orbitalLevel.Value + 1, MaxLevel(orbitalDef));
                 upgraded = orbitalDef;
+                break;
+            case WeaponSlot.BlackHole:
+                blackHoleLevel.Value = Mathf.Min(blackHoleLevel.Value + 1, MaxLevel(blackHoleDef));
+                upgraded = blackHoleDef;
                 break;
         }
 
@@ -228,6 +245,12 @@ public class PlayerWeapons : NetworkBehaviour
             if (orbitalLevel.Value == 0)       { orbitalLevel.Value = 1; did = true; }
             else if (orbitalLevel.Value < max) { orbitalLevel.Value++;   did = true; }
         }
+        else if (blackHoleDef != null && blackHoleDef.id == weaponId)
+        {
+            int max = MaxLevel(blackHoleDef);
+            if (blackHoleLevel.Value == 0)        { blackHoleLevel.Value = 1; did = true; }
+            else if (blackHoleLevel.Value < max)  { blackHoleLevel.Value++;   did = true; }
+        }
 
         if (did && notifyOwner)
         {
@@ -254,11 +277,12 @@ public class PlayerWeapons : NetworkBehaviour
         if (!IsOwner) return;
 
         WeaponDefinition def = null;
-        if (cannonDef    != null && cannonDef.id    == weaponId) def = cannonDef;
+        if      (cannonDef    != null && cannonDef.id    == weaponId) def = cannonDef;
         else if (blasterDef   != null && blasterDef.id   == weaponId) def = blasterDef;
         else if (grenadeDef   != null && grenadeDef.id   == weaponId) def = grenadeDef;
         else if (lightningDef != null && lightningDef.id == weaponId) def = lightningDef;
         else if (orbitalDef   != null && orbitalDef.id   == weaponId) def = orbitalDef;
+        else if (blackHoleDef   != null && blackHoleDef.id   == weaponId) def = blackHoleDef;
 
         if (def != null && def.uiIcon != null)
             UIChestManager.NotifyItemReceived(def.uiIcon);

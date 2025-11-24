@@ -109,6 +109,7 @@ public class WeaponHudUI : MonoBehaviour
         _weapons.grenadeLevel.OnValueChanged   += OnWeaponLevelChanged;
         _weapons.lightningLevel.OnValueChanged += OnWeaponLevelChanged;
         _weapons.orbitalLevel.OnValueChanged   += OnWeaponLevelChanged;
+        _weapons.blackHoleLevel.OnValueChanged += OnWeaponLevelChanged;
 
         _subscribed = true;
     }
@@ -123,6 +124,7 @@ public class WeaponHudUI : MonoBehaviour
         _weapons.grenadeLevel.OnValueChanged   -= OnWeaponLevelChanged;
         _weapons.lightningLevel.OnValueChanged -= OnWeaponLevelChanged;
         _weapons.orbitalLevel.OnValueChanged   -= OnWeaponLevelChanged;
+        _weapons.blackHoleLevel.OnValueChanged -= OnWeaponLevelChanged;
 
         _subscribed = false;
     }

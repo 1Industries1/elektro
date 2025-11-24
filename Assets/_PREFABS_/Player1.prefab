@@ -806,7 +806,7 @@ MonoBehaviour:
   orbPrefab: {fileID: 9173814573962899407, guid: 1e65136a9bfec0f43975a9154b890d14, type: 3}
   orbitRadius: 1
   orbitAngularSpeedDeg: 120
-  damageTickInterval: 0.25
+  damageTickInterval: 0.1
 --- !u!82 &9027358544116371524
 AudioSource:
   m_ObjectHideFlags: 0
@@ -904,6 +904,64 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!1 &3031181623618414491
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 536224798221641767}
+  - component: {fileID: 3139484960156441591}
+  m_Layer: 7
+  m_Name: BlackHoleController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &536224798221641767
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3031181623618414491}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3963026483496299984}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3139484960156441591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3031181623618414491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f689413c78e99ad48b1316771d78835a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BlackHoleWeaponController
+  weaponDef: {fileID: 11400000, guid: 006313bdea0283845863ba1b104ba9ca, type: 2}
+  overclocks: {fileID: 4061243089856759362}
+  baseLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  gravityWellPrefab: {fileID: 2376609980832440945, guid: 45ea29799d0cd824495184b824a2996a, type: 3}
+  surfaceOffset: 1.8
+  forwardFraction: 0.7
+  minRange: 5
+  triggerBulletTime: 0
+  bulletScale: 0.2
+  bulletIn: 0.25
+  bulletHold: 0.75
+  bulletOut: 0.35
 --- !u!1 &3108706700312568540
 GameObject:
   m_ObjectHideFlags: 0
@@ -1050,6 +1108,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8325214368903602847}
   - component: {fileID: 3643105147962782618}
+  - component: {fileID: 7863375827737056600}
   m_Layer: 7
   m_Name: PullExplosionController
   m_TagString: Untagged
@@ -1084,20 +1143,51 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f689413c78e99ad48b1316771d78835a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  energyExplosionPrefab: {fileID: 2376609980832440945, guid: 45ea29799d0cd824495184b824a2996a, type: 3}
+  weaponDef: {fileID: 0}
+  overclocks: {fileID: 0}
   baseLayer:
     serializedVersion: 2
     m_Bits: 512
-  maxPlaceDistance: 120
-  cooldown: 7
+  gravityWellPrefab: {fileID: 0}
   surfaceOffset: 1.5
-  placeKey: 323
-  blockWhenPointerOverUI: 1
+  forwardFraction: 0.7
+  minRange: 5
   triggerBulletTime: 1
   bulletScale: 0.2
   bulletIn: 0.25
   bulletHold: 0.8
   bulletOut: 0.35
+--- !u!114 &7863375827737056600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4071537701767612620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6834a98213c0b74cae8e7af4a327b97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerWeapons
+  cannonDef: {fileID: 0}
+  blasterDef: {fileID: 0}
+  grenadeDef: {fileID: 0}
+  lightningDef: {fileID: 0}
+  orbitalDef: {fileID: 0}
+  blackHoleDef: {fileID: 0}
+  upgrades: {fileID: 0}
+  cannonLevel:
+    m_InternalValue: 0
+  blasterLevel:
+    m_InternalValue: 0
+  grenadeLevel:
+    m_InternalValue: 0
+  lightningLevel:
+    m_InternalValue: 0
+  orbitalLevel:
+    m_InternalValue: 0
+  blackHoleLevel:
+    m_InternalValue: 0
 --- !u!1 &4133849005521549633
 GameObject:
   m_ObjectHideFlags: 0
@@ -2597,7 +2687,6 @@ GameObject:
   - component: {fileID: 3796743474270066251}
   - component: {fileID: 5401752439710392122}
   - component: {fileID: 5327252553177311363}
-  - component: {fileID: 5225748196820303031}
   - component: {fileID: 1721424987350788081}
   - component: {fileID: 2153557514503330659}
   - component: {fileID: 6799519995716292581}
@@ -2627,6 +2716,7 @@ Transform:
   - {fileID: 4482477836443022628}
   - {fileID: 2943046030160944852}
   - {fileID: 4322967398615626251}
+  - {fileID: 536224798221641767}
   - {fileID: 2653925147314416184}
   - {fileID: 8325214368903602847}
   - {fileID: 7498628120663236216}
@@ -2817,7 +2907,7 @@ MonoBehaviour:
   baseStepInterval: 0.8
   footstepPitchMin: 0.92
   footstepPitchMax: 1.08
-  rollStartClip: {fileID: 0}
+  rollStartClip: {fileID: 8300000, guid: 38916c6b227e8f4479c7d3d735eda31b, type: 3}
   rollLoopClip: {fileID: 8300000, guid: 2736670c1aa7fb34fadb9986d21a8c23, type: 3}
   rollLoopVolume: 2
   overclocks: {fileID: 4061243089856759362}
@@ -2882,6 +2972,7 @@ MonoBehaviour:
   grenadeDef: {fileID: 11400000, guid: 36439c519127b2947a6abc791d73de9d, type: 2}
   lightningDef: {fileID: 11400000, guid: f045e6e0a2afcf44bb7b5d5c3e427f73, type: 2}
   orbitalDef: {fileID: 11400000, guid: db112a74d0b27904d9e0d9f4495c3925, type: 2}
+  blackHoleDef: {fileID: 11400000, guid: 006313bdea0283845863ba1b104ba9ca, type: 2}
   upgrades: {fileID: 4238535403307873137}
   cannonLevel:
     m_InternalValue: 1
@@ -2892,6 +2983,8 @@ MonoBehaviour:
   lightningLevel:
     m_InternalValue: 0
   orbitalLevel:
+    m_InternalValue: 0
+  blackHoleLevel:
     m_InternalValue: 0
 --- !u!114 &4238535403307873137
 MonoBehaviour:
@@ -3004,9 +3097,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   level: 1
   xp: 0
-  baseCost: 35
-  costMult: 1.1
-  _xpToNext: 35
+  baseCost: 40
+  costMult: 1.25
+  _xpToNext: 40
 --- !u!114 &5327252553177311363
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3039,23 +3132,6 @@ MonoBehaviour:
   slamStartSfx: {fileID: 8300000, guid: 55399b314b1572a40a6708ccf8c00351, type: 3}
   slamImpactSfx: {fileID: 8300000, guid: a8df845236f358b4eb367ce2a68c8946, type: 3}
   slamSfxVolume: 0.5
---- !u!114 &5225748196820303031
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9177465487921168118}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 37cc4b9e68a85c042999d44391f05cd7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  carrySocket: {fileID: 3838174280001282848}
-  toDisable:
-  - {fileID: 0}
-  inputScripts:
-  - {fileID: 2437930798575218387}
 --- !u!135 &1721424987350788081
 SphereCollider:
   m_ObjectHideFlags: 0

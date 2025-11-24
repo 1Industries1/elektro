@@ -1,12 +1,6 @@
 using UnityEngine;
 using Unity.Netcode;
 
-/// <summary>
-/// Server-seitiger, stationärer Sog (Gravity Well).
-/// - Benötigt NUR ein NetworkObject am Prefab (kein Rigidbody).
-/// - Zieht Gegner NICHT per Physik-Force, sondern schreibt eine Beschleunigung
-///   in deren PullReceiver (der EnemySkirmisher löst das pro Tick ein).
-/// </summary>
 [RequireComponent(typeof(NetworkObject))]
 [DisallowMultipleComponent]
 public class GravityWell : NetworkBehaviour

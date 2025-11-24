@@ -122,5 +122,32 @@ public static class WeaponUiUtils
                 return $"DPS≈ {dps:0.#}  |  {rt.shotsPerSecond:0.##} ticks/s × {salvo}";
             }
         },
+        new WeaponSlot
+        {
+            key       = "Weapon_BlackHole",
+            GetDef    = pw => pw.blackHoleDef,
+            GetLevel  = pw => pw.blackHoleLevel.Value,
+            GetRuntime= pw => pw.BlackHoleRuntime,
+            ComputeDps= (pw, rt) =>
+            {
+                if (rt == null) return 0f;
+                // Wie bei Orbital: Damage pro Tick * Ticks/Sekunde * "Anzahl Wells" (salvo)
+                var def = pw.blackHoleDef;
+                int salvo = rt.salvoCount > 0
+                    ? rt.salvoCount
+                    : (def != null ? Mathf.Max(1, def.baseSalvoCount) : 1);
+                return rt.damagePerShot * rt.shotsPerSecond * salvo;
+            },
+            BuildExtraText = (pw, rt) =>
+            {
+                if (rt == null) return null;
+                var def = pw.blackHoleDef;
+                int salvo = rt.salvoCount > 0
+                    ? rt.salvoCount
+                    : (def != null ? Mathf.Max(1, def.baseSalvoCount) : 1);
+                float dps = rt.damagePerShot * rt.shotsPerSecond * salvo;
+                return $"DPS≈ {dps:0.#}  |  {rt.shotsPerSecond:0.##} wells/s × {salvo}";
+            }
+        },
     };
 }

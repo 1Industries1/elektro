@@ -30,6 +30,7 @@ public static class UpgradeRoller
     public const int Weapon_Grenade   = 22;
     public const int Weapon_Lightning = 23;
     public const int Weapon_Orbital = 24;
+    public const int Weapon_BlackHole  = 25;
 
     // Alle passiven Stat-Upgrades
     private static readonly int[] StatPool = { MaxHP, Armor, Magnet, MoveSpeed, Stamina, DropMoreXP, DropMoreGold };
@@ -42,7 +43,7 @@ public static class UpgradeRoller
     public static bool IsMasteryChoice(int choiceId) => IsMasteryBaseId(ChoiceCodec.BaseId(choiceId));
 
     public static bool IsWeaponBaseId(int baseId)
-        => baseId >= Weapon_Cannon && baseId <= Weapon_Orbital;
+        => baseId >= Weapon_Cannon && baseId <= Weapon_BlackHole; // Hier höchste Waffe
 
 
     public static WeaponDefinition ResolveWeaponDef(PlayerWeapons pw, int baseId)
@@ -55,6 +56,7 @@ public static class UpgradeRoller
             Weapon_Grenade   => pw.grenadeDef,
             Weapon_Lightning => pw.lightningDef,
             Weapon_Orbital   => pw.orbitalDef,
+            Weapon_BlackHole => pw.blackHoleDef,
             _                => null
         };
     }
@@ -202,7 +204,8 @@ public static class UpgradeRoller
             AddWeaponCandidate(pw.blasterDef,   pw.blasterLevel.Value,   Weapon_Blaster);
             AddWeaponCandidate(pw.grenadeDef,   pw.grenadeLevel.Value,   Weapon_Grenade);
             AddWeaponCandidate(pw.lightningDef, pw.lightningLevel.Value, Weapon_Lightning);
-            AddWeaponCandidate(pw.orbitalDef, pw.orbitalLevel.Value, Weapon_Orbital);
+            AddWeaponCandidate(pw.orbitalDef,   pw.orbitalLevel.Value,   Weapon_Orbital);
+            AddWeaponCandidate(pw.blackHoleDef, pw.blackHoleLevel.Value, Weapon_BlackHole);
         }
 
         var allCandidates = new List<int>();
