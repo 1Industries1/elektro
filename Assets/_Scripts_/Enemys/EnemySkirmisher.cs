@@ -179,11 +179,11 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
                     state = State.Burst;
                     burstCo = StartCoroutine(BurstRoutine());
                 }
-                else if (Time.time >= nextDashTime && hasLOS && dist <= preferredDistance + 6f && UnityEngine.Random.value < 0.01f)
-                {
-                    StartCoroutine(DashRoutine());
-                    state = State.DashWindup;
-                }
+                //else if (Time.time >= nextDashTime && hasLOS && dist <= preferredDistance + 6f && UnityEngine.Random.value < 0.01f)
+                //{
+                //    StartCoroutine(DashRoutine());
+                //    state = State.DashWindup;
+                //}
                 break;
 
             case State.Burst:

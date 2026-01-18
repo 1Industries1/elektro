@@ -104,7 +104,7 @@ public class PlayerWeapons : NetworkBehaviour
             grenadeLevel.Value   = 0;
             lightningLevel.Value = 0;
             orbitalLevel.Value   = 0;
-            blackHoleLevel.Value = 0;
+            blackHoleLevel.Value = 1;
         }
         Rebuild();
     }

@@ -1,5 +1,10 @@
 in: C:\Users\Sinan\SpaceCanone>
 
+
+Standard: vor jeder Arbeit
+git pull --rebase
+
+
 Regelmäßig committen & pushen (Offsite-Backup):
 
 git status
@@ -20,6 +25,7 @@ Experimentierst du? Mini-Branches nutzen:
 
 git checkout -b exp/neue-kamera
 # …arbeiten…
+git add -A
 git commit -m "feat: neue kamera"
 git checkout main
 git merge exp/neue-kamera
