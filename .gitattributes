@@ -1,27 +1,66 @@
-# Standard: Textdateien als LF
+###############################################################################
+# .gitattributes for Unity (Windows + macOS) with Git LFS
+# - Enforces LF line endings for text
+# - Keeps Unity YAML/text assets as LF
+# - Sends large/binary assets through Git LFS
+# - (Optional but recommended) uses UnityYAMLMerge for scenes/prefabs/assets
+###############################################################################
+# Standard: auto-detect text and normalize to LF
 * text=auto eol=lf
-# Unity-Text/YAML
+###############################################################################
+# Code / text files (keep LF)
+###############################################################################
 *.cs         text eol=lf
 *.shader     text eol=lf
 *.cginc      text eol=lf
 *.compute    text eol=lf
+###############################################################################
+# Unity YAML / text-based assets (keep LF)
+###############################################################################
 *.meta       text eol=lf
 *.mat        text eol=lf
 *.anim       text eol=lf
 *.controller text eol=lf
 *.prefab     text eol=lf
 *.unity      text eol=lf
-*.mov filter=lfs diff=lfs merge=lfs -text
-*.fbx filter=lfs diff=lfs merge=lfs -text
+*.asset      text eol=lf
+###############################################################################
+# Unity YAML merge driver (recommended)
+# NOTE: To actually use this, each dev must configure the unityyamlmerge driver
+# in their git config. If not configured, Git will fall back to normal merging.
+###############################################################################
+*.unity      merge=unityyamlmerge
+*.prefab     merge=unityyamlmerge
+*.asset      merge=unityyamlmerge
+*.anim       merge=unityyamlmerge
+*.controller merge=unityyamlmerge
+*.mat        merge=unityyamlmerge
+*.meta       merge=unityyamlmerge
+###############################################################################
+# Git LFS: 3D / DCC / archives (binary)
+###############################################################################
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.dae   filter=lfs diff=lfs merge=lfs -text
+*.zip   filter=lfs diff=lfs merge=lfs -text
+*.psd   filter=lfs diff=lfs merge=lfs -text
+###############################################################################
+# Git LFS: images / textures (binary)
+###############################################################################
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
 *.tga filter=lfs diff=lfs merge=lfs -text
-*.blend filter=lfs diff=lfs merge=lfs -text
-*.dae filter=lfs diff=lfs merge=lfs -text
-*.zip filter=lfs diff=lfs merge=lfs -text
-*.psd filter=lfs diff=lfs merge=lfs -text
 *.exr filter=lfs diff=lfs merge=lfs -text
+*.hdr filter=lfs diff=lfs merge=lfs -text
+###############################################################################
+# Git LFS: audio (binary)
+###############################################################################
 *.wav filter=lfs diff=lfs merge=lfs -text
 *.mp3 filter=lfs diff=lfs merge=lfs -text
 *.ogg filter=lfs diff=lfs merge=lfs -text
+###############################################################################
+# Git LFS: video (binary)
+###############################################################################
 *.mp4 filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
