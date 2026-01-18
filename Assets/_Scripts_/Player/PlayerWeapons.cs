@@ -99,7 +99,7 @@ public class PlayerWeapons : NetworkBehaviour
         if (IsServer)
         {
             // Mit welcher Waffe gestartet wird
-            cannonLevel.Value    = 0;
+            cannonLevel.Value    = 1;
             blasterLevel.Value   = 0;
             grenadeLevel.Value   = 0;
             lightningLevel.Value = 0;
