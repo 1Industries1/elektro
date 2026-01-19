@@ -25,9 +25,9 @@ Transform:
   m_GameObject: {fileID: 3996968670089521362}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: 3.69, z: 1.66}
-  m_LocalScale: {x: 3, y: 3, z: 3}
-  m_ConstrainProportionsScale: 0
+  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 7557620733111180371}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -41,6 +41,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7557620733111180371}
   - component: {fileID: 209952355502235215}
+  - component: {fileID: 6502173049797662195}
   - component: {fileID: 5782397171364243495}
   - component: {fileID: 2349609915594055925}
   - component: {fileID: -2474535040198073020}
@@ -106,6 +107,29 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 80
   m_CollisionDetection: 2
+--- !u!136 &6502173049797662195
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7018259160673714555}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 1
+  m_Height: 5.8317084
+  m_Direction: 1
+  m_Center: {x: -0, y: 2.688328, z: 0}
 --- !u!114 &5782397171364243495
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -192,28 +216,28 @@ MonoBehaviour:
   losMask:
     serializedVersion: 2
     m_Bits: 512
-  moveSpeed: 8
+  moveSpeed: 10
   strafeSpeed: 8
   rotationSpeed: 30
   distanceTolerance: 15
-  dashSpeed: 100
-  dashWindup: 0.5
-  dashDuration: 0.6
-  dashCooldown: 1.5
+  dashSpeed: 0
+  dashWindup: 0
+  dashDuration: 0
+  dashCooldown: 10
   dashTelegraphFx: {fileID: 0}
   cannonPivot: {fileID: 8758381727019527250}
-  pitchSpeed: 12
+  pitchSpeed: 30
   pitchLimits: {x: -10, y: 25}
   targetHeightOffset: 0.9
   bulletPrefab: {fileID: 4211810131274587892, guid: 083d75882754f8741ad9210a4fb08cfb, type: 3}
-  bulletSpawn: {fileID: 8758381727019527250}
+  bulletSpawn: {fileID: 141070084582360035}
   shootRange: 80
-  burstCount: 2
-  burstInterval: 0.5
+  burstCount: 1
+  burstInterval: 1
   inaccuracyAngle: 2
   audioSource: {fileID: 9223212118158675686}
   shootSfx: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
-  baseHealth: 40
+  baseHealth: 50
   dmgNums: {fileID: 1585517448443601885}
 --- !u!114 &1585517448443601885
 MonoBehaviour:
@@ -619,41 +643,15 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 1981860918171908, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4631854778472591569}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
 --- !u!4 &138148163585953607 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4555062712112460, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
   m_PrefabInstance: {fileID: 142676803361397259}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &143527731073565455 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1981860918171908, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
+--- !u!4 &141070084582360035 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4448303567346152, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
   m_PrefabInstance: {fileID: 142676803361397259}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &4631854778472591569
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 143527731073565455}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.26
-  m_Height: 1.9567857
-  m_Direction: 1
-  m_Center: {x: -0, y: 0.88985264, z: 0}
