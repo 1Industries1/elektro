@@ -101,10 +101,10 @@ public class PlayerWeapons : NetworkBehaviour
             // Mit welcher Waffe gestartet wird
             cannonLevel.Value    = 1;
             blasterLevel.Value   = 0;
-            grenadeLevel.Value   = 0;
-            lightningLevel.Value = 0;
-            orbitalLevel.Value   = 0;
-            blackHoleLevel.Value = 1;
+            grenadeLevel.Value   = 0;   
+            lightningLevel.Value = 1;   // passiv
+            orbitalLevel.Value   = 0;   // passiv
+            blackHoleLevel.Value = 0;   // passiv
         }
         Rebuild();
     }

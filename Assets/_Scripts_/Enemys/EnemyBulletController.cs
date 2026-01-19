@@ -13,7 +13,7 @@ public class EnemyBulletController : NetworkBehaviour
     [SerializeField] private float lifetime = 5f;
 
     [Header("Visuals")]
-    [SerializeField] private TrailRenderer trail;   // Referenz im Inspector setzen
+    [SerializeField] private TrailRenderer trail;
 
     private Rigidbody rb;
     private float spawnTime;
@@ -25,7 +25,11 @@ public class EnemyBulletController : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        // Nur Server simulier/steuert Rigidbody
         rb.isKinematic = !IsServer;
+
+        if (IsServer)
+            spawnTime = Time.time; // safety, falls Init mal nicht direkt kommt
     }
 
     private void Update()
@@ -33,9 +37,7 @@ public class EnemyBulletController : NetworkBehaviour
         if (!IsServer) return;
 
         if (Time.time - spawnTime > lifetime)
-        {
             DespawnWithTrail();
-        }
     }
 
     public void Init(Vector3 direction, float newSpeed = -1f, float newDamage = -1f, float newLifetime = -1f)
@@ -47,7 +49,15 @@ public class EnemyBulletController : NetworkBehaviour
         if (newLifetime > 0f) lifetime = newLifetime;
 
         spawnTime = Time.time;
-        rb.linearVelocity = direction.normalized * speed;
+
+        Vector3 dir = direction.normalized;
+        if (dir.sqrMagnitude < 0.0001f) dir = transform.forward;
+
+        // Rotation = Flugrichtung (damit Forward stimmt)
+        transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+
+        // Velocity
+        rb.linearVelocity = dir * speed;
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -58,9 +68,7 @@ public class EnemyBulletController : NetworkBehaviour
         {
             var hp = collision.gameObject.GetComponent<PlayerHealth>();
             if (hp != null)
-            {
                 hp.Server_TakeDamage(damage, OwnerClientId);
-            }
         }
 
         DespawnWithTrail();
@@ -68,21 +76,17 @@ public class EnemyBulletController : NetworkBehaviour
 
     private void DespawnWithTrail()
     {
-        // Nur einmal ausführen
+        if (!IsServer) return;
         if (!IsSpawned) return;
 
         if (trail != null)
         {
-            // Trail vom Bullet lösen
+            // Trail vom Bullet lösen (WICHTIG: Trail sollte ein Child sein!)
             trail.transform.SetParent(null);
-
-            // Emission stoppen, damit keine neuen Punkte hinzukommen
             trail.emitting = false;
-
-            // Trail-Objekt nach seiner eigenen Länge zerstören
             Destroy(trail.gameObject, trail.time);
         }
 
-        //NetworkObject.Despawn();
+        NetworkObject.Despawn(true);
     }
 }

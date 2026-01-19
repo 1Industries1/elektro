@@ -2872,9 +2872,9 @@ MonoBehaviour:
   externalForceFullAirControl: 0
   maxStamina: 100
   staminaRegenPerSecond: 20
-  rollStaminaCostPerSecond: 15
+  rollStaminaCostPerSecond: 30
   dashStaminaCost: 0
-  minStaminaToStartRoll: 5
+  minStaminaToStartRoll: 10
   groundLayer:
     serializedVersion: 2
     m_Bits: 512
@@ -3112,12 +3112,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b3264665616fcc44875e5fe7829a763, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerGroundSlamAbility
+  superJumpKey: 102
   slamKey: 32
   superJumpUpVelocity: 15
   slamDownVelocity: 50
   slamCooldown: 2
-  maxSuperJumpTime: 0.8
-  autoSlamAfterApexDelay: 0.05
   directionalSlam: 1
   slamAngleFromHorizontal: 12
   slamImpactVfx: {fileID: 6063518424537689786, guid: bad5794a53f5c3645bb444b3a040ba01, type: 3}

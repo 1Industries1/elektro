@@ -181,8 +181,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 100
   damage: 10
-  lifetime: 8
-  trail: {fileID: 0}
+  lifetime: 6
+  trail: {fileID: 1904763662979679081}
 --- !u!96 &1904763662979679081
 TrailRenderer:
   serializedVersion: 3
@@ -209,7 +209,7 @@ TrailRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ef1b460badffcb84bb03b050ebccd393, type: 2}
+  - {fileID: 2100000, guid: c5db1ec12743f4741ac752fa429ea49a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -231,7 +231,7 @@ TrailRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Time: 0.6
+  m_Time: 0.2
   m_PreviewTimeScale: 1
   m_Parameters:
     serializedVersion: 3
