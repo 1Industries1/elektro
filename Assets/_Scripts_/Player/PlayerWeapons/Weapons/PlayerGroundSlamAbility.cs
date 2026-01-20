@@ -213,10 +213,10 @@ public class PlayerGroundSlamAbility : NetworkBehaviour
     {
         if (_movement == null) return;
 
-        _movement.externalBlockDashAndRoll = block;
-        _movement.externalBlockHover = block;
-        _movement.externalIgnoreMaxFallSpeed = block;
-        _movement.externalForceFullAirControl = fullAirControl;
+        //_movement.externalBlockDashAndRoll = block;
+        //_movement.externalBlockHover = block;
+        //_movement.externalIgnoreMaxFallSpeed = block;
+        //_movement.externalForceFullAirControl = fullAirControl;
     }
 
     // =========================

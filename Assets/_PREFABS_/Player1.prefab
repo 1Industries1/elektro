@@ -2816,13 +2816,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b3195d173adbb747b85346ff0ff1fab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 15
+  moveSpeed: 12
   acceleration: 4
   deceleration: 4
   airControl: 1
-  jumpForce: 14
-  dashForce: 100
-  dashDuration: 0.4
+  groundBrake: 1
+  rollBrakeMult: 0.25
+  lateralGrip: 22
+  rollLateralGrip: 7
+  airLateralGrip: 1.2
+  rollSteerAccelMult: 0.65
+  rollMassMultiplier: 1.6
+  rollSpeedMultiplier: 5
+  rollStaminaCostPerSecond: 10
+  minStaminaToStartRoll: 10
+  keepMomentumWhileRollAir: 1
+  minAirControlWhileRoll: 0.95
+  jumpForce: 16
+  gravityScale: 1
+  maxFallSpeed: 250
+  dashForce: 10
+  dashDuration: 0.5
   dashCooldown: 0.6
   maxAirDashes: 3
   dashSpeedCurve:
@@ -2838,8 +2852,8 @@ MonoBehaviour:
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
-      time: 0.8840133
-      value: 0.47311088
+      time: 0.59958947
+      value: 0.605252
       inSlope: -1.4496908
       outSlope: -1.4496908
       tangentMode: 0
@@ -2859,46 +2873,18 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   dashGravityFactor: 0.15
-  keepVerticalVelocityOnDash: 1
   dashEndHorizontalDamping: 0.65
-  enableHover: 1
-  maxHoverTime: 5
-  hoverGravityFactor: 0.05
-  hoverFallSpeed: 5
-  hoverMinVerticalSpeedToActivate: -1
-  externalBlockDashAndRoll: 0
-  externalBlockHover: 0
-  externalIgnoreMaxFallSpeed: 0
-  externalForceFullAirControl: 0
-  maxStamina: 100
-  staminaRegenPerSecond: 20
-  rollStaminaCostPerSecond: 30
+  keepVerticalVelocityOnDash: 1
+  maxStamina: 160
+  staminaRegenPerSecond: 10
   dashStaminaCost: 0
-  minStaminaToStartRoll: 10
   groundLayer:
     serializedVersion: 2
     m_Bits: 512
   groundProbeExtra: 0.08
   maxSlopeDeg: 65
-  gravityScale: 1
-  upGravityMultiplierHeld: 1.05
-  upGravityMultiplierReleased: 1.8
-  downGravityMultiplier: 2
-  apexBonusMultiplier: 1
-  apexThreshold: 0.75
-  maxFallSpeed: 250
-  coyoteTime: 0.1
-  jumpBufferTime: 0.12
-  standingSpeedThreshold: 0.15
-  anim: {fileID: 3011663369909900}
   turnSpeedDegPerSec: 720
-  rollSpeedMultiplier: 2
-  keepRollBoostInAir: 1
-  keepMomentumWhileRollAir: 1
-  minAirControlWhileRoll: 0.95
-  scaleAccelWhileRoll: 1
-  lookWithCameraWhenNoMove: 0
-  faceMovementDirection: 1
+  anim: {fileID: 3011663369909900}
   audioSource: {fileID: 6799519995716292581}
   footstepClips:
   - {fileID: 8300000, guid: 35d545c020a43684eb8ed29ed62b1635, type: 3}
@@ -3007,6 +2993,7 @@ MonoBehaviour:
   maxLevel_Stamina: 10
   maxLevel_DropMoreXP: 10
   maxLevel_DropMoreGold: 10
+  maxLevel_Luck: 10
   maxHPPerLevel: 15
   armorFlatPerLevel: 0.25
   magnetRangeMultPerLevel: 1.2
@@ -3015,6 +3002,7 @@ MonoBehaviour:
   staminaRegenPerLevel: 1.5
   xpDropBonusPerLevel: 0.1
   goldDropBonusPerLevel: 0.25
+  luckBonusPerLevel: 0.1
   startingMasteries: []
   masteryPool:
   - {fileID: 11400000, guid: e2c93db6469fcf44baddcd0c877ed8ea, type: 2}
@@ -3036,6 +3024,8 @@ MonoBehaviour:
   DropMoreXPLevel:
     m_InternalValue: 0
   DropMoreGoldLevel:
+    m_InternalValue: 0
+  LuckLevel:
     m_InternalValue: 0
 --- !u!114 &4061243089856759362
 MonoBehaviour:

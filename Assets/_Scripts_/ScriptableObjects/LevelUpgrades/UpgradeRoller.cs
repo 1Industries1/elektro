@@ -10,9 +10,9 @@ public static class UpgradeRoller
     private static readonly System.Random _rng = new System.Random();
 
     // Wie "oft" ein Eintrag in den Beutel gelegt wird /// 1 ist sehr selten und 3 ist oft
-    public const int STAT_WEIGHT    = 3;
-    public const int MASTERY_WEIGHT = 2;
-    public const int WEAPON_WEIGHT  = 1;   // Waffen seltener dann 1
+    public const int STAT_WEIGHT    = 2;
+    public const int MASTERY_WEIGHT = 1;
+    public const int WEAPON_WEIGHT  = 0;   // Waffen nicht droppen
 
     
     // ======== Basis-IDs (stabil) für Stats ========
@@ -42,6 +42,9 @@ public static class UpgradeRoller
     public static bool IsMasteryBaseId(int baseId) => baseId >= MASTERIES_OFFSET;
     public static bool IsMasteryChoice(int choiceId) => IsMasteryBaseId(ChoiceCodec.BaseId(choiceId));
 
+
+
+    // KANN GELÖSCHTT WERDEN ///////////////////////////////////////////////////////////////////////////////////////////////
     public static bool IsWeaponBaseId(int baseId)
         => baseId >= Weapon_Cannon && baseId <= Weapon_BlackHole; // Hier höchste Waffe
 
@@ -67,6 +70,8 @@ public static class UpgradeRoller
         return def != null ? def.id : null;
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
 
     /// <summary>
     /// BaseId → MasteryDefinition aus dem PlayerUpgrades.masteryPool auflösen.
@@ -83,7 +88,6 @@ public static class UpgradeRoller
     }
 
     // ======== Rarity-Konfig ========
-
     // Stacks, die eine Rarity gewährt (für "stapelnde" Upgrades/Masteries)
     public static readonly Dictionary<Rarity, int> StacksPerRarity = new()
     {
@@ -158,7 +162,6 @@ public static class UpgradeRoller
 
         var statCandidates    = new List<int>(StatPool.Length);
         var masteryCandidates = new List<int>();
-        var weaponCandidates  = new List<int>();
 
         // --- Stats: nur wenn noch nicht max ---
         foreach (var id in StatPool)
@@ -189,25 +192,6 @@ public static class UpgradeRoller
             }
         }
 
-        // --- Waffen: nur wenn noch unter MaxLevel (NEU) ---
-        if (pw != null)
-        {
-            void AddWeaponCandidate(WeaponDefinition def, int level, int baseId)
-            {
-                if (def == null) return;
-                int max = 1 + (def.steps?.Length ?? 0);
-                if (level < max)
-                    weaponCandidates.Add(baseId);
-            }
-
-            AddWeaponCandidate(pw.cannonDef,    pw.cannonLevel.Value,    Weapon_Cannon);
-            AddWeaponCandidate(pw.blasterDef,   pw.blasterLevel.Value,   Weapon_Blaster);
-            AddWeaponCandidate(pw.grenadeDef,   pw.grenadeLevel.Value,   Weapon_Grenade);
-            AddWeaponCandidate(pw.lightningDef, pw.lightningLevel.Value, Weapon_Lightning);
-            AddWeaponCandidate(pw.orbitalDef,   pw.orbitalLevel.Value,   Weapon_Orbital);
-            AddWeaponCandidate(pw.blackHoleDef, pw.blackHoleLevel.Value, Weapon_BlackHole);
-        }
-
         var allCandidates = new List<int>();
 
         void AddWithWeight(List<int> src, int weight)
@@ -224,9 +208,6 @@ public static class UpgradeRoller
 
         // Masteries = mittel
         AddWithWeight(masteryCandidates, MASTERY_WEIGHT);
-
-        // Waffen = selten
-        AddWithWeight(weaponCandidates, WEAPON_WEIGHT);
 
         // Fallback, falls irgendwas schief ging
         if (allCandidates.Count == 0)
@@ -278,21 +259,6 @@ public static class UpgradeRoller
                 return ChoiceCodec.Encode(baseId, rarity);
             }
 
-            // ----- Waffe -----
-            if (IsWeaponBaseId(baseId) && pw != null)
-            {
-                var def = ResolveWeaponDef(pw, baseId);
-                if (def == null)
-                    return ChoiceCodec.Encode(MaxHP, Rarity.Common);
-
-                int maxLevel = 1 + (def.steps?.Length ?? 0);
-                // optional: maxLevel kannst du sogar komplett weglassen,
-                // wenn du es sonst nicht brauchst.
-
-                var rarity = WeightedRarity();
-                return ChoiceCodec.Encode(baseId, rarity);
-            }
-
 
             // ----- Stat -----
             var type = Resolve(baseId);
@@ -338,10 +304,6 @@ public static class UpgradeRoller
     public static int StacksForChoice(int choiceId)
     {
         int baseId = ChoiceCodec.BaseId(choiceId);
-
-        // Waffen: IMMER nur 1 Level pro Choice
-        if (IsWeaponBaseId(baseId))
-            return 1;
 
         var rarity = ChoiceCodec.GetRarity(choiceId);
         return StacksPerRarity.TryGetValue(rarity, out var s) ? s : 1;
@@ -478,32 +440,21 @@ public static class UpgradeRoller
     // Wird noch von Logs / Debug verwendet – Stats + sehr generischer Fallback für Masteries
     public static string Label(int choiceId)
     {
-        var baseId = ChoiceCodec.BaseId(choiceId);
+        int baseId = ChoiceCodec.BaseId(choiceId);
         var rarity = ChoiceCodec.GetRarity(choiceId);
 
-        string baseLabel;
-
+        // Waffen sollen nicht mehr vorkommen -> fallback Label
         if (IsWeaponBaseId(baseId))
-        {
-            // Ohne Kontext zu PlayerWeapons kommen wir hier nicht an den echten Waffennamen.
-            // Falls du willst, kannst du hier einfach "Weapon" lassen.
-            baseLabel = "Weapon";
-        }
-        else if (IsMasteryBaseId(baseId))
-        {
-            // Masteries klar kennzeichnen
-            baseLabel = "Mastery";
-        }
-        else
-        {
-            // Normale Stats wie bisher
-            baseLabel = UpgradeNameFallback(baseId);
-        }
+            return $"{ColorTag(Rarity.Common)}Upgrade</color>";
+
+        string baseLabel =
+            IsMasteryBaseId(baseId) ? "Mastery"
+            : UpgradeNameFallback(baseId);
 
         string badge = RarityBadge[rarity];
-
         return $"{ColorTag(rarity)}{baseLabel} {badge}</color>";
     }
+
 
 
     public static string ColorTag(Rarity r)

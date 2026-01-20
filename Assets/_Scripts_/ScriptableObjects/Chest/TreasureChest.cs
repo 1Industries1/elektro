@@ -121,8 +121,16 @@ public class TreasureChest : NetworkBehaviour
     private static int s_GlobalOpenedChestCount = 0;
     private int currentDropProfileIndex = 0;
 
-    // Für Preview-Lock (serverseitig vorgeplante Upgrades)
-    private readonly List<string> _lockedRewardWeaponIds = new();
+    // Für Offer-Lock (serverseitig vorgeplante Offers)
+    private readonly List<int> _lockedOfferUpgrades = new();
+
+    // Wer hat die Chest geöffnet (damit nur er picken darf)
+    private ulong _lockedOpenerClientId = ulong.MaxValue;
+
+    // Anti double-pick
+    private bool _offerResolved = false;
+
+
 
     // ===== Helpers =====
     private void Log(string msg)
@@ -337,13 +345,61 @@ public class TreasureChest : NetworkBehaviour
     }
 
 
+    [ServerRpc(RequireOwnership = false)]
+    public void PickChestOfferServerRpc(int offerIndex, ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+
+        ulong sender = rpcParams.Receive.SenderClientId;
+        if (sender != _lockedOpenerClientId) return;
+        if (_offerResolved) return;
+        if (offerIndex < 0 || offerIndex >= _lockedOfferUpgrades.Count) return;
+
+        var playerObj = NetworkManager.Singleton?.SpawnManager?.GetPlayerNetworkObject(sender);
+        if (!playerObj) return;
+
+        var upgrades = playerObj.GetComponent<PlayerUpgrades>() ?? playerObj.GetComponentInChildren<PlayerUpgrades>(true);
+        if (upgrades == null) return;
+
+        var type = (UpgradeType)_lockedOfferUpgrades[offerIndex];
+
+        // 1 Level geben => +10% XP / +10% Gold / +10% Luck
+        upgrades.PurchaseFreeLevel_Server(type, 1);
+
+        _offerResolved = true;
+        _lockedOfferUpgrades.Clear();
+
+        var toOwner = new ClientRpcParams {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } }
+        };
+
+        string msg = type switch
+        {
+            UpgradeType.DropMoreXP   => "+10% XP Gain",
+            UpgradeType.DropMoreGold => "+10% Gold Gain",
+            UpgradeType.Luck         => "+10% Luck",
+            _                        => "Upgrade"
+        };
+
+        Owner_ToastPickedUpgradeClientRpc(msg, toOwner);
+    }
+
+
+
+
     // ===== ServerRpc: Öffnen anfordern (Trigger-Mitgliedschaft als Bedingung) =====
     [ServerRpc(RequireOwnership = false)]
     private void RequestOpenServerRpc(NetworkObjectReference playerRef, ServerRpcParams rpcParams = default)
     {
         if (!IsServer) { Warn("ServerRpc called but not on server → abort."); return; }
+
         ulong sender = rpcParams.Receive.SenderClientId;
         Log($"ServerRpc: Open request from client {sender}.");
+
+        var toSender = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } }
+        };
 
         if (singleUse && Opened.Value) { Log("Server: Already opened → abort."); return; }
         if (!singleUse && Time.time < _serverNextOpenTime)
@@ -352,14 +408,14 @@ public class TreasureChest : NetworkBehaviour
             return;
         }
 
-        // (A) Muss im Trigger sein
+        // Muss im Trigger sein
         if (!_serverClientsInTrigger.Contains(sender))
         {
             Log($"Server: Client {sender} not in trigger → abort.");
             return;
         }
 
-        // (B) PlayerObject robust bestimmen (ref → Fallback Sender)
+        // PlayerObject robust bestimmen
         NetworkObject playerNo = null;
         if (!playerRef.TryGet(out playerNo) || playerNo == null)
         {
@@ -368,75 +424,105 @@ public class TreasureChest : NetworkBehaviour
         }
         if (playerNo == null) { Warn("Server: No PlayerObject → abort."); return; }
 
-        // (C) Inventory & Gold prüfen
         var inv = playerNo.GetComponent<PlayerInventory>() ?? playerNo.GetComponentInChildren<PlayerInventory>(true);
         if (inv == null) { Warn("Server: PlayerInventory missing → abort."); return; }
 
-        // --- NEU: aktuellen (globalen) Preis verwenden
         int price = CurrentGoldCost.Value;
 
-        int curGold = inv.GetAmount(ResourceType.Gold);
-        Log($"Server: Player gold {curGold} / price {price}.");
+        // Gold Check
         if (!inv.Server_Has(ResourceType.Gold, price))
         {
-            var toOwner = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } } };
-            NotEnoughGoldClientRpc(price, toOwner);
-            Log("Server: Not enough gold → notified owner.");
+            NotEnoughGoldClientRpc(price, toSender);
             return;
         }
 
-        // (D) Abbuchen
-        bool ok = inv.Server_TryConsume(ResourceType.Gold, price);
-        Log($"Server: Consume gold result = {ok}.");
-        if (!ok) return; // failsafe
+        // Drop-Profil locken
+        var upgrades = playerNo.GetComponent<PlayerUpgrades>() ?? playerNo.GetComponentInChildren<PlayerUpgrades>(true);
+        float playerLuck = (upgrades != null) ? upgrades.GetLuckMult() : 1f;
 
-        // (E) Öffnen status/cooldown
+        _lockedProfile = GetNextDropProfile(playerLuck); // dafür unten Anpassung
+        _lockedProfileIndex = currentDropProfileIndex;
+
+        // Offers locken (VOR dem Bezahlen!)
+        _lockedOfferUpgrades.Clear();
+        _offerResolved = false;
+        _lockedOpenerClientId = sender;
+
+        int offerCount = GetRewardCount();
+
+        // Kandidaten bauen: nur wenn noch nicht max
+        var candidates = new List<UpgradeType>(3);
+        if (upgrades != null)
+        {
+            if (upgrades.DropMoreXPLevel.Value < upgrades.maxLevel_DropMoreXP) candidates.Add(UpgradeType.DropMoreXP);
+            if (upgrades.DropMoreGoldLevel.Value < upgrades.maxLevel_DropMoreGold) candidates.Add(UpgradeType.DropMoreGold);
+            if (upgrades.LuckLevel.Value < upgrades.maxLevel_Luck) candidates.Add(UpgradeType.Luck);
+        }
+
+        // draw without replacement
+        int picks = Mathf.Min(offerCount, candidates.Count);
+        for (int i = 0; i < picks; i++)
+        {
+            int idx = UnityEngine.Random.Range(0, candidates.Count);
+            _lockedOfferUpgrades.Add((int)candidates[idx]);
+            candidates.RemoveAt(idx);
+        }
+
+        if (_lockedOfferUpgrades.Count == 0)
+        {
+            var toOwner = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } } };
+            Owner_NoOffersClientRpc("No upgrades available (XP/Gold/Luck already max).", toOwner);
+            return;
+        }
+
+        // Abbuchen erst jetzt
+        bool ok = inv.Server_TryConsume(ResourceType.Gold, price);
+        if (!ok) return;
+
+        // Öffnen / Cooldown
         if (singleUse) Opened.Value = true;
         _serverNextOpenTime = Time.time + reopenCooldown;
-        Log($"Server: Opened={Opened.Value}, next reopen @ {_serverNextOpenTime:F2}.");
 
-        // Globalen Count erhöhen + Preise updaten
+        // Global Count + Preise updaten
         s_GlobalOpenedChestCount++;
-        Log($"Server: Global opened count = {s_GlobalOpenedChestCount}.");
         Server_UpdateAllChestPrices();
 
         if (respawnEnabled)
-        {
             StartCooldownServer();
-        }
 
-        // (F) Drop-Profil locken
-        _lockedProfile = GetNextDropProfile();
-        _lockedProfileIndex = currentDropProfileIndex;
-        Log($"Server: Locked profile index = {_lockedProfileIndex}.");
-
-
-        // (G) Preview-Upgrades planen (optional)
-        _lockedRewardWeaponIds.Clear();
-        int rewardCount = GetRewardCount();
-        var weapons = playerNo.GetComponent<PlayerWeapons>();
-        if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && rewardCount > 0 && weapons != null)
-        {
-            for (int i = 0; i < rewardCount; i++)
-            {
-                var id = weapons.Server_PeekRandomUpgradeableId();
-                if (!string.IsNullOrEmpty(id))
-                {
-                    _lockedRewardWeaponIds.Add(id);
-                    Log($"Server: Planned weapon upgrade id='{id}'.");
-                }
-            }
-        }
-
-        // (H) Preview-Icons und UI-Start an den Sender
-        var toSender = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } } };
-        foreach (var id in _lockedRewardWeaponIds) Owner_PreviewIconClientRpc(id, toSender);
-
+        // Delay berechnen (einmal!)
         float revealDelay = 0f;
-        if (_lockedProfile != null) revealDelay = Mathf.Max(0f, _lockedProfile.animDuration + _lockedProfile.delayTime);
-        Log($"Server: Starting client sequence (profile={_lockedProfileIndex}, delay={revealDelay:F2}).");
-        ClientStartOpenSequenceClientRpc(revealDelay, _lockedProfileIndex, toSender);
+        if (_lockedProfile != null)
+            revealDelay = Mathf.Max(0f, _lockedProfile.animDuration + _lockedProfile.delayTime);
+
+        //var toSender = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { sender } } };
+
+        // UI starten
+        ClientStartOpenSequenceClientRpc(0f, _lockedProfileIndex, toSender);
+
+        // dann Offers schicken (als ints, gepackt)
+        Owner_SetChestOffersClientRpc(string.Join(";", _lockedOfferUpgrades), toSender);
     }
+
+
+    [ClientRpc(Delivery = RpcDelivery.Reliable)]
+    private void Owner_SetChestOffersClientRpc(string packedWeaponIds, ClientRpcParams rpc = default)
+    {
+        UIChestManager.SetChestOffers(packedWeaponIds);
+    }
+
+    [ClientRpc]
+    private void Owner_NoOffersClientRpc(string msg, ClientRpcParams rpc = default)
+    {
+        CenterToastUI.Instance?.Show(msg, 2f);
+    }
+
+    [ClientRpc]
+    private void Owner_ToastPickedUpgradeClientRpc(string msg, ClientRpcParams rpc = default)
+    {
+        CenterToastUI.Instance?.Show(msg, 2f);
+    }
+
 
     private void StartCooldownServer()
     {
@@ -478,6 +564,7 @@ public class TreasureChest : NetworkBehaviour
         if (!IsServer) return;
         SetChestVisibilityClientRpc(visible);
     }
+
 
     [ClientRpc(Delivery = RpcDelivery.Reliable)]
     private void SetChestVisibilityClientRpc(bool visible)
@@ -602,7 +689,7 @@ public class TreasureChest : NetworkBehaviour
         return p;
     }
 
-    public TreasureChestDropProfile GetNextDropProfile()
+    public TreasureChestDropProfile GetNextDropProfile(float playerLuck = 1f)
     {
         if (dropProfiles == null || dropProfiles.Length == 0)
         {
@@ -618,12 +705,12 @@ public class TreasureChest : NetworkBehaviour
                 return dropProfiles[currentDropProfileIndex];
 
             case DropCountType.random:
-                float playerLuck = 1f; // Optional
                 var weightedProfiles = new List<(int index, TreasureChestDropProfile profile, float weight)>();
                 for (int i = 0; i < dropProfiles.Length; i++)
                 {
                     var p = dropProfiles[i];
                     if (p == null) continue;
+
                     float weight = Mathf.Max(0f, p.baseDropChance * (1f + p.luckScaling * (playerLuck - 1f)));
                     weightedProfiles.Add((i, p, weight));
                 }
@@ -660,61 +747,6 @@ public class TreasureChest : NetworkBehaviour
         return c;
     }
 
-    // Server-only: Rewards erteilen (inkl. deterministische Upgrades)
-    private void GiveRewardsServer(PlayerInventory inventory, out int issuedCount)
-    {
-        issuedCount = 0;
-        if (!IsServer || inventory == null) { Warn("GiveRewardsServer: invalid state."); return; }
-
-        int rewardCount = GetRewardCount();
-        var weapons  = inventory.GetComponent<PlayerWeapons>();
-        var upgrades = inventory.GetComponent<PlayerUpgrades>(); // <– NEU
-
-        for (int i = 0; i < rewardCount; i++)
-        {
-            issuedCount++;
-
-            if (possibleDrops.HasFlag(DropType.UpgradeWeapon) && weapons != null)
-            {
-                // Geplante Upgrades
-                if (_lockedRewardWeaponIds.Count > 0)
-                {
-                    string id = _lockedRewardWeaponIds[0];
-                    _lockedRewardWeaponIds.RemoveAt(0);
-
-                    if (weapons.Server_LevelUpById(id, notifyOwner: false))
-                    {
-                        Log($"Server: Upgraded planned weapon '{id}'.");
-                        var def = ResolveDefById(weapons, id);
-
-                        if (upgrades != null)
-                            upgrades.SignalWeaponUpgradeToast(def);   // <– HIER
-
-                        continue;
-                    }
-                    else
-                    {
-                        Log($"Server: Planned upgrade '{id}' failed → fallback random.");
-                    }
-                }
-
-                // Zufälliges Waffen-Upgrade
-                if (weapons.Server_TryLevelUpRandomWeapon(out var upgradedDef))
-                {
-                    Log($"Server: Random weapon upgrade → '{upgradedDef?.id}'.");
-                    if (upgrades != null)
-                        upgrades.SignalWeaponUpgradeToast(upgradedDef);    // <– HIER
-                    continue;
-                }
-            }
-
-            // ... andere Drop-Typen ...
-        }
-
-        _lockedRewardWeaponIds.Clear();
-    }
-
-
     private WeaponDefinition ResolveDefById(PlayerWeapons pw, string id)
     {
         if (pw == null) return null;
@@ -723,6 +755,7 @@ public class TreasureChest : NetworkBehaviour
         if (pw.grenadeDef != null && pw.grenadeDef.id == id) return pw.grenadeDef;
         if (pw.lightningDef != null && pw.lightningDef.id == id) return pw.lightningDef;
         if (pw.orbitalDef   != null && pw.orbitalDef.id   == id) return pw.orbitalDef;
+        if (pw.blackHoleDef != null && pw.blackHoleDef.id == id) return pw.blackHoleDef;
         return null;
     }
 
@@ -741,12 +774,13 @@ public class TreasureChest : NetworkBehaviour
         var inv = playerObj.GetComponent<PlayerInventory>() ?? playerObj.GetComponentInChildren<PlayerInventory>(true);
         if (inv == null) { Warn("No PlayerInventory in ConfirmOpenRevealDone."); return; }
 
-        GiveRewardsServer(inv, out var issued);
-        Log($"Server: Rewards granted, count={issued}.");
+        // Keine Rewards mehr hier – Rewards passieren über PickChestOfferServerRpc
+        _lockedOfferUpgrades.Clear();
+        _offerResolved = false;
+        _lockedOpenerClientId = ulong.MaxValue;
     }
 
     // ===== kleine Helfer =====
-
     private void TryPushPriceToLocalHud()
     {
         var localPlayer = NetworkManager.Singleton?.LocalClient?.PlayerObject;

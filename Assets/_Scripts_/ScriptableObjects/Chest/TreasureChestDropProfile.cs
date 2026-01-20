@@ -10,7 +10,7 @@ public class TreasureChestDropProfile : ScriptableObject
     public float animDuration = 0.5f;
 
     [Header("Item Display Settings")]
-    public int noOfItems = 1;
+    public int noOfItems = 3;
     public Color[] beamColors = new Color[] { new Color(0, 0, 1, 0.6f) };
 
     [Range(0, 100f)] public float delayTime = 0f;

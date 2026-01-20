@@ -27,12 +27,18 @@ public class UIChestManager : MonoBehaviour
     public Image chestPanel;
     public TextMeshProUGUI coinText;
 
+    [Header("Offer Icons")]
+    public Sprite xpGainIcon;
+    public Sprite goldGainIcon;
+    public Sprite luckIcon;
+
     // Audio
     private AudioSource audioSource;
     public AudioClip pickUpSound;
 
     // Internal states
     private readonly List<Sprite> icons = new List<Sprite>();
+    private readonly List<int> _offerIds = new();
     private bool isAnimating = false;
     private Coroutine chestSequenceCoroutine;
     private float coins;
@@ -45,7 +51,9 @@ public class UIChestManager : MonoBehaviour
         public Image spriteImage;
         public GameObject sprite;
         public GameObject weaponBeam;
+        public Button pickButton; // <-- NEU
     }
+
 
     private void Awake()
     {
@@ -77,12 +85,95 @@ public class UIChestManager : MonoBehaviour
 
         instance.gameObject.SetActive(true);
 
+        instance.ClearSlots();
+        instance.icons.Clear();
+        instance._offerIds.Clear();
+
         // >>> Kamera-Orbit sperren, solange Chest-UI offen ist
         CameraFollow.SetOrbitLockedByUI(true);
         
         // Begin wird ausschließlich in ClientStartOpenSequenceClientRpc() aufgerufen.
         //instance.Begin();
     }
+
+    private void ClearSlots()
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            var it = items[i];
+            if (it.spriteImage) it.spriteImage.sprite = null;
+            if (it.sprite) it.sprite.SetActive(false);
+            if (it.beam) it.beam.SetActive(false);
+            if (it.weaponBeam) it.weaponBeam.SetActive(false);
+            if (it.pickButton) it.pickButton.gameObject.SetActive(false);
+        }
+    }
+
+
+    public static void SetChestOffers(string packed)
+    {
+        if (!instance) return;
+
+        instance._offerIds.Clear();
+        instance.icons.Clear(); // wichtig: wir füllen Icons passend zu den Offers
+
+        if (!string.IsNullOrEmpty(packed))
+        {
+            var parts = packed.Split(new[] { ';' }, System.StringSplitOptions.RemoveEmptyEntries);
+            foreach (var p in parts)
+            {
+                if (int.TryParse(p, out int id))
+                    instance._offerIds.Add(id);
+            }
+        }
+
+        // Icons passend zu Offer-Reihenfolge erzeugen
+        for (int i = 0; i < instance._offerIds.Count; i++)
+        {
+            var type = (UpgradeType)instance._offerIds[i];
+            Sprite s = instance.IconFor(type);
+            if (s != null) instance.icons.Add(s);
+        }
+
+        instance.TryFillSpriteSlots();
+        instance.SetupOfferButtons();
+    }
+
+    private Sprite IconFor(UpgradeType t) => t switch
+    {
+        UpgradeType.DropMoreXP => xpGainIcon,
+        UpgradeType.DropMoreGold => goldGainIcon,
+        UpgradeType.Luck => luckIcon,
+        _ => null
+    };
+
+
+    private void SetupOfferButtons()
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            var it = items[i];
+            if (!it.pickButton) continue;
+
+            int idx = i;
+            bool valid = idx < _offerIds.Count;
+
+            it.pickButton.onClick.RemoveAllListeners();
+            it.pickButton.gameObject.SetActive(valid);
+
+            if (valid)
+            {
+                it.pickButton.onClick.AddListener(() =>
+                {
+                    if (currentChest != null)
+                        currentChest.PickChestOfferServerRpc(idx);
+
+                    CloseUI();
+                });
+            }
+        }
+    }
+
 
     public static void NotifyItemReceived(Sprite icon)
     {
@@ -357,8 +448,6 @@ public class UIChestManager : MonoBehaviour
 
         if (currentChest != null)
         {
-            currentChest.ConfirmOpenRevealDoneServerRpc();
-
             currentChest.OnChestUIClose();
             currentChest = null;
         }
@@ -373,10 +462,20 @@ public class UIChestManager : MonoBehaviour
         {
             var id = items[i];
             if (id.beam) id.beam.SetActive(false);
+            if (id.weaponBeam) id.weaponBeam.SetActive(false);
             if (id.sprite) id.sprite.SetActive(false);
             if (id.spriteImage) id.spriteImage.sprite = null;
+
+            if (id.pickButton)
+            {
+                id.pickButton.onClick.RemoveAllListeners();
+                id.pickButton.gameObject.SetActive(false);
+            }
         }
+
         dropProfile = null;
         icons.Clear();
+        _offerIds.Clear();
     }
+
 }

@@ -18,6 +18,7 @@ public class PlayerUpgrades : NetworkBehaviour
     public int maxLevel_Stamina   = 10;
     public int maxLevel_DropMoreXP   = 10;
     public int maxLevel_DropMoreGold = 10;
+    public int maxLevel_Luck = 10;
 
     [Header("Effect per level")]
     public float maxHPPerLevel             = 15f;
@@ -28,6 +29,7 @@ public class PlayerUpgrades : NetworkBehaviour
     public float staminaRegenPerLevel = 1.5f;
     public float xpDropBonusPerLevel   = 0.1f;
     public float goldDropBonusPerLevel = 0.1f;
+    public float luckBonusPerLevel = 0.1f;
 
     [Header("Masteries (ScriptableObjects)")]
     [SerializeField] public MasteryTier[] startingMasteries;
@@ -43,6 +45,8 @@ public class PlayerUpgrades : NetworkBehaviour
     public NetworkVariable<int> StaminaLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> DropMoreXPLevel   = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> DropMoreGoldLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> LuckLevel = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
 
     // Baseline-Werte
     private float _baseMaxHP;
@@ -105,6 +109,7 @@ public class PlayerUpgrades : NetworkBehaviour
         StaminaLevel.OnValueChanged   += (_, __) => ApplyStamina();
         DropMoreXPLevel.OnValueChanged   += (_, __) => { /* UI only */ };
         DropMoreGoldLevel.OnValueChanged += (_, __) => { /* UI only */ };
+        LuckLevel.OnValueChanged += (_, __) => { /* UI only */ };
     }
 
     // ==================== Public Infos ====================
@@ -118,6 +123,7 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Stamina   => StaminaLevel.Value,
         UpgradeType.DropMoreXP  => DropMoreXPLevel.Value,
         UpgradeType.DropMoreGold => DropMoreGoldLevel.Value,
+        UpgradeType.Luck => LuckLevel.Value,
         _                     => 0
     };
 
@@ -130,6 +136,7 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Stamina   => maxLevel_Stamina,
         UpgradeType.DropMoreXP  => maxLevel_DropMoreXP,
         UpgradeType.DropMoreGold => maxLevel_DropMoreGold,
+        UpgradeType.Luck => maxLevel_Luck,
         _                     => 0
     };
 
@@ -175,6 +182,9 @@ public class PlayerUpgrades : NetworkBehaviour
             case UpgradeType.DropMoreGold:
                 return 1f + DropMoreGoldLevel.Value * goldDropBonusPerLevel;
 
+            case UpgradeType.Luck:
+                return 1f + LuckLevel.Value * luckBonusPerLevel;
+
             default:
                 return 0f;
         }
@@ -185,6 +195,7 @@ public class PlayerUpgrades : NetworkBehaviour
     public float GetMagnetRangeMult()  => Mathf.Pow(magnetRangeMultPerLevel, MagnetLevel.Value);
     public float GetXpDropMult()   => 1f + DropMoreXPLevel.Value * xpDropBonusPerLevel;
     public float GetGoldDropMult() => 1f + DropMoreGoldLevel.Value * goldDropBonusPerLevel;
+    public float GetLuckMult() => 1f + LuckLevel.Value * luckBonusPerLevel;
 
     public string GetCurrentDisplay(UpgradeType t) => t switch
     {
@@ -195,6 +206,7 @@ public class PlayerUpgrades : NetworkBehaviour
         UpgradeType.Stamina   => $"{GetCurrentValue(t):0.#} ST",
         UpgradeType.DropMoreXP  => $"{(GetCurrentValue(t) - 1f) * 100f:0.#}% XP",
         UpgradeType.DropMoreGold => $"{(GetCurrentValue(t) - 1f) * 100f:0.#}% Gold",
+        UpgradeType.Luck => $"{(GetCurrentValue(t) - 1f) * 100f:0.#}% Luck",
         _                     => GetCurrentValue(t).ToString("0.##")
     };
 
@@ -218,6 +230,8 @@ public class PlayerUpgrades : NetworkBehaviour
                 return 1f + level * xpDropBonusPerLevel;
             case UpgradeType.DropMoreGold:
                 return 1f + level * goldDropBonusPerLevel;
+            case UpgradeType.Luck:
+                return 1f + level * luckBonusPerLevel;
             default:
                 return 0f;
         }
@@ -262,6 +276,7 @@ public class PlayerUpgrades : NetworkBehaviour
                 case UpgradeType.Stamina:   StaminaLevel.Value++;   break;
                 case UpgradeType.DropMoreXP:  DropMoreXPLevel.Value++;  break;
                 case UpgradeType.DropMoreGold: DropMoreGoldLevel.Value++; break;
+                case UpgradeType.Luck: LuckLevel.Value++; break;
             }
         }
     }
@@ -292,28 +307,9 @@ public class PlayerUpgrades : NetworkBehaviour
         // ===== Waffe =====
         if (UpgradeRoller.IsWeaponBaseId(baseId))
         {
-            var pw = GetComponent<PlayerWeapons>() ?? GetComponentInChildren<PlayerWeapons>(true);
-            if (pw != null)
-            {
-                string weaponId = UpgradeRoller.WeaponIdFromBase(pw, baseId);
-                if (!string.IsNullOrEmpty(weaponId))
-                {
-                    int addStacks = Mathf.Max(1, stacks);
-
-                    // Für Waffen ist StacksForChoice immer 1, aber wir sind hier zukunftssicher.
-                    for (int i = 0; i < addStacks; i++)
-                    {
-                        if (pw.Server_LevelUpById(weaponId, notifyOwner: true))
-                        {
-                            var def = UpgradeRoller.ResolveWeaponDef(pw, baseId);
-                            SignalWeaponUpgradeToast(def);
-                        }
-                    }
-                }
-            }
+            // Waffen werden NICHT über LevelUp/encoded vergeben.
             return;
         }
-
 
         // Stat-Upgrade
         var type = UpgradeRoller.Resolve(baseId);
@@ -575,6 +571,7 @@ public enum UpgradeType : int
     MoveSpeed = 7,
     Stamina = 8,
     DropMoreXP = 9,
-    DropMoreGold = 10
+    DropMoreGold = 10,
+    Luck = 11
 }
 

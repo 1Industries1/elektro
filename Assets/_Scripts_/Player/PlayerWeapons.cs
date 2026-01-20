@@ -119,6 +119,32 @@ public class PlayerWeapons : NetworkBehaviour
         blackHoleLevel.OnValueChanged -= OnBlackHoleLevelChanged;
     }
 
+    public List<string> Server_PeekUpgradeableIdsUnique(int count)
+    {
+        var result = new List<string>(count);
+        if (!IsServer) return result;
+
+        var up = GetUpgradeableList(); // nutzt bereits: level > 0 UND level < max
+        if (up.Count == 0) return result;
+
+        // draw without replacement
+        var pool = new List<(WeaponDefinition def, WeaponSlot slot, int level)>(up);
+
+        int picks = Mathf.Min(count, pool.Count);
+        for (int i = 0; i < picks; i++)
+        {
+            int idx = UnityEngine.Random.Range(0, pool.Count);
+            var choice = pool[idx];
+            if (choice.def != null)
+                result.Add(choice.def.id);
+            pool.RemoveAt(idx);
+        }
+
+        return result;
+    }
+
+
+
     private int MaxLevel(WeaponDefinition def) => 1 + (def?.steps?.Length ?? 0);
 
     private List<(WeaponDefinition def, WeaponSlot slot, int level)> GetUpgradeableList()
@@ -218,39 +244,40 @@ public class PlayerWeapons : NetworkBehaviour
         if (cannonDef != null && cannonDef.id == weaponId)
         {
             int max = MaxLevel(cannonDef);
-            if (cannonLevel.Value == 0)       { cannonLevel.Value = 1; did = true; }
-            else if (cannonLevel.Value < max) { cannonLevel.Value++;   did = true; }
+            if (cannonLevel.Value <= 0) return false;
+            if (cannonLevel.Value < max) { cannonLevel.Value++; did = true; }
         }
         else if (blasterDef != null && blasterDef.id == weaponId)
         {
             int max = MaxLevel(blasterDef);
-            if (blasterLevel.Value == 0)       { blasterLevel.Value = 1; did = true; }
-            else if (blasterLevel.Value < max) { blasterLevel.Value++;   did = true; }
+            if (blasterLevel.Value <= 0) return false;
+            if (blasterLevel.Value < max) { blasterLevel.Value++; did = true; }
         }
         else if (grenadeDef != null && grenadeDef.id == weaponId)
         {
             int max = MaxLevel(grenadeDef);
-            if (grenadeLevel.Value == 0)       { grenadeLevel.Value = 1; did = true; }
-            else if (grenadeLevel.Value < max) { grenadeLevel.Value++;   did = true; }
+            if (grenadeLevel.Value <= 0) return false;
+            if (grenadeLevel.Value < max) { grenadeLevel.Value++; did = true; }
         }
         else if (lightningDef != null && lightningDef.id == weaponId)
         {
             int max = MaxLevel(lightningDef);
-            if (lightningLevel.Value == 0)       { lightningLevel.Value = 1; did = true; }
-            else if (lightningLevel.Value < max) { lightningLevel.Value++;   did = true; }
+            if (lightningLevel.Value <= 0) return false;
+            if (lightningLevel.Value < max) { lightningLevel.Value++; did = true; }
         }
         else if (orbitalDef != null && orbitalDef.id == weaponId)
         {
             int max = MaxLevel(orbitalDef);
-            if (orbitalLevel.Value == 0)       { orbitalLevel.Value = 1; did = true; }
-            else if (orbitalLevel.Value < max) { orbitalLevel.Value++;   did = true; }
+            if (orbitalLevel.Value <= 0) return false;
+            if (orbitalLevel.Value < max) { orbitalLevel.Value++; did = true; }
         }
         else if (blackHoleDef != null && blackHoleDef.id == weaponId)
         {
             int max = MaxLevel(blackHoleDef);
-            if (blackHoleLevel.Value == 0)        { blackHoleLevel.Value = 1; did = true; }
-            else if (blackHoleLevel.Value < max)  { blackHoleLevel.Value++;   did = true; }
+            if (blackHoleLevel.Value <= 0) return false;
+            if (blackHoleLevel.Value < max) { blackHoleLevel.Value++; did = true; }
         }
+
 
         if (did && notifyOwner)
         {
