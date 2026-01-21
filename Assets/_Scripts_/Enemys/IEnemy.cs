@@ -5,7 +5,7 @@ public interface IEnemy
 {
     event Action<IEnemy> OnEnemyDied;
 
-    // neue Signatur: Damage + Angreifer + HitPoint
+    // Damage + Angreifer + HitPoint
     void TakeDamage(float damage, ulong attackerId, Vector3 hitPoint);
     ulong LastHitByClientId { get; }
 

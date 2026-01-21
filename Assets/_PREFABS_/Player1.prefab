@@ -2835,7 +2835,7 @@ MonoBehaviour:
   jumpForce: 16
   gravityScale: 1
   maxFallSpeed: 250
-  dashForce: 10
+  dashForce: 50
   dashDuration: 0.5
   dashCooldown: 0.6
   maxAirDashes: 3

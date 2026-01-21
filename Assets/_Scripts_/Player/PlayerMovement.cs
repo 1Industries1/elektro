@@ -500,8 +500,8 @@ public class PlayerMovement : NetworkBehaviour
         anim.SetFloat(moveSpeedHash, ServerGrounded ? horizSpeed : 0f);
 
         // Immer wenn in der Luft
-        // bool rollingForAnim = srvRollHeld || !ServerGrounded;
-        bool rollingForAnim = srvRollHeld || airRollAnimActive;
+        bool rollingForAnim = srvRollHeld || !ServerGrounded;
+        //bool rollingForAnim = srvRollHeld || airRollAnimActive;
 
         anim.SetBool(isRollingHash, rollingForAnim);
 

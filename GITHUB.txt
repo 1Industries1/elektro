@@ -15,8 +15,8 @@ git push
 # Optional: Meilenstein-Tag setzen und pushen
 ERHÖHEN UM 1:
 
-git tag -a v0.1.9 -m "New Exploder Enemy"
-git push origin v0.1.9
+git tag -a v0.2 -m "New Dropsystem"
+git push origin v0.2
 
 
 

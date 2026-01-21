@@ -17,14 +17,14 @@ MonoBehaviour:
   tags: 97
   uiIcon: {fileID: -1308886238, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: -928037741104161360, guid: 5155f2aa90e192f46b39019e462048db, type: 3}
-  projectileSpeed: 150
-  rangeMeters: 85
+  projectileSpeed: 420
+  rangeMeters: 65
   projectileSize: 1
   knockback: 0
   baseDamage: 35
-  shotsPerSecond: 1.5
+  shotsPerSecond: 3
   basePierce: 0
-  baseSalvoCount: 1
+  baseSalvoCount: 2
   baseCritChance: 0
   baseCritMult: 1.5
   steps:

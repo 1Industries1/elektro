@@ -525,8 +525,8 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7018259160673714555}
   serializedVersion: 5
-  m_Mass: 25
-  m_LinearDamping: 0
+  m_Mass: 100
+  m_LinearDamping: 25
   m_AngularDamping: 0
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
@@ -537,7 +537,7 @@ Rigidbody:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_ImplicitCom: 0
+  m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
@@ -662,9 +662,6 @@ MonoBehaviour:
   dashDuration: 1.5
   dashCooldown: 3
   dashTelegraphFx: {fileID: 0}
-  cannonPivot: {fileID: 8859112732521408619}
-  pitchSpeed: 12
-  pitchLimits: {x: -10, y: 25}
   targetHeightOffset: 0.9
   bulletPrefab: {fileID: 4211810131274587892, guid: 17930cff67ff0f7499ef2ede1b009de4, type: 3}
   bulletSpawn: {fileID: 1092511943301943110}
