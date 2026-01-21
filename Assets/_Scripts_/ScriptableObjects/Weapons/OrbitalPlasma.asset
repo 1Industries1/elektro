@@ -15,7 +15,9 @@ MonoBehaviour:
   id: orbital
   displayName: Orbital Plasma
   tags: 256
-  uiIcon: {fileID: 21300000, guid: e4ead233617350f49a80e58079e69e0a, type: 3}
+  slotKind: 1
+  unlockCost: 150
+  uiIcon: {fileID: -1213798843, guid: 30e19b5133fe3a446b9ce039b9fea3af, type: 3}
   bulletPrefab: {fileID: 0}
   projectileSpeed: 15
   rangeMeters: 12

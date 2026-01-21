@@ -87,6 +87,7 @@ public class PlayerWeapons : NetworkBehaviour
     private void OnOrbitalLevelChanged(int _, int __)   => Rebuild();
     private void OnBlackHoleLevelChanged(int _, int __) => Rebuild();
 
+
     public override void OnNetworkSpawn()
     {
         cannonLevel.OnValueChanged    += OnCannonLevelChanged;
@@ -98,14 +99,22 @@ public class PlayerWeapons : NetworkBehaviour
 
         if (IsServer)
         {
-            // Mit welcher Waffe gestartet wird
-            cannonLevel.Value    = 1;
-            blasterLevel.Value   = 0;
-            grenadeLevel.Value   = 0;   
-            lightningLevel.Value = 1;   // passiv
-            orbitalLevel.Value   = 0;   // passiv
-            blackHoleLevel.Value = 0;   // passiv
+            // Default: nichts equipped bis Loadout kommt
+            cannonLevel.Value = 0;
+            blasterLevel.Value = 0;
+            grenadeLevel.Value = 0;
+            lightningLevel.Value = 0;
+            orbitalLevel.Value = 0;
+            blackHoleLevel.Value = 0;
         }
+
+        // Owner sendet Loadout an Server (wichtig für Multiplayer)
+        if (IsOwner)
+        {
+            var d = MetaProgression.I.Data;
+            SendLoadoutServerRpc(d.active1, d.active2, d.passive1, d.passive2);
+        }
+
         Rebuild();
     }
 
@@ -291,12 +300,58 @@ public class PlayerWeapons : NetworkBehaviour
         return did;
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void RequestLevelUpFromChestServerRpc(ServerRpcParams _ = default)
+
+    [ServerRpc]
+    private void SendLoadoutServerRpc(string a1, string a2, string p1, string p2, ServerRpcParams rpcParams = default)
     {
-        WeaponDefinition _dummy;
-        Server_TryLevelUpRandomWeapon(out _dummy);
+        // Sicherheit: nur Owner darf sein Loadout setzen
+        if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
+
+        // Alle Waffen aus
+        cannonLevel.Value = 0;
+        blasterLevel.Value = 0;
+        grenadeLevel.Value = 0;
+        lightningLevel.Value = 0;
+        orbitalLevel.Value = 0;
+        blackHoleLevel.Value = 0;
+
+        // Apply Active Slots (A1/A2)
+        ApplyIdAsEquipped(a1, isActiveSlot: true);
+        ApplyIdAsEquipped(a2, isActiveSlot: true);
+
+        // Apply Passive Slots (P1/P2)
+        ApplyIdAsEquipped(p1, isActiveSlot: false);
+        ApplyIdAsEquipped(p2, isActiveSlot: false);
+
+        // Fallback: wenn gar keine Active gewählt -> gib eine Default-Active
+        if (cannonLevel.Value == 0 && blasterLevel.Value == 0 && grenadeLevel.Value == 0)
+        {
+            if (cannonDef != null) cannonLevel.Value = 1;
+        }
     }
+
+
+    private void ApplyIdAsEquipped(string weaponId, bool isActiveSlot)
+    {
+        if (string.IsNullOrEmpty(weaponId)) return;
+
+        // Mapping: deine 6 Felder sind de-facto dein “Katalog”
+        // Active-Kandidaten: cannon/blaster/grenade
+        // Passive-Kandidaten: lightning/orbital/blackHole
+        if (isActiveSlot)
+        {
+            if (cannonDef != null && cannonDef.id == weaponId) cannonLevel.Value = 1;
+            else if (blasterDef != null && blasterDef.id == weaponId) blasterLevel.Value = 1;
+            else if (grenadeDef != null && grenadeDef.id == weaponId) grenadeLevel.Value = 1;
+        }
+        else
+        {
+            if (lightningDef != null && lightningDef.id == weaponId) lightningLevel.Value = 1;
+            else if (orbitalDef != null && orbitalDef.id == weaponId) orbitalLevel.Value = 1;
+            else if (blackHoleDef != null && blackHoleDef.id == weaponId) blackHoleLevel.Value = 1;
+        }
+    }
+
 
     [ClientRpc]
     private void OwnerNotifyUpgradeClientRpc(string weaponId, ClientRpcParams _ = default)

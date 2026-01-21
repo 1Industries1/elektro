@@ -110,15 +110,41 @@ public class PlayerHealth : NetworkBehaviour
 
     private void Die()
     {
-        Debug.Log($"[Server] Player {OwnerClientId} died.");
+        //Debug.Log($"[Server] Player {OwnerClientId} died.");
         // TODO: Respawn / Disable input / Screen fade
         DiedClientRpc();
+    }
+
+    [ServerRpc]
+    public void RequestRespawnServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
+
+        hp.Value = maxHP;
+        lastHitTime = -999f;
+
+        // Optional: an Spawnpunkt setzen
+        // transform.position = ...
+
+        RespawnedClientRpc();
+    }
+
+    [ClientRpc]
+    private void RespawnedClientRpc()
+    {
+        if (!IsOwner) return;
+
+        // HUD sofort korrekt
+        PlayerHUD.Instance?.SetHealth(GetHP(), GetMaxHP());
+
+        // GameOver UI ggf. weg
+        // (falls du es nur über Button schließt, ist das optional)
     }
 
     // ===== UI (Owner) =====
     private void OnHpChangedOwner(float oldValue, float newValue)
     {
-        PlayerHUD.Instance?.SetHealth(newValue, maxHP); // Implementiere diese HUD-Methode
+        PlayerHUD.Instance?.SetHealth(newValue, maxHP);
     }
 
     [ClientRpc] private void HitClientRpc(float dmg, float cur, float max)

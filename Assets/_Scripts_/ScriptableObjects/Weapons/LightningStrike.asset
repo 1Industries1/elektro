@@ -15,6 +15,8 @@ MonoBehaviour:
   id: lightning
   displayName: Lightning
   tags: 68
+  slotKind: 1
+  unlockCost: 50
   uiIcon: {fileID: -930582890, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: 0}
   projectileSpeed: 0

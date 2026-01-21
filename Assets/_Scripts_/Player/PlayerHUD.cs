@@ -2,24 +2,25 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using Unity.Netcode;
+using UnityEngine.SceneManagement;
+
 
 public class PlayerHUD : MonoBehaviour
 {
     public static PlayerHUD Instance { get; private set; }
 
-    [Header("Health UI (reuses former Battery refs)")]
-    [SerializeField] private Slider batterySlider;          // now used for HP
-    [SerializeField] private TextMeshProUGUI batteryText;   // now used for HP text
-
-    [Header("Stamina UI")]
+    [Header("UI")]
+    [SerializeField] private Slider hpSlider;
+    [SerializeField] private TextMeshProUGUI hpText;
     [SerializeField] private Slider staminaSlider;
     [SerializeField] private TextMeshProUGUI staminaText;
-
     [SerializeField] private Slider xpSlider;
     [SerializeField] private TextMeshProUGUI xpText;
 
+    [Header("Game Over UI")]
+    [SerializeField] private GameObject gameOverPanel;
 
-    // =================== GOLD OVERLAY ===================
     [Header("Gold Overlay")]
     [SerializeField] private TextMeshProUGUI goldText;         // "Gold: 123"
     [SerializeField] private TextMeshProUGUI goldPopupText;    // "+5 Gold"
@@ -77,6 +78,8 @@ public class PlayerHUD : MonoBehaviour
         if (goldPopupText) goldPopupText.gameObject.SetActive(false);
         if (goldPopupGroup) goldPopupGroup.alpha = 0f;
         else if (goldPopupText) goldPopupText.alpha = 0f;
+
+        if (gameOverPanel) gameOverPanel.SetActive(false);
     }
 
     private void OnEnable()
@@ -111,17 +114,17 @@ public class PlayerHUD : MonoBehaviour
         hp = Mathf.Max(0f, hp);
         max = Mathf.Max(1f, max);
 
-        if (batterySlider)
+        if (hpSlider)
         {
-            batterySlider.minValue = 0f;
-            batterySlider.maxValue = max;
-            batterySlider.value = hp;
+            hpSlider.minValue = 0f;
+            hpSlider.maxValue = max;
+            hpSlider.value = hp;
         }
 
-        if (batteryText)
+        if (hpText)
         {
             // Nur HP anzeigen (ohne Prozent / Status)
-            batteryText.text = $"{hp:0}/{max:0} HP";
+            hpText.text = $"{hp:0}/{max:0} HP";
         }
     }
 
@@ -236,15 +239,78 @@ public class PlayerHUD : MonoBehaviour
 
     public void OnLocalPlayerDied()
     {
-        // Optional: zeige „DEFEATED“, graue UI, etc.
-        if (batteryText)
+        // dein bestehendes Feedback
+        if (hpText)
         {
-            batteryText.text = "<size=120%><b>0%</b></size><alpha=#AA>DEFEATED\n<size=80%>0/??? HP</size>";
-            batteryText.color = new Color(0.8f, 0.1f, 0.1f);
+            hpText.text = "<size=120%><b>DEFEATED</b></size>\n<size=80%>0 HP</size>";
+            hpText.color = new Color(0.8f, 0.1f, 0.1f);
         }
-        // Kleiner screen flash
         if (damageFlash) StartCoroutine(Flash(damageFlash, flashDuration * 2f, flashCurve));
+
+        // GameOver UI
+        if (gameOverPanel) gameOverPanel.SetActive(true);
+
+        // Cursor frei (optional)
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        // WICHTIG: Input/Movement stoppen
+        StopLocalPlayerInput();
     }
+
+    private void StopLocalPlayerInput()
+    {
+        if (!NetworkManager.Singleton) return;
+
+        var localObj = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+        if (!localObj) return;
+
+        var move = localObj.GetComponent<PlayerMovement>();
+        if (move)
+        {
+            move.SetInputEnabled(false);     // lokal kein Input mehr senden
+            move.ClearInputServerRpc();      // serverseitig Input auf 0 setzen
+        }
+    }
+
+    private void EnableLocalPlayerInput()
+    {
+        if (!NetworkManager.Singleton) return;
+
+        var localObj = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+        if (!localObj) return;
+
+        var move = localObj.GetComponent<PlayerMovement>();
+        if (move) move.SetInputEnabled(true);
+    }
+
+    // Button: Respawn
+    public void OnRespawnClicked()
+    {
+        if (!NetworkManager.Singleton) return;
+
+        var localObj = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+        if (!localObj) return;
+
+        var health = localObj.GetComponent<PlayerHealth>();
+        if (health) health.RequestRespawnServerRpc();
+
+        if (gameOverPanel) gameOverPanel.SetActive(false);
+
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        EnableLocalPlayerInput();
+    }
+
+    // Button: Main Menu
+    public void OnMainMenuClicked()
+    {
+        if (NetworkManager.Singleton) NetworkManager.Singleton.Shutdown();
+        SceneManager.LoadScene("HUB");
+    }
+
+
 
     // =================== INTERNAL ===================
 

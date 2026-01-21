@@ -1,6 +1,12 @@
 using Unity.Netcode;
 using UnityEngine;
 
+public enum WeaponSlotKind 
+{ 
+    Active, 
+    Passive 
+}
+
 public enum StepType
 {
     AddDamagePct,
@@ -30,6 +36,8 @@ public class WeaponDefinition : ScriptableObject {
     public string id;
     public string displayName;
     public WeaponTag tags;
+    public WeaponSlotKind slotKind = WeaponSlotKind.Active;
+    public int unlockCost = 50;
 
     [Header("UI")]
     public Sprite uiIcon; // Icon, das im Kisten-UI angezeigt wird

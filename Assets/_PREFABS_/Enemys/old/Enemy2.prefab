@@ -58,6 +58,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -79,6 +84,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -142,6 +148,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -163,6 +174,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -213,7 +225,6 @@ GameObject:
   - component: {fileID: 7481419332955824968}
   - component: {fileID: 576031000130399737}
   - component: {fileID: 9113270511410517542}
-  - component: {fileID: 5615020027686421043}
   - component: {fileID: 5580531534147634881}
   - component: {fileID: 6815898703550189494}
   - component: {fileID: 9223212118158675686}
@@ -251,10 +262,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7018259160673714555}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 50
-  m_Drag: 0
-  m_AngularDrag: 0
+  m_LinearDamping: 0
+  m_AngularDamping: 0
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -306,6 +317,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a3650060471c744c938951dc97d8c15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  targetRefreshRate: 0.25
 --- !u!114 &7481419332955824968
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -318,7 +330,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 1542732383
+  GlobalObjectIdHash: 2371608274
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -327,6 +339,8 @@ MonoBehaviour:
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!114 &576031000130399737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -345,8 +359,10 @@ MonoBehaviour:
   minMoveSpeed: 7
   maxMoveSpeed: 10
   rotationSpeed: 4
-  proceduralDestroyScript: {fileID: 5615020027686421043}
+  terrainStickYOffset: 0.05
+  maxTerrainFallDistance: 5
   baseHealth: 3
+  dmgNums: {fileID: 0}
 --- !u!114 &9113270511410517542
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -365,24 +381,6 @@ MonoBehaviour:
   shootingRange: 200
   inaccuracyAngle: 7
   shootSound: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
---- !u!114 &5615020027686421043
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7018259160673714555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b82036b6c9898fa459a1fdc2caa37b2b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  fragmentPrefab: {fileID: 3674921702711860036, guid: 29b6c11da7bde6047b271a0942420f76, type: 3}
-  numberOfFragments: 1
-  destructionRadius: 2
-  explosionForce: 50
-  destructionDuration: 0.15
-  destructionEffect: {fileID: 0}
 --- !u!114 &5580531534147634881
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -412,6 +410,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hitEffectPrefab: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
   deathEffectPrefab: {fileID: 6396558596094104492, guid: a0783f2030ad1c7419cad37adf854bd5, type: 3}
+  hitSound: {fileID: 0}
+  deathSound: {fileID: 0}
+  hitVolume: 1
+  deathVolume: 1
 --- !u!82 &9223212118158675686
 AudioSource:
   m_ObjectHideFlags: 0
@@ -422,7 +424,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 0.03
   m_Pitch: 1
@@ -518,7 +521,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 9ea0e51bdc252384e8cdd476387c9ca6, type: 3}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 9ea0e51bdc252384e8cdd476387c9ca6, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 0.214
   m_Pitch: 1

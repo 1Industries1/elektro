@@ -102,6 +102,11 @@ public class PlayerMovement : NetworkBehaviour
     private SphereCollider sc;
     private PlayerSlowReceiver slowReceiver;
     private float baseMass;
+    private bool inputEnabled = true;
+
+
+    public void SetInputEnabled(bool enabled) => inputEnabled = enabled;
+
 
     // input (server)
     private Vector2 srvMoveInput;        // world-space xz
@@ -192,6 +197,7 @@ public class PlayerMovement : NetworkBehaviour
     private void Update()
     {
         if (!IsOwner) return;
+        if (!inputEnabled) return;
 
         // ----- Move input (camera-relative -> world) -----
         float x = Input.GetAxisRaw("Horizontal");
@@ -639,6 +645,20 @@ public class PlayerMovement : NetworkBehaviour
     // =========================
     // RPCs (minimal)
     // =========================
+    [ServerRpc]
+    public void ClearInputServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
+
+        srvMoveInput = Vector2.zero;
+        srvRollInputHeld = false;
+        srvRollHeld = false;
+
+        // optional: dash abbrechen
+        isDashing = false;
+    }
+
+
     [ServerRpc]
     private void SetMoveInputServerRpc(Vector2 input, ServerRpcParams rpcParams = default)
     {

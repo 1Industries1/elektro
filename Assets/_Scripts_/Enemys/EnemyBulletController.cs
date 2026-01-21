@@ -87,6 +87,7 @@ public class EnemyBulletController : NetworkBehaviour
             Destroy(trail.gameObject, trail.time);
         }
 
-        NetworkObject.Despawn(true);
+        // Kugeln bleiben?!
+        //NetworkObject.Despawn(true);
     }
 }
