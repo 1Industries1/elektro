@@ -1158,6 +1158,10 @@ MonoBehaviour:
   minMoveSpeed: 8
   maxMoveSpeed: 25
   rotationSpeed: 5
+  groundFollowSpeed: 18
+  maxStepUpPerTick: 0.08
+  maxStepDownPerTick: 0.25
+  groundDeadZone: 0.005
   terrainStickYOffset: 0.1
   maxTerrainSnapDown: 2
   downhillCheckDistance: 1.5
@@ -1243,8 +1247,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98b35dcae859a7d46a3054790314da7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hitEffectPrefab: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
-  deathEffectPrefab: {fileID: 6396558596094104492, guid: a0783f2030ad1c7419cad37adf854bd5, type: 3}
+  hitEffectPrefab: {fileID: 4830294202082529915, guid: 04e8b0b6ae02ffb419cc12f41626e4e5, type: 3}
+  deathEffectPrefab: {fileID: 4830294202082529915, guid: fb60c97a0a21848469c3e3efa202a2dc, type: 3}
   hitSound: {fileID: 8300000, guid: 2072ec475b894694cb1d7923066f330c, type: 3}
   deathSound: {fileID: 8300000, guid: 2072ec475b894694cb1d7923066f330c, type: 3}
   hitVolume: 1

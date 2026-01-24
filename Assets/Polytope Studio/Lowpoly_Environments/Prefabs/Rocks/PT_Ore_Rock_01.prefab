@@ -269,6 +269,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   retargetHz: 6
+  leaveRadiusMult: 1.2
   playerTag: Player
   interactKey: 101
   promptUI: {fileID: 0}

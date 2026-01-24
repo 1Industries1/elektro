@@ -306,7 +306,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 4071732557
+  GlobalObjectIdHash: 3791946532
   InScenePlacedSourceGlobalObjectIdHash: 3791946532
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1

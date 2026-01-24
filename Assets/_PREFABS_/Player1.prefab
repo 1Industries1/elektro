@@ -2878,7 +2878,7 @@ MonoBehaviour:
   dashEndHorizontalDamping: 0.65
   keepVerticalVelocityOnDash: 1
   maxStamina: 160
-  staminaRegenPerSecond: 10
+  staminaRegenPerSecond: 100
   dashStaminaCost: 0
   groundLayer:
     serializedVersion: 2

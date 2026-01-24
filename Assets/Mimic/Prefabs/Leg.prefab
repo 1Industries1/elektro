@@ -79,6 +79,7 @@ MonoBehaviour:
   minOscillationSpeed: 20
   maxOscillationSpeed: 100
   myColor: {r: 0, g: 0, b: 0, a: 0}
+  tickDivisor: 3
 --- !u!120 &6164918350687002688
 LineRenderer:
   serializedVersion: 2
@@ -130,7 +131,7 @@ LineRenderer:
   m_Positions: []
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.4
+    widthMultiplier: 1.5
     widthCurve:
       serializedVersion: 2
       m_Curve:

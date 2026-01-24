@@ -40,7 +40,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 2.7918997, y: 1, z: 53.617325}
-  m_LocalScale: {x: 3, y: 3, z: 3}
+  m_LocalScale: {x: 12, y: 12, z: 12}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 5411571791989783722}
@@ -146,7 +146,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 512
-  velocity: {x: -0.45625123, y: 0, z: -0.52743477}
+  velocity: {x: -0.21276389, y: 0, z: 0.5792613}
 --- !u!114 &8357887114018345148
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -235,6 +235,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hitEffectPrefab: {fileID: 6396558596094104492, guid: 5063b0647a2893d46a7bef284fb184c8, type: 3}
   deathEffectPrefab: {fileID: 6396558596094104492, guid: a0783f2030ad1c7419cad37adf854bd5, type: 3}
+  hitSound: {fileID: 0}
+  deathSound: {fileID: 0}
+  hitVolume: 1
+  deathVolume: 1
 --- !u!114 &3756944905186256086
 MonoBehaviour:
   m_ObjectHideFlags: 0

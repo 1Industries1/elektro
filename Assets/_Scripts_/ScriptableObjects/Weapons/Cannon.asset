@@ -15,9 +15,11 @@ MonoBehaviour:
   id: cannon
   displayName: Cannon
   tags: 97
+  slotKind: 0
+  unlockCost: 50
   uiIcon: {fileID: -1308886238, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
   bulletPrefab: {fileID: -928037741104161360, guid: 5155f2aa90e192f46b39019e462048db, type: 3}
-  projectileSpeed: 420
+  projectileSpeed: 120
   rangeMeters: 65
   projectileSize: 1
   knockback: 0
