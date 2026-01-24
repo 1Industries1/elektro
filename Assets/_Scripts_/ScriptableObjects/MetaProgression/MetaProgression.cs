@@ -9,6 +9,7 @@ public class MetaProgression : MonoBehaviour
 
     [Header("Config")]
     public WeaponRegistry registry;
+    public AbilityRegistry abilityRegistry;
     public int startCurrency = 0;
 
     public MetaData Data { get; private set; }
@@ -19,9 +20,12 @@ public class MetaProgression : MonoBehaviour
     public class MetaData
     {
         public int metaCurrency;
+
         public List<string> unlockedWeaponIds = new();
-        public string active1, active2, passive1, passive2; // Loadout
-        // metaUpgrades später: Dictionary<string,int> (Unity JsonUtility kann kein Dictionary direkt)
+        public List<string> unlockedAbilityIds = new();
+
+        public string active1, active2, passive1, passive2; // Waffen
+        public string ability1, ability2;                   // Abilities
     }
 
     private void Awake()
@@ -47,6 +51,7 @@ public class MetaProgression : MonoBehaviour
 
         // Safety: entferne IDs die es nicht mehr gibt
         Data.unlockedWeaponIds.RemoveAll(id => registry && !registry.Has(id));
+        Data.unlockedAbilityIds.RemoveAll(id => abilityRegistry && !abilityRegistry.Has(id));
     }
 
     public void Save()
@@ -56,6 +61,7 @@ public class MetaProgression : MonoBehaviour
     }
 
     public bool IsUnlocked(string weaponId) => Data.unlockedWeaponIds.Contains(weaponId);
+    public bool IsAbilityUnlocked(string abilityId) => Data.unlockedAbilityIds.Contains(abilityId);
 
     public void UnlockWeapon(string weaponId)
     {
@@ -66,9 +72,19 @@ public class MetaProgression : MonoBehaviour
         }
     }
 
-    public void SetLoadout(string a1, string a2, string p1, string p2)
+    public void UnlockAbility(string abilityId)
+    {
+        if (!IsAbilityUnlocked(abilityId))
+        {
+            Data.unlockedAbilityIds.Add(abilityId);
+            Save();
+        }
+    }
+
+    public void SetLoadout(string a1, string a2, string p1, string p2, string b1, string b2)
     {
         Data.active1 = a1; Data.active2 = a2; Data.passive1 = p1; Data.passive2 = p2;
+        Data.ability1 = b1; Data.ability2 = b2;
         Save();
     }
 }

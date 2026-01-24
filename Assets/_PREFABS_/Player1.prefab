@@ -2681,6 +2681,8 @@ GameObject:
   - component: {fileID: 435328487496650130}
   - component: {fileID: 7025646431992723550}
   - component: {fileID: 8157122480171432841}
+  - component: {fileID: 9009489997088930121}
+  - component: {fileID: 7987016282649571511}
   - component: {fileID: 4238535403307873137}
   - component: {fileID: 4061243089856759362}
   - component: {fileID: 7755142805804514707}
@@ -2972,6 +2974,36 @@ MonoBehaviour:
     m_InternalValue: 0
   blackHoleLevel:
     m_InternalValue: 0
+--- !u!114 &9009489997088930121
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b113e61507edd7c4c9bb7ef9136e04ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAbilities
+  abilityRegistry: {fileID: 11400000, guid: 3ec5b9abe4f6ee349a22c5df82bbbac6, type: 2}
+  overclock: {fileID: 4061243089856759362}
+  abilityReadyAt0:
+    m_InternalValue: 0
+  abilityReadyAt1:
+    m_InternalValue: 0
+--- !u!114 &7987016282649571511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9177465487921168118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a7209bd94a7ef24caba06bf924e04aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
 --- !u!114 &4238535403307873137
 MonoBehaviour:
   m_ObjectHideFlags: 0

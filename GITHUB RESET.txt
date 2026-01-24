@@ -1,0 +1,33 @@
+# im Projektordner
+git fetch --all
+
+# optional: aktuellen Stand als Backup-Branch sichern
+git branch backup-before-reset
+
+# auf den Commit zurücksetzen
+git reset --hard f7fcdfb
+
+Wenn du außerdem ungetrackte Dateien (z.B. neu erzeugte Unity-Artefakte) loswerden willst:
+
+git clean -fd
+
+
+
+
+
+
+# 1) tracked Änderungen weg
+git restore .
+
+# 2) untracked preview (zeigt was gelöscht würde)
+git clean -nd
+
+# 3) untracked wirklich löschen
+git clean -fd
+
+
+
+
+
+
+git status -> clean

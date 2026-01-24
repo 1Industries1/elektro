@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 
-public enum LoadoutSlot { A1, A2, P1, P2 }
+public enum LoadoutSlot { A1, A2, P1, P2, B1, B2 }
 
 public class LoadoutSlotUI : MonoBehaviour
 {
@@ -24,7 +24,13 @@ public class LoadoutSlotUI : MonoBehaviour
 
         if (!button) button = GetComponent<Button>();
         button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(() => hub.TryEquipSelectedTo(slot));
+        button.onClick.AddListener(() =>
+        {
+            if (slot == LoadoutSlot.B1 || slot == LoadoutSlot.B2)
+                hub.TryEquipSelectedAbilityTo(slot);
+            else
+                hub.TryEquipSelectedTo(slot);
+        });
     }
 
     public void SetEmpty()
@@ -43,6 +49,17 @@ public class LoadoutSlotUI : MonoBehaviour
         }
         if (label) label.text = $"{slot}: {def.displayName}";
     }
+
+    public void SetAbility(AbilityDefinition def)
+    {
+        if (icon)
+        {
+            icon.sprite = def.uiIcon;
+            icon.enabled = def.uiIcon != null;
+        }
+        if (label) label.text = $"{slot}: {def.displayName}";
+    }
+
 
     public void OnRightClick()
     {
