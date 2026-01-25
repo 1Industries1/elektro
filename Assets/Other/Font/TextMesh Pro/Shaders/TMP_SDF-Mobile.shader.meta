@@ -7,3 +7,10 @@ ShaderImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 285285
+  packageName: Fantasy RPG GUI
+  packageVersion: 
+  assetPath: Assets/Other/Font/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader
+  uploadId: 0

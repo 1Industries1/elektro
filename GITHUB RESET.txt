@@ -5,7 +5,7 @@ git fetch --all
 git branch backup-before-reset
 
 # auf den Commit zurücksetzen
-git reset --hard f7fcdfb
+git reset --hard 5749ddf
 
 Wenn du außerdem ungetrackte Dateien (z.B. neu erzeugte Unity-Artefakte) loswerden willst:
 
