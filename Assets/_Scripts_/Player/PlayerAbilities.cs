@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -11,6 +12,14 @@ public class PlayerAbilities : NetworkBehaviour
     // 2 Slots: readyAt als ServerTime (double), 0 = bereit
     public NetworkVariable<double> abilityReadyAt0 = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<double> abilityReadyAt1 = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    // NEU: wann der Cooldown gestartet hat (ServerTime)
+    public NetworkVariable<double> abilityCdStartAt0 = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<double> abilityCdStartAt1 = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    // NEU: wie lang dieser Cooldown insgesamt ist (für Fill)
+    public NetworkVariable<float> abilityCdDuration0 = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<float> abilityCdDuration1 = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     private string _equippedId0;
     private string _equippedId1;
@@ -26,8 +35,9 @@ public class PlayerAbilities : NetworkBehaviour
 
         if (IsServer)
         {
-            abilityReadyAt0.Value = 0;
-            abilityReadyAt1.Value = 0;
+            abilityReadyAt0.Value = abilityReadyAt1.Value = 0;
+            abilityCdStartAt0.Value = abilityCdStartAt1.Value = 0;
+            abilityCdDuration0.Value = abilityCdDuration1.Value = 0;
         }
 
         if (IsOwner)
@@ -61,43 +71,61 @@ public class PlayerAbilities : NetworkBehaviour
         return def.id;
     }
 
+    public void GetCooldownInfo(int slot, out float remaining, out float total)
+    {
+        double now = NetworkManager ? NetworkManager.ServerTime.Time : Time.timeAsDouble;
+
+        if (slot == 0)
+        {
+            total = Mathf.Max(0.01f, abilityCdDuration0.Value);
+            remaining = Mathf.Max(0f, (float)(abilityReadyAt0.Value - now));
+            // Wenn nicht im Cooldown: total=0 macht UI sauber "aus"
+            if (remaining <= 0.0001f) total = 0f;
+        }
+        else
+        {
+            total = Mathf.Max(0.01f, abilityCdDuration1.Value);
+            remaining = Mathf.Max(0f, (float)(abilityReadyAt1.Value - now));
+            if (remaining <= 0.0001f) total = 0f;
+        }
+    }
+
     // Client fragt: Slot benutzen
     [ServerRpc]
     public void RequestUseAbilityServerRpc(int slot, ServerRpcParams rpcParams = default)
     {
         if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
+        if (slot != 0 && slot != 1) return;
 
         var now = NetworkManager.ServerTime.Time;
 
-        string abilityId = (slot == 0) ? _equippedId0 : (slot == 1) ? _equippedId1 : null;
+        string abilityId = (slot == 0) ? _equippedId0 : _equippedId1;
         if (string.IsNullOrEmpty(abilityId)) return;
 
         var def = abilityRegistry.Get(abilityId);
         if (def == null || def.overclockEffect == null) return;
 
+        float total = Mathf.Max(0.01f, def.cooldownSeconds);
+
         if (slot == 0)
         {
             if (abilityReadyAt0.Value > now) return;
-            abilityReadyAt0.Value = now + Mathf.Max(0f, def.cooldownSeconds);
+            abilityCdStartAt0.Value = now;
+            abilityCdDuration0.Value = total;
+            abilityReadyAt0.Value = now + total;
         }
-        else if (slot == 1)
+        else
         {
             if (abilityReadyAt1.Value > now) return;
-            abilityReadyAt1.Value = now + Mathf.Max(0f, def.cooldownSeconds);
+            abilityCdStartAt1.Value = now;
+            abilityCdDuration1.Value = total;
+            abilityReadyAt1.Value = now + total;
         }
-        else return;
 
-        // Effekt auslösen (serverautoritativer Overclock)
         if (overclock != null)
             overclock.ActivateInstant_Server(def.overclockEffect);
-
-        // Optional: Owner UI/SFX ping
-        var target = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
-        };
-        AbilityUsedClientRpc(slot, (float)def.cooldownSeconds, target);
     }
+
 
 
     [ClientRpc]

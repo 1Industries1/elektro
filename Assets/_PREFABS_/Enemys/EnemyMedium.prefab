@@ -24,12 +24,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410500663029465300}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.211, y: 1.244, z: 0.548}
-  m_LocalScale: {x: 0.33333334, y: 0.33333334, z: 0.33333334}
+  m_LocalRotation: {x: -0, y: -0, z: 0.4393513, w: 0.8983153}
+  m_LocalPosition: {x: 0.8286, y: -0.0459, z: 0.2398}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 138148163585953607}
+  m_Father: {fileID: 140832763505619113}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7018259160673714555
 GameObject:
@@ -225,12 +225,23 @@ MonoBehaviour:
   dashCooldown: 10
   dashTelegraphFx: {fileID: 0}
   targetHeightOffset: 0.9
+  animator: {fileID: 47682796083030593}
+  moveXParam: moveX
+  moveYParam: moveY
+  speedParam: speed
+  orbitAngularSpeed: 90
+  orbitRadiusJitter: 1.2
+  orbitJitterSpeed: 0.6
+  strafeAccel: 18
+  obstacleAvoidStrength: 8
   bulletPrefab: {fileID: 4211810131274587892, guid: 083d75882754f8741ad9210a4fb08cfb, type: 3}
+  muzzleVfxPrefab: {fileID: 8700258344733543052, guid: a1f8d8aa14428af42809cddeac1f6381, type: 3}
+  muzzleVfxLifetime: 0.7
   bulletSpawn: {fileID: 5993175376673042654}
   shootRange: 80
-  burstCount: 2
-  burstInterval: 0.75
-  inaccuracyAngle: 2
+  burstCount: 5
+  burstInterval: 0.5
+  inaccuracyAngle: 0
   audioSource: {fileID: 9223212118158675686}
   shootSfx: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
   baseHealth: 200
@@ -647,7 +658,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 4555062712112460, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 4140129689430690, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5993175376673042654}
     m_AddedComponents:
@@ -663,6 +674,11 @@ Animator:
 --- !u!4 &138148163585953607 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4555062712112460, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
+  m_PrefabInstance: {fileID: 142676803361397259}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &140832763505619113 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4140129689430690, guid: c266c61b42ce56a4ca7e9190ef1209e3, type: 3}
   m_PrefabInstance: {fileID: 142676803361397259}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &143527731073565455 stripped

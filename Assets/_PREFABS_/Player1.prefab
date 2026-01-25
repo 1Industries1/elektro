@@ -2992,6 +2992,14 @@ MonoBehaviour:
     m_InternalValue: 0
   abilityReadyAt1:
     m_InternalValue: 0
+  abilityCdStartAt0:
+    m_InternalValue: 0
+  abilityCdStartAt1:
+    m_InternalValue: 0
+  abilityCdDuration0:
+    m_InternalValue: 0
+  abilityCdDuration1:
+    m_InternalValue: 0
 --- !u!114 &7987016282649571511
 MonoBehaviour:
   m_ObjectHideFlags: 0

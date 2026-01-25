@@ -12,12 +12,12 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
     private EnemyController controller;
     private PullReceiver pull;
     private EnemyLootDropper lootDropper;
-
     private bool isDead;
     private ulong lastHitByClientId;
-
     public event Action<IEnemy> OnEnemyDied;
     public ulong LastHitByClientId => lastHitByClientId;
+    private bool lastShootBool;
+
 
     [Header("GravityWell Pull")]
     [SerializeField] private float pullMaxSpeed = 10f;
@@ -44,8 +44,30 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
     [Header("Aiming")]
     [SerializeField] private float targetHeightOffset = 0.9f;
 
+    [Header("Animation")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private string moveXParam = "moveX";
+    [SerializeField] private string moveYParam = "moveY";
+    [SerializeField] private string speedParam = "speed";
+    private const string ANIM_IS_SHOOTING = "isShooting";
+    private Vector3 lastPos;
+
+
+    [Header("Strafe (Orbit)")]
+    [SerializeField] private float orbitAngularSpeed = 90f;   // Grad pro Sekunde
+    [SerializeField] private float orbitRadiusJitter = 1.2f;   // +/- Meter Variation
+    [SerializeField] private float orbitJitterSpeed = 0.6f;    // wie schnell Radius “atmet”
+    [SerializeField] private float strafeAccel = 18f;          // wie schnell er Richtung ändert
+    [SerializeField] private float obstacleAvoidStrength = 8f; // Ausweichstärke
+    private float orbitAngle;
+    private float orbitRadiusNoiseT;
+    private Vector3 strafeVel; // geglättete Bewegungsrichtung
+
+
     [Header("Shooting (Burst)")]
     [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private GameObject muzzleVfxPrefab;   // z.B. ParticleSystem Prefab
+    [SerializeField] private float muzzleVfxLifetime = 0.7f;
     [SerializeField] private Transform bulletSpawn; // NUR POSITION (Mündung)
     [SerializeField] private float shootRange = 25f;
     [SerializeField] private int burstCount = 3;
@@ -81,6 +103,9 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
         lootDropper = GetComponent<EnemyLootDropper>();
         dmgNums = GetComponent<EnemyDamageNumbers>();
 
+        if (animator == null)
+            animator = GetComponentInChildren<Animator>();
+
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
     }
 
@@ -98,6 +123,8 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
         }
 
         health.OnValueChanged += OnHealthChanged;
+
+        lastPos = transform.position;
     }
 
     public override void OnNetworkDespawn()
@@ -155,8 +182,7 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
                 break;
 
             case State.Strafe:
-                MaintainDistance(target, dt);
-                StrafeAround(target, dt);
+                OrbitStrafe(target, dt);
 
                 if (Time.time >= nextStrafeFlip)
                     FlipStrafeDir();
@@ -169,7 +195,7 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
                 break;
 
             case State.Burst:
-                MaintainDistance(target, dt * 0.2f);
+                OrbitStrafe(target, dt);
                 break;
 
             case State.Dashing:
@@ -182,6 +208,31 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
                 break;
         }
     }
+
+    void Update()
+    {
+        if (animator == null || !IsServer) return;
+
+        // 1. Berechne die Geschwindigkeit basierend auf der tatsächlichen Bewegung
+        Vector3 worldDelta = transform.position - lastPos;
+        lastPos = transform.position;
+
+        Vector3 worldVel = (Time.deltaTime > 0f) ? worldDelta / Time.deltaTime : Vector3.zero;
+        Vector3 localVel = transform.InverseTransformDirection(worldVel);
+
+        // 2. Parameter für den Base Layer (Laufen/Stehen)
+        float x = Mathf.Clamp(localVel.x / strafeSpeed, -1f, 1f);
+        float y = Mathf.Clamp(localVel.z / moveSpeed, -1f, 1f);
+        
+        // Wir nutzen eine kleine Dämpfung (0.1f), damit die Übergänge weich sind
+        animator.SetFloat(moveXParam, x, 0.1f, Time.deltaTime);
+        animator.SetFloat(moveYParam, y, 0.1f, Time.deltaTime);
+        
+        // Speed-Parameter steuert, ob wir in Idle oder Locomotion sind
+        float speedMagnitude = new Vector2(x, y).magnitude;
+        animator.SetFloat(speedParam, speedMagnitude, 0.1f, Time.deltaTime);
+    }
+
 
     private void RotateBodyTowards(Transform t, float dt)
     {
@@ -236,14 +287,83 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
         ApplyMove(Vector3.zero, dt);
     }
 
-    private void StrafeAround(Transform t, float dt)
+    private void OrbitStrafe(Transform t, float dt)
     {
-        Vector3 toTarget = (t.position - transform.position); toTarget.y = 0f;
-        if (toTarget.sqrMagnitude < 0.001f) { ApplyMove(Vector3.zero, dt); return; }
+        // Zielposition auf Bodenebene
+        Vector3 targetPos = t.position;
+        targetPos.y = rb.position.y;
 
-        Vector3 right = Vector3.Cross(Vector3.up, toTarget.normalized);
-        ApplyMove(right * strafeDir * strafeSpeed * dt, dt);
+        Vector3 toTarget = targetPos - rb.position;
+        toTarget.y = 0f;
+
+        if (toTarget.sqrMagnitude < 0.001f)
+        {
+            ApplyMove(Vector3.zero, dt);
+            return;
+        }
+
+        // 1) Orbit-Parameter fortschreiben
+        orbitAngle += orbitAngularSpeed * strafeDir * dt;
+
+        // 2) Radius “atmen” lassen (leichte Variation)
+        orbitRadiusNoiseT += dt * orbitJitterSpeed;
+        float radius = preferredDistance + (Mathf.PerlinNoise(orbitRadiusNoiseT, 0.123f) - 0.5f) * 2f * orbitRadiusJitter;
+
+        // 3) Wunschposition auf einem Kreis um das Ziel (Orbit)
+        Quaternion orbitRot = Quaternion.Euler(0f, orbitAngle, 0f);
+        Vector3 orbitOffset = orbitRot * Vector3.forward * radius;
+        Vector3 desiredPos = targetPos + orbitOffset;
+
+        // 4) Bewegung Richtung Wunschposition
+        Vector3 desiredDir = desiredPos - rb.position;
+        desiredDir.y = 0f;
+
+        Vector3 desiredMoveDir = desiredDir.normalized;
+
+        // 5) Distanz-Feder: wenn zu weit/zu nah, leicht nachregeln (ohne hartes “Zickzack”)
+        float currentDist = toTarget.magnitude;
+        float distError = currentDist - preferredDistance; // + zu weit, - zu nah
+
+        // sanfte Korrektur entlang toTarget
+        Vector3 distCorrection = toTarget.normalized * Mathf.Clamp(distError * 0.35f, -1f, 1f);
+
+        Vector3 rawDir = (desiredMoveDir + distCorrection).normalized;
+
+        // 6) Hindernis-Avoidance (sehr simpel, aber wirkt)
+        Vector3 avoid = ComputeAvoidance(rawDir, dt);
+        Vector3 finalDir = (rawDir + avoid).normalized;
+
+        // 7) Glätten (Acceleration): verhindert ruckelige Richtungswechsel
+        strafeVel = Vector3.MoveTowards(strafeVel, finalDir, strafeAccel * dt);
+
+        // 8) Schritt anwenden
+        float speed = strafeSpeed;
+
+        // Optional: beim Burst langsamer bewegen, wirkt taktischer
+        //if (state == State.Burst) speed *= 0.35f;
+
+        ApplyMove(strafeVel * speed * dt, dt);
     }
+
+    private Vector3 ComputeAvoidance(Vector3 moveDir, float dt)
+    {
+        // kurze SphereCast nach vorne, um an Wänden nicht hängen zu bleiben
+        float castDist = 1.2f;
+        float radius = 0.35f;
+
+        Vector3 origin = rb.position + Vector3.up * 0.6f;
+
+        if (Physics.SphereCast(origin, radius, moveDir, out RaycastHit hit, castDist, losMask, QueryTriggerInteraction.Ignore))
+        {
+            // weg von der Wandnormalen lenken
+            Vector3 away = Vector3.ProjectOnPlane(hit.normal, Vector3.up).normalized;
+            return away * (obstacleAvoidStrength * dt);
+        }
+
+        return Vector3.zero;
+    }
+
+
 
     private void FlipStrafeDir()
     {
@@ -274,6 +394,8 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
     private IEnumerator BurstRoutine()
     {
         isBursting = true;
+        SetShootingServer(true);
+
         int shots = Mathf.Max(1, burstCount);
 
         while (shots-- > 0 && target != null && !isDead)
@@ -281,6 +403,9 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
             FireOneShot();
             yield return new WaitForSeconds(burstInterval);
         }
+
+        // Shooting-Anim aus
+        SetShootingServer(false);
 
         recoverTimer = UnityEngine.Random.Range(0.15f, 0.5f);
         state = State.Recover;
@@ -324,9 +449,11 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
 
         if (audioSource != null && shootSfx != null)
             audioSource.PlayOneShot(shootSfx);
+
+        PlayMuzzleVfxClientRpc();
     }
 
-    // ---- Damage/Health/Die bleibt wie bei dir (hier nicht nochmal komplett ausgeschrieben) ----
+
     public void TakeDamage(float amount, ulong attackerId, Vector3 hitPoint)
     {
         if (!IsServer || isDead) return;
@@ -379,6 +506,16 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
         losMask = 0;               // "Nothing" -> Raycast immer frei
     }
 
+    private void SetShootingServer(bool value)
+    {
+        if (!IsServer || animator == null) return;
+
+        // Wir setzen den Bool. Da der Shooting-Layer auf "Override" steht,
+        // wird er die Walk-Animation am Oberkörper automatisch überlagern,
+        // solange 'isShooting' true ist.
+        animator.SetBool(ANIM_IS_SHOOTING, value);
+    }
+
 
     public float GetBaseHealth() => baseHealth;
 
@@ -386,4 +523,21 @@ public class EnemySkirmisher : NetworkBehaviour, IEnemy
     {
         if (IsServer) health.Value = newHealth;
     }
+
+    [ClientRpc]
+    private void PlayMuzzleVfxClientRpc()
+    {
+        if (muzzleVfxPrefab == null || bulletSpawn == null) return;
+
+        // VFX am Spawnpoint erzeugen
+        var go = Instantiate(muzzleVfxPrefab, bulletSpawn.position, bulletSpawn.rotation);
+
+        // Optional: an bulletSpawn hängen, damit es mit der Waffe mitläuft
+        go.transform.SetParent(bulletSpawn, worldPositionStays: true);
+
+        // Falls ParticleSystem: Lifetime automatisch (StopAction Destroy) ist ideal.
+        // Sonst hier sicherheitshalber zerstören:
+        Destroy(go, muzzleVfxLifetime);
+    }
+
 }

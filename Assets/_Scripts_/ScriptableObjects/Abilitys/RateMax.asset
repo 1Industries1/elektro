@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AbilityDefinition
   id: RateCap007
   displayName: RateMax
-  uiIcon: {fileID: 21300000, guid: 8705d6aaa8190904eb19845b733388be, type: 3}
+  uiIcon: {fileID: 21300000, guid: e55ab7313d9fb9446a31a4b9071167ec, type: 3}
   description: Rate Max 30s
   unlockCost: 5
-  cooldownSeconds: 75
+  cooldownSeconds: 60
   overclockEffect: {fileID: 11400000, guid: b8ace491655ca6c45be398927c388c30, type: 2}
