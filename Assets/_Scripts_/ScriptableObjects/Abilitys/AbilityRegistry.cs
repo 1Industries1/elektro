@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Game/Registry/AbilityRegistry")]
+[CreateAssetMenu(menuName = "Game/Abilities/AbilityRegistry")]
 public class AbilityRegistry : ScriptableObject
 {
     public List<AbilityDefinition> abilities = new();

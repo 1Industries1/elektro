@@ -21,7 +21,7 @@ MonoBehaviour:
   afterEffectDuration: 0
   mods:
   - stat: 0
-    mode: 2
-    value: 0.07
+    mode: 0
+    value: 0.5
   afterMods: []
   tacticalCharges: 1

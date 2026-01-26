@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &480265880110919027
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4078569634892765651}
+  m_Layer: 7
+  m_Name: ShieldSocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4078569634892765651
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 480265880110919027}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3963026483496299984}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &995979155220443206
 GameObject:
   m_ObjectHideFlags: 0
@@ -1267,6 +1298,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   bulletSpawnPoint: {fileID: 972887957733530469}
   weaponDef: {fileID: 11400000, guid: 89494c543718e894f9552a76859a58e1, type: 2}
+  overclocks: {fileID: 4061243089856759362}
   altBulletPrefab: {fileID: 1476586629750628589, guid: d940d4f0ac4a3ca46a9a99935586aef0, type: 3}
   fireRate: 1.5
   altFireRateJitterPct: 0
@@ -2541,6 +2573,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   grenadeDef: {fileID: 11400000, guid: 36439c519127b2947a6abc791d73de9d, type: 2}
+  overclocks: {fileID: 4061243089856759362}
   grenadePrefab: {fileID: -928037741104161360, guid: 58ecefc8e3fa15d46b2becc3d55f0ec0, type: 3}
   muzzle: {fileID: 8132406708268217447}
   fireRate: 2
@@ -2549,7 +2582,7 @@ MonoBehaviour:
   fireRateJitterPct: 0
   launchSpeed: 10
   maxElevationDeg: 25
-  inaccuracyAngle: 2
+  inaccuracyAngle: 1
   autoShootEnabled: 1
   minDotToShoot: 0.45
   retargetInterval: 0.3
@@ -2730,6 +2763,7 @@ Transform:
   - {fileID: 9082590373229321135}
   - {fileID: 6801341488815129918}
   - {fileID: 5557319696502346413}
+  - {fileID: 4078569634892765651}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &6937276174275915804
@@ -2829,7 +2863,7 @@ MonoBehaviour:
   airLateralGrip: 1.2
   rollSteerAccelMult: 0.65
   rollMassMultiplier: 1.6
-  rollSpeedMultiplier: 5
+  rollSpeedMultiplier: 4
   rollStaminaCostPerSecond: 10
   minStaminaToStartRoll: 10
   keepMomentumWhileRollAir: 1
@@ -2988,6 +3022,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAbilities
   abilityRegistry: {fileID: 11400000, guid: 3ec5b9abe4f6ee349a22c5df82bbbac6, type: 2}
   overclock: {fileID: 4061243089856759362}
+  shieldEarthPrefab: {fileID: 2809267867945384826, guid: 03308a6f777e7f84a9dacebb742d3018, type: 3}
+  shieldSocket: {fileID: 4078569634892765651}
+  shieldEarthDuration: 10
+  shieldActiveUntil:
+    m_InternalValue: 0
   abilityReadyAt0:
     m_InternalValue: 0
   abilityReadyAt1:

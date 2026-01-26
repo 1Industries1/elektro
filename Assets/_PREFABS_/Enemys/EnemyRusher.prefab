@@ -1150,8 +1150,8 @@ MonoBehaviour:
   lastHitByClientId: 0
   detectionRange: 9999999
   attackRange: 1
-  minMoveSpeed: 6
-  maxMoveSpeed: 25
+  minMoveSpeed: 8
+  maxMoveSpeed: 30
   rotationSpeed: 10
   terrainStickYOffset: 0.05
   maxTerrainFallDistance: 5

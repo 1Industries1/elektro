@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum AbilitySlotKind { Ability } // optional, falls du später mehr willst
+public enum AbilityEffectKind { Ability, Shield }
 
 [CreateAssetMenu(menuName = "Game/Abilities/AbilityDefinition")]
 public class AbilityDefinition : ScriptableObject
@@ -15,6 +15,13 @@ public class AbilityDefinition : ScriptableObject
     [Header("Gameplay")]
     public float cooldownSeconds = 20f;
 
-    // Effekt-Container: wir re-use OverclockRuntime!
+    [Header("Effect Kind")]
+    public AbilityEffectKind effectKind = AbilityEffectKind.Ability;
+
+    [Header("Overclock")]
     public OverclockDef overclockEffect;   // enthält z.B. Override 0.07 + duration
+
+    [Header("Shield")]
+    public GameObject shieldVfxPrefab;   // EarthShield Prefab
+    public float shieldDuration = 5f;    // wie lange aktiv
 }

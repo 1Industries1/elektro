@@ -17,7 +17,7 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 1bf9d51484748b44b8c6e0325a5fdc99, type: 3}
   description: "DamageBoost (Taktisch):\nmods: DamageMultiplier \xD7 2.5 (oder dein
     \u201EMax Damage\u201C)"
-  duration: 35
+  duration: 10
   afterEffectDuration: 0
   mods:
   - stat: 2

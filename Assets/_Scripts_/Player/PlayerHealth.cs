@@ -53,9 +53,36 @@ public class PlayerHealth : NetworkBehaviour
     }
 
     // ===== Server-API =====
-    public void Server_TakeDamage(float amount, ulong sourceClientId = ulong.MaxValue)
+    public void Server_TakeDamage(
+    float amount,
+    ulong sourceClientId = ulong.MaxValue,
+    Vector3 hitPoint = default,
+    Vector3 hitNormal = default,
+    bool hasHitInfo = false)
     {
         if (!IsServer || amount <= 0f || hp.Value <= 0f) return;
+
+        // ShieldEarth aktiv? => blockt komplett
+        var abilities = GetComponent<PlayerAbilities>();
+        if (abilities != null && abilities.Server_IsShieldEarthActive())
+        {
+            // optional: iFrames trotzdem setzen, damit z.B. DoT/Multihits nicht spammen
+            lastHitTime = Time.time;
+
+            if (!hasHitInfo)
+            {
+                hitPoint = transform.position + Vector3.up;
+                hitNormal = -transform.forward;
+            }
+            else if (hitNormal.sqrMagnitude < 0.0001f)
+            {
+                hitNormal = -transform.forward;
+            }
+
+            // Schild-Hit VFX an alle Clients
+            abilities.Server_RegisterShieldHit(hitPoint, hitNormal);
+            return;
+        }
 
         // iFrames aktiv?
         if (Time.time - lastHitTime < iFrames) return;
@@ -72,7 +99,6 @@ public class PlayerHealth : NetworkBehaviour
         hp.Value = Mathf.Max(0f, hp.Value - reduced);
         lastHitTime = Time.time;
 
-        // Feedback
         HitClientRpc(reduced, hp.Value, maxHP);
 
         if (hp.Value <= 0f)

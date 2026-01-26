@@ -64,11 +64,21 @@ public class EnemyBulletController : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        if (collision.gameObject.CompareTag("Player"))
+        // robust: trifft oft Child-Collider, daher InParent
+        var hp = collision.collider.GetComponentInParent<PlayerHealth>();
+        if (hp != null)
         {
-            var hp = collision.gameObject.GetComponent<PlayerHealth>();
-            if (hp != null)
-                hp.Server_TakeDamage(damage, OwnerClientId);
+            Vector3 p = transform.position;
+            Vector3 n = -transform.forward;
+
+            if (collision.contactCount > 0)
+            {
+                var c = collision.GetContact(0);
+                p = c.point;
+                n = c.normal;
+            }
+
+            hp.Server_TakeDamage(damage, OwnerClientId, p, n, true);
         }
 
         DespawnWithTrail();
@@ -88,6 +98,6 @@ public class EnemyBulletController : NetworkBehaviour
         }
 
         // Kugeln bleiben?!
-        //NetworkObject.Despawn(true);
+        NetworkObject.Despawn(true);
     }
 }
