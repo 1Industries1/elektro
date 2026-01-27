@@ -82,6 +82,9 @@ public class PlayerXP : NetworkBehaviour
 
         xp += amount;
 
+        // Meta-XP dauerhaft speichern (Owner-Client)
+        MetaXpGainOwnerClientRpc(amount, OwnerClientId);
+
         // HUD (Owner)
         XpUpdateOwnerClientRpc(level, xp, xpToNext, OwnerClientId);
 
@@ -100,6 +103,20 @@ public class PlayerXP : NetworkBehaviour
             XpUpdateOwnerClientRpc(level, xp, xpToNext, OwnerClientId);
         }
     }
+
+    [ClientRpc]
+    private void MetaXpGainOwnerClientRpc(int gained, ulong forOwner, ClientRpcParams _ = default)
+    {
+        if (!(IsOwner && NetworkManager.Singleton.LocalClientId == forOwner)) return;
+        if (MetaProgression.I == null) return;
+
+        // Speichert dauerhaft + levelt wie PlayerXP-Formel
+        bool leveled = MetaProgression.I.AddMetaXP(gained, baseCost, costMult);
+
+        if (leveled)
+            ToastUI.I?.Show($"META LEVEL UP! Lv {MetaProgression.I.Data.metaLevel}");
+    }
+
 
     // ======================== Upgrades: Angebot ========================
 

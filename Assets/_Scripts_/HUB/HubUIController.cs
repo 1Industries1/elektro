@@ -5,17 +5,34 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+public enum HubTab { Weapons, Abilities, Upgrades, Shop }
+
 public class HubUIController : MonoBehaviour
 {
     [Header("Refs")]
     public WeaponRegistry registry;
     public AbilityRegistry abilityRegistry;
 
-    [Header("Panels / Toggle")]
+    [Header("Panels")]
     public GameObject weaponsPanel;
     public GameObject abilitiesPanel;
-    public Toggle modeToggle; // Off=Weapons, On=Abilities
+    public GameObject upgradesPanel;
+    public GameObject shopPanel;
 
+    [Header("Tabs")]
+    public HubTab startTab = HubTab.Weapons;
+
+    [Header("Tab Buttons (ColorTint Highlight)")]
+    public Button weaponsTabButton;
+    public Button abilitiesTabButton;
+    public Button upgradesTabButton;
+    public Button shopTabButton;
+
+    [Tooltip("Multiplies the button's normal/selected colors when active (>= 1.0).")]
+    [Range(1f, 2f)] public float activeTintMultiplier = 1.25f;
+
+    [Header("Details Panel Root")]
+    public GameObject detailsPanelRoot; // Parent vom Details-UI (Icon/Name/Info/BuyButton etc.)
 
     [Header("Weapon List")]
     public Transform listContent;
@@ -25,7 +42,10 @@ public class HubUIController : MonoBehaviour
     public Transform abilityListContent;
     public AbilityListItemUI abilityItemPrefab;
 
-    [Header("Top")]
+    [Header("Upgrades Tab UI")]
+    public HubUpgradesTabUI upgradesTabUI;
+
+    [Header("Currency")]
     public TextMeshProUGUI currencyText;
 
     [Header("Details")]
@@ -45,18 +65,21 @@ public class HubUIController : MonoBehaviour
     public LoadoutSlotUI slotB1;
     public LoadoutSlotUI slotB2;
 
-
     [Header("Run")]
     public string gameSceneName = "GameScene";
 
-    private WeaponDefinition selected;
+    private WeaponDefinition selectedWeapon;
     private AbilityDefinition selectedAbility;
+    private HubTab currentTab;
 
     private readonly List<WeaponListItemUI> spawnedItems = new();
     private readonly List<AbilityListItemUI> spawnedAbilityItems = new();
 
-    private bool AbilitiesMode => modeToggle != null && modeToggle.isOn;
-
+    // Base colors per tab (so you can style each button differently if you want)
+    private ColorBlock baseWeaponsColors;
+    private ColorBlock baseAbilitiesColors;
+    private ColorBlock baseUpgradesColors;
+    private ColorBlock baseShopColors;
 
     private void Start()
     {
@@ -70,41 +93,97 @@ public class HubUIController : MonoBehaviour
         slotB1.Init(this);
         slotB2.Init(this);
 
-        if (modeToggle)
-        {
-            modeToggle.onValueChanged.RemoveAllListeners();
-            modeToggle.onValueChanged.AddListener(_ => ApplyModeUI());
-        }
+        CacheTabButtonBaseColors();
 
         BuildWeaponList();
         BuildAbilityList();
 
-        ApplyModeUI();
+        SetTab(startTab);
         RefreshAllUI();
     }
 
-    private void ApplyModeUI()
+    private void CacheTabButtonBaseColors()
     {
-        bool abil = AbilitiesMode;
+        if (weaponsTabButton)  baseWeaponsColors  = weaponsTabButton.colors;
+        if (abilitiesTabButton) baseAbilitiesColors = abilitiesTabButton.colors;
+        if (upgradesTabButton) baseUpgradesColors = upgradesTabButton.colors;
+        if (shopTabButton)     baseShopColors     = shopTabButton.colors;
+    }
 
-        if (weaponsPanel) weaponsPanel.SetActive(!abil);
-        if (abilitiesPanel) abilitiesPanel.SetActive(abil);
+    // ===== Tab Buttons (für Unity Button OnClick) =====
+    public void TabWeapons()  => SetTab(HubTab.Weapons);
+    public void TabAbilities() => SetTab(HubTab.Abilities);
+    public void TabUpgrades() => SetTab(HubTab.Upgrades);
+    public void TabShop()     => SetTab(HubTab.Shop);
 
-        // Optional: Selection reset beim Wechsel
-        if (abil)
-        {
-            selected = null;
-        }
-        else
-        {
-            selectedAbility = null;
-        }
+    public void SetTab(HubTab tab)
+    {
+        currentTab = tab;
 
+        if (weaponsPanel) weaponsPanel.SetActive(tab == HubTab.Weapons);
+        if (abilitiesPanel) abilitiesPanel.SetActive(tab == HubTab.Abilities);
+        if (upgradesPanel) upgradesPanel.SetActive(tab == HubTab.Upgrades);
+        if (shopPanel) shopPanel.SetActive(tab == HubTab.Shop);
+
+        // Details nur für Weapons/Abilities
+        bool showDetails = tab == HubTab.Weapons || tab == HubTab.Abilities;
+        if (detailsPanelRoot) detailsPanelRoot.SetActive(showDetails);
+
+        // Selections resetten beim Tabwechsel
+        if (tab != HubTab.Weapons) selectedWeapon = null;
+        if (tab != HubTab.Abilities) selectedAbility = null;
+
+        if (tab == HubTab.Upgrades)
+            upgradesTabUI?.Refresh();
+
+        UpdateTabButtonsVisual();
         RefreshDetails();
+    }
+
+    private void UpdateTabButtonsVisual()
+    {
+        if (weaponsTabButton)
+            weaponsTabButton.colors = (currentTab == HubTab.Weapons)
+                ? MakeActive(baseWeaponsColors)
+                : baseWeaponsColors;
+
+        if (abilitiesTabButton)
+            abilitiesTabButton.colors = (currentTab == HubTab.Abilities)
+                ? MakeActive(baseAbilitiesColors)
+                : baseAbilitiesColors;
+
+        if (upgradesTabButton)
+            upgradesTabButton.colors = (currentTab == HubTab.Upgrades)
+                ? MakeActive(baseUpgradesColors)
+                : baseUpgradesColors;
+
+        if (shopTabButton)
+            shopTabButton.colors = (currentTab == HubTab.Shop)
+                ? MakeActive(baseShopColors)
+                : baseShopColors;
+    }
+
+    private ColorBlock MakeActive(ColorBlock cb)
+    {
+        cb.normalColor   = MultiplyRGB(cb.normalColor, activeTintMultiplier);
+        cb.selectedColor = MultiplyRGB(cb.selectedColor, activeTintMultiplier);
+        return cb;
+    }
+
+    private static Color MultiplyRGB(Color c, float m)
+    {
+        return new Color(
+            Mathf.Clamp01(c.r * m),
+            Mathf.Clamp01(c.g * m),
+            Mathf.Clamp01(c.b * m),
+            c.a
+        );
     }
 
     private void BuildWeaponList()
     {
+        if (!listContent || !itemPrefab || registry == null) return;
+
         foreach (Transform child in listContent) Destroy(child.gameObject);
         spawnedItems.Clear();
 
@@ -143,7 +222,7 @@ public class HubUIController : MonoBehaviour
 
     public void SelectWeapon(WeaponDefinition def)
     {
-        selected = def;
+        selectedWeapon = def;
         selectedAbility = null;
         RefreshDetails();
     }
@@ -151,10 +230,9 @@ public class HubUIController : MonoBehaviour
     public void SelectAbility(AbilityDefinition def)
     {
         selectedAbility = def;
-        selected = null;
+        selectedWeapon = null;
         RefreshDetails();
     }
-
 
     private void RefreshAllUI()
     {
@@ -164,6 +242,9 @@ public class HubUIController : MonoBehaviour
 
         foreach (var it in spawnedItems) it.Refresh();
         foreach (var it in spawnedAbilityItems) it.Refresh();
+
+        if (currentTab == HubTab.Upgrades)
+            upgradesTabUI?.Refresh();
     }
 
     private void RefreshCurrency()
@@ -174,8 +255,10 @@ public class HubUIController : MonoBehaviour
 
     private void RefreshDetails()
     {
-        // nichts selektiert
-        if (!selected && !selectedAbility)
+        // Wenn Details-Panel ausgeblendet ist (Upgrades/Shop), nicht anfassen
+        if (detailsPanelRoot && !detailsPanelRoot.activeSelf) return;
+
+        if (!selectedWeapon && !selectedAbility)
         {
             if (detailsName) detailsName.text = "Select an item";
             if (detailsInfo) detailsInfo.text = "";
@@ -216,7 +299,6 @@ public class HubUIController : MonoBehaviour
                 buyButton.gameObject.SetActive(!unlocked);
                 buyButton.onClick.RemoveAllListeners();
                 buyButton.onClick.AddListener(BuySelectedAbility);
-
                 buyButton.interactable = money >= selectedAbility.unlockCost;
             }
 
@@ -235,25 +317,25 @@ public class HubUIController : MonoBehaviour
             return;
         }
 
-        // ===== WEAPON (dein bisheriger Code, leicht umgebaut) =====
-        bool wUnlocked = MetaProgression.I.IsUnlocked(selected.id);
+        // ===== WEAPON =====
+        bool wUnlocked = MetaProgression.I.IsUnlocked(selectedWeapon.id);
 
         if (detailsIcon)
         {
-            detailsIcon.sprite = selected.uiIcon;
-            detailsIcon.enabled = selected.uiIcon != null;
+            detailsIcon.sprite = selectedWeapon.uiIcon;
+            detailsIcon.enabled = selectedWeapon.uiIcon != null;
         }
 
-        if (detailsName) detailsName.text = selected.displayName;
+        if (detailsName) detailsName.text = selectedWeapon.displayName;
 
         if (detailsInfo)
         {
             detailsInfo.text =
-                $"Type: {selected.slotKind}\n" +
-                $"MaxLv: {1 + (selected.steps?.Length ?? 0)}\n" +
-                $"BaseDmg: {selected.baseDamage}\n" +
-                $"SPS: {selected.shotsPerSecond}\n" +
-                $"Pierce: {selected.basePierce}\n";
+                $"Type: {selectedWeapon.slotKind}\n" +
+                $"MaxLv: {1 + (selectedWeapon.steps?.Length ?? 0)}\n" +
+                $"BaseDmg: {selectedWeapon.baseDamage}\n" +
+                $"SPS: {selectedWeapon.shotsPerSecond}\n" +
+                $"Pierce: {selectedWeapon.basePierce}\n";
         }
 
         if (buyButton)
@@ -261,8 +343,7 @@ public class HubUIController : MonoBehaviour
             buyButton.gameObject.SetActive(!wUnlocked);
             buyButton.onClick.RemoveAllListeners();
             buyButton.onClick.AddListener(BuySelectedWeapon);
-
-            buyButton.interactable = money >= selected.unlockCost;
+            buyButton.interactable = money >= selectedWeapon.unlockCost;
         }
 
         if (buyButtonText)
@@ -270,7 +351,7 @@ public class HubUIController : MonoBehaviour
             if (wUnlocked) buyButtonText.text = "Unlocked";
             else
             {
-                int cost = selected.unlockCost;
+                int cost = selectedWeapon.unlockCost;
                 buyButtonText.text = (money >= cost)
                     ? $"Unlock ({cost})"
                     : $"Need {cost - money} more";
@@ -278,24 +359,23 @@ public class HubUIController : MonoBehaviour
         }
     }
 
-
     private void BuySelectedWeapon()
     {
-        if (!selected) return;
+        if (!selectedWeapon) return;
 
         var data = MetaProgression.I.Data;
-        if (MetaProgression.I.IsUnlocked(selected.id)) return;
+        if (MetaProgression.I.IsUnlocked(selectedWeapon.id)) return;
 
-        if (data.metaCurrency < selected.unlockCost)
+        if (data.metaCurrency < selectedWeapon.unlockCost)
         {
             ToastUI.I?.Show("Not enough meta currency");
             return;
         }
 
-        ToastUI.I?.Show($"Unlocked {selected.displayName}");
+        ToastUI.I?.Show($"Unlocked {selectedWeapon.displayName}");
 
-        data.metaCurrency -= selected.unlockCost;
-        MetaProgression.I.UnlockWeapon(selected.id);
+        data.metaCurrency -= selectedWeapon.unlockCost;
+        MetaProgression.I.UnlockWeapon(selectedWeapon.id);
         MetaProgression.I.Save();
 
         RefreshAllUI();
@@ -323,7 +403,6 @@ public class HubUIController : MonoBehaviour
         RefreshAllUI();
     }
 
-
     public void QuickEquipSelectedAbility()
     {
         if (!selectedAbility)
@@ -340,18 +419,10 @@ public class HubUIController : MonoBehaviour
 
         var d = MetaProgression.I.Data;
 
-        if (string.IsNullOrEmpty(d.ability1)) { // B1 frei
-            d.ability1 = selectedAbility.id;
-        }
-        else if (string.IsNullOrEmpty(d.ability2)) { // B2 frei
-            d.ability2 = selectedAbility.id;
-        }
-        else
-        {
-            d.ability2 = selectedAbility.id; // überschreiben (oder UI-choice)
-        }
+        if (string.IsNullOrEmpty(d.ability1)) d.ability1 = selectedAbility.id;
+        else if (string.IsNullOrEmpty(d.ability2)) d.ability2 = selectedAbility.id;
+        else d.ability2 = selectedAbility.id;
 
-        // Dupe entfernen
         if (d.ability1 == d.ability2) d.ability1 = null;
 
         MetaProgression.I.Save();
@@ -359,19 +430,16 @@ public class HubUIController : MonoBehaviour
         ToastUI.I?.Show($"Equipped {selectedAbility.displayName}");
     }
 
-
-
-
     // ===== Loadout =====
     public void TryEquipSelectedTo(LoadoutSlot slot)
     {
-        if (!selected)
+        if (!selectedWeapon)
         {
             ToastUI.I?.Show("Select a weapon first");
             return;
         }
 
-        if (!MetaProgression.I.IsUnlocked(selected.id))
+        if (!MetaProgression.I.IsUnlocked(selectedWeapon.id))
         {
             ToastUI.I?.Show("Weapon is locked");
             FlashSlot(slot);
@@ -380,13 +448,13 @@ public class HubUIController : MonoBehaviour
 
         bool wantsActive = (slot == LoadoutSlot.A1 || slot == LoadoutSlot.A2);
 
-        if (wantsActive && selected.slotKind != WeaponSlotKind.Active)
+        if (wantsActive && selectedWeapon.slotKind != WeaponSlotKind.Active)
         {
             ToastUI.I?.Show("That weapon is PASSIVE. Use P1/P2.");
             FlashSlot(slot);
             return;
         }
-        if (!wantsActive && selected.slotKind != WeaponSlotKind.Passive)
+        if (!wantsActive && selectedWeapon.slotKind != WeaponSlotKind.Passive)
         {
             ToastUI.I?.Show("That weapon is ACTIVE. Use A1/A2.");
             FlashSlot(slot);
@@ -395,25 +463,23 @@ public class HubUIController : MonoBehaviour
 
         var d = MetaProgression.I.Data;
 
-        // Auto-Move: aus anderen Slots entfernen
-        bool wasSomewhereElse = IsInAnyOtherSlot(selected.id, slot);
-        RemoveWeaponFromOtherSlots(selected.id, slot);
+        bool wasSomewhereElse = IsInAnyOtherSlot(selectedWeapon.id, slot);
+        RemoveWeaponFromOtherSlots(selectedWeapon.id, slot);
 
-        // Zielslot setzen
         switch (slot)
         {
-            case LoadoutSlot.A1: d.active1 = selected.id; break;
-            case LoadoutSlot.A2: d.active2 = selected.id; break;
-            case LoadoutSlot.P1: d.passive1 = selected.id; break;
-            case LoadoutSlot.P2: d.passive2 = selected.id; break;
+            case LoadoutSlot.A1: d.active1 = selectedWeapon.id; break;
+            case LoadoutSlot.A2: d.active2 = selectedWeapon.id; break;
+            case LoadoutSlot.P1: d.passive1 = selectedWeapon.id; break;
+            case LoadoutSlot.P2: d.passive2 = selectedWeapon.id; break;
         }
 
         MetaProgression.I.Save();
         RefreshLoadoutUI();
 
         ToastUI.I?.Show(wasSomewhereElse
-            ? $"Moved {selected.displayName} to {slot}"
-            : $"Equipped {selected.displayName} in {slot}");
+            ? $"Moved {selectedWeapon.displayName} to {slot}"
+            : $"Equipped {selectedWeapon.displayName} in {slot}");
     }
 
     public void TryEquipSelectedAbilityTo(LoadoutSlot slot)
@@ -440,7 +506,6 @@ public class HubUIController : MonoBehaviour
 
         var d = MetaProgression.I.Data;
 
-        // Duplikate verhindern (Auto-Move)
         if (slot != LoadoutSlot.B1 && d.ability1 == selectedAbility.id) d.ability1 = null;
         if (slot != LoadoutSlot.B2 && d.ability2 == selectedAbility.id) d.ability2 = null;
 
@@ -452,7 +517,6 @@ public class HubUIController : MonoBehaviour
 
         ToastUI.I?.Show($"Equipped {selectedAbility.displayName} in {slot}");
     }
-
 
     private bool IsInAnyOtherSlot(string weaponId, LoadoutSlot targetSlot)
     {
@@ -479,30 +543,25 @@ public class HubUIController : MonoBehaviour
         }
     }
 
-
-
     public void QuickEquipSelected()
     {
-        if (!selected)
+        if (!selectedWeapon)
         {
             ToastUI.I?.Show("Select a weapon first");
             return;
         }
 
-        if (!MetaProgression.I.IsUnlocked(selected.id))
+        if (!MetaProgression.I.IsUnlocked(selectedWeapon.id))
         {
             ToastUI.I?.Show("Weapon is locked");
             return;
         }
 
-        // Bestimme passende Slots
-        if (selected.slotKind == WeaponSlotKind.Active)
+        if (selectedWeapon.slotKind == WeaponSlotKind.Active)
         {
             var d = MetaProgression.I.Data;
             if (string.IsNullOrEmpty(d.active1)) { TryEquipSelectedTo(LoadoutSlot.A1); return; }
             if (string.IsNullOrEmpty(d.active2)) { TryEquipSelectedTo(LoadoutSlot.A2); return; }
-
-            // beide belegt -> überschreibe A2 (oder zeig Auswahl)
             TryEquipSelectedTo(LoadoutSlot.A2);
         }
         else
@@ -510,11 +569,9 @@ public class HubUIController : MonoBehaviour
             var d = MetaProgression.I.Data;
             if (string.IsNullOrEmpty(d.passive1)) { TryEquipSelectedTo(LoadoutSlot.P1); return; }
             if (string.IsNullOrEmpty(d.passive2)) { TryEquipSelectedTo(LoadoutSlot.P2); return; }
-
             TryEquipSelectedTo(LoadoutSlot.P2);
         }
     }
-
 
     private void RemoveWeaponFromOtherSlots(string weaponId, LoadoutSlot targetSlot)
     {
@@ -526,7 +583,6 @@ public class HubUIController : MonoBehaviour
         if (targetSlot != LoadoutSlot.P1 && d.passive1 == weaponId) d.passive1 = null;
         if (targetSlot != LoadoutSlot.P2 && d.passive2 == weaponId) d.passive2 = null;
     }
-
 
     private void RefreshLoadoutUI()
     {
@@ -543,6 +599,8 @@ public class HubUIController : MonoBehaviour
 
     private void ApplySlot(LoadoutSlotUI slotUI, string weaponId)
     {
+        if (!slotUI) return;
+
         if (string.IsNullOrEmpty(weaponId))
         {
             slotUI.SetEmpty();
@@ -557,7 +615,7 @@ public class HubUIController : MonoBehaviour
 
     private void ApplyAbilitySlot(LoadoutSlotUI slotUI, string abilityId)
     {
-        if (slotUI == null) return;
+        if (!slotUI) return;
 
         if (string.IsNullOrEmpty(abilityId))
         {
@@ -590,13 +648,9 @@ public class HubUIController : MonoBehaviour
         ToastUI.I?.Show($"{slot} cleared");
     }
 
-
-
     // ===== Buttons =====
-
     public void StartRun()
     {
-        // Minimaler Check: mindestens 1 Active
         var d = MetaProgression.I.Data;
         if (string.IsNullOrEmpty(d.active1) && string.IsNullOrEmpty(d.active2))
         {

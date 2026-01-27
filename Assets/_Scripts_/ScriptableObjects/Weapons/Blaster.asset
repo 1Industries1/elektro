@@ -15,15 +15,17 @@ MonoBehaviour:
   id: blaster
   displayName: Blaster
   tags: 147
-  uiIcon: {fileID: 1274948343, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
+  slotKind: 0
+  unlockCost: 50
+  uiIcon: {fileID: 21300000, guid: 5bfd472c037342741850dbb209214aee, type: 3}
   bulletPrefab: {fileID: 1476586629750628589, guid: d940d4f0ac4a3ca46a9a99935586aef0, type: 3}
   projectileSpeed: 40
   rangeMeters: 100
   projectileSize: 1
   knockback: 10
   baseDamage: 75
-  shotsPerSecond: 0.25
-  basePierce: 4
+  shotsPerSecond: 0.4
+  basePierce: 7
   baseSalvoCount: 1
   baseCritChance: 0
   baseCritMult: 1.5

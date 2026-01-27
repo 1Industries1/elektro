@@ -913,27 +913,36 @@ MonoBehaviour:
   - {fileID: 7028597692000742414}
   - {fileID: 3248462298527784378}
   - {fileID: 3685636910622979544}
-  _AnimSpeed: 0.25
+  _AnimSpeed: 1
   _AnimCurve:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 2.9691253
-      outSlope: 2.9691253
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0.03812825
-    - serializedVersion: 3
-      time: 1
-      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.49095154
+      value: 0.8420451
+      inSlope: 0.9983747
+      outSlope: 0.9983747
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0.57216823
+      outSlope: 0.57216823
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.06130966
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -941,7 +950,7 @@ MonoBehaviour:
   _SpawnExplosionEffectPrefab: {fileID: 2317262948286703279, guid: e7c734ec0e6ab11409f4e742a6c11077, type: 3}
   _RotationObjectOuter: {fileID: 6721043890612989685}
   _RotationObjectInner: {fileID: 6721043891732399672}
-  _RotationSpeedOuter: 30
+  _RotationSpeedOuter: 50
   _RotationSpeedInner: -20
   _ShardRadiusSpawn: {x: 0.8, y: 1.4}
   _HitEffectPrefab: {fileID: 4198044074776111258, guid: 5c5fb16356e8b8c40bfe2d1637b4f15e, type: 3}

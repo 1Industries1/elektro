@@ -45,10 +45,10 @@ GameObject:
   - component: {fileID: 5782397171364243495}
   - component: {fileID: 2349609915594055925}
   - component: {fileID: -2474535040198073020}
+  - component: {fileID: 550950079701456648}
   - component: {fileID: 1411359686327814201}
   - component: {fileID: 1585517448443601885}
   - component: {fileID: 5580531534147634881}
-  - component: {fileID: 550950079701456648}
   - component: {fileID: 1522036757684437610}
   - component: {fileID: 2913323573280078055}
   - component: {fileID: 2480006557204120096}
@@ -196,6 +196,19 @@ MonoBehaviour:
   InLocalSpace: 0
   Interpolate: 1
   SlerpPosition: 1
+--- !u!114 &550950079701456648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7018259160673714555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c94edd04bb841284c834450ae08d4d7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  velocityDampingPerSec: 0.15
 --- !u!114 &1411359686327814201
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -236,15 +249,15 @@ MonoBehaviour:
   obstacleAvoidStrength: 8
   bulletPrefab: {fileID: 4211810131274587892, guid: 083d75882754f8741ad9210a4fb08cfb, type: 3}
   muzzleVfxPrefab: {fileID: 8700258344733543052, guid: a1f8d8aa14428af42809cddeac1f6381, type: 3}
-  muzzleVfxLifetime: 0.7
+  muzzleVfxLifetime: 0.2
   bulletSpawn: {fileID: 5993175376673042654}
   shootRange: 80
-  burstCount: 5
-  burstInterval: 0.5
+  burstCount: 1
+  burstInterval: 1
   inaccuracyAngle: 0
   audioSource: {fileID: 9223212118158675686}
   shootSfx: {fileID: 8300000, guid: 70968aadf34c288428992fc461eb7578, type: 3}
-  baseHealth: 200
+  baseHealth: 125
   dmgNums: {fileID: 1585517448443601885}
 --- !u!114 &1585517448443601885
 MonoBehaviour:
@@ -273,19 +286,6 @@ MonoBehaviour:
   _rb: {fileID: 209952355502235215}
   _audioSource: {fileID: 5782244146976485846}
   _deathSound: {fileID: 8300000, guid: 9ea0e51bdc252384e8cdd476387c9ca6, type: 3}
---- !u!114 &550950079701456648
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7018259160673714555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c94edd04bb841284c834450ae08d4d7f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  velocityDampingPerSec: 0.15
 --- !u!114 &1522036757684437610
 MonoBehaviour:
   m_ObjectHideFlags: 0

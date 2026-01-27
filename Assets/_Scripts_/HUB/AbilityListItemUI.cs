@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public class AbilityListItemUI : MonoBehaviour
 {
+    [SerializeField] private Image background;
     [SerializeField] private Image icon;
     [SerializeField] private TextMeshProUGUI nameText;
     [SerializeField] private TextMeshProUGUI stateText;
@@ -47,11 +48,17 @@ public class AbilityListItemUI : MonoBehaviour
         if (stateText)
             stateText.text = unlocked ? "UNLOCKED" : $"LOCKED ({def.unlockCost})";
 
-        if (icon)
-        {
-            var c = icon.color;
-            c.a = unlocked ? 1f : 0.35f;
-            icon.color = c;
-        }
+        // Icon dimmen
+        if (icon) SetAlpha(icon, unlocked ? 1f : 0.25f);
+
+        // Hintergrund dimmen (meistens weniger stark als Icon)
+        if (background) SetAlpha(background, unlocked ? 0f : 1f);
+    }
+
+    private static void SetAlpha(Image img, float a)
+    {
+        var c = img.color;
+        c.a = a;
+        img.color = c;
     }
 }

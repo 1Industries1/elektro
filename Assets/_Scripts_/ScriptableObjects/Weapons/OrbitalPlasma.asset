@@ -17,7 +17,7 @@ MonoBehaviour:
   tags: 256
   slotKind: 1
   unlockCost: 150
-  uiIcon: {fileID: -1213798843, guid: 30e19b5133fe3a446b9ce039b9fea3af, type: 3}
+  uiIcon: {fileID: 21300000, guid: 480b6fd098764e244bde8ee6274e6a45, type: 3}
   bulletPrefab: {fileID: 0}
   projectileSpeed: 15
   rangeMeters: 12

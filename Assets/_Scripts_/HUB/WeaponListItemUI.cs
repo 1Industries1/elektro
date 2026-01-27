@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public class WeaponListItemUI : MonoBehaviour
 {
+    [SerializeField] private Image background;
     [SerializeField] private Image icon;
     [SerializeField] private TextMeshProUGUI nameText;
     [SerializeField] private TextMeshProUGUI stateText;
@@ -46,16 +47,16 @@ public class WeaponListItemUI : MonoBehaviour
         bool unlocked = MetaProgression.I.IsUnlocked(def.id);
 
         if (stateText)
-        {
             stateText.text = unlocked ? "UNLOCKED" : $"LOCKED ({def.unlockCost})";
-        }
 
-        // Optional: Icon abdunkeln wenn locked
-        if (icon)
-        {
-            var c = icon.color;
-            c.a = unlocked ? 1f : 0.35f;
-            icon.color = c;
-        }
+        if (icon) SetAlpha(icon, unlocked ? 1f : 0.25f);
+        if (background) SetAlpha(background, unlocked ? 0f : 1f);
+    }
+
+    private static void SetAlpha(Image img, float a)
+    {
+        var c = img.color;
+        c.a = a;
+        img.color = c;
     }
 }

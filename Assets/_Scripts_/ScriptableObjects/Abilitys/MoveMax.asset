@@ -14,8 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AbilityDefinition
   id: MoveCap
   displayName: MoveMax
-  uiIcon: {fileID: 21300000, guid: 7efb0a0a5c0fcad42827e78b91cd2446, type: 3}
+  uiIcon: {fileID: 21300000, guid: 8eb8cc2589d2dd64fb0b9ab9fbd6d8c6, type: 3}
   description: Increase Movement Speed by 50%
   unlockCost: 25
   cooldownSeconds: 60
+  effectKind: 0
   overclockEffect: {fileID: 11400000, guid: c4481e2335c61854dbb78d286921af4b, type: 2}
+  shieldVfxPrefab: {fileID: 0}
+  shieldDuration: 5

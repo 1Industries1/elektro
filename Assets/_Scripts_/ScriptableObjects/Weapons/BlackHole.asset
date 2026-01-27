@@ -17,14 +17,14 @@ MonoBehaviour:
   tags: 20
   slotKind: 1
   unlockCost: 50
-  uiIcon: {fileID: -1434303262, guid: d61422efd4306bd43af377db16eb8f7d, type: 3}
+  uiIcon: {fileID: 21300000, guid: b0ef6f33eb7955148b46fd2c5879f8af, type: 3}
   bulletPrefab: {fileID: 2376609980832440945, guid: 45ea29799d0cd824495184b824a2996a, type: 3}
   projectileSpeed: 0
-  rangeMeters: 12
+  rangeMeters: 10
   projectileSize: 1
   knockback: 0
   baseDamage: 100
-  shotsPerSecond: 0.2
+  shotsPerSecond: 0.4
   basePierce: 0
   baseSalvoCount: 1
   baseCritChance: 0

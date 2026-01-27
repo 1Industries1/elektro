@@ -130,15 +130,17 @@ public class BlasterBulletController : NetworkBehaviour
             DoChainLightning(hitPoint, chainCount, chainRange, useDmg * chainDamageMultiplier);
         }
 
-        currentPierces++;
+        // KUGEL DESPAWNED:
 
-        if (currentPierces > maxPierces)
-        {
-            // Finale Explosion (nur wenn Augment aktiv)
-            FinalExplosion();
-            NetworkObject.Despawn();
-            return;
-        }
+        //currentPierces++;
+//
+        //if (currentPierces > maxPierces)
+        //{
+        //    // Finale Explosion (nur wenn Augment aktiv)
+        //    FinalExplosion();
+        //    NetworkObject.Despawn();
+        //    return;
+        //}
 
         // Durchdringen aktiv lassen:
         Physics.IgnoreCollision(myCol, collision.collider, true);

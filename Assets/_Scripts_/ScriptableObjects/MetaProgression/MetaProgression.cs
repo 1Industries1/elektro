@@ -20,6 +20,8 @@ public class MetaProgression : MonoBehaviour
     public class MetaData
     {
         public int metaCurrency;
+        public int metaXP;
+        public int metaLevel = 1;
 
         public List<string> unlockedWeaponIds = new();
         public List<string> unlockedAbilityIds = new();
@@ -52,6 +54,8 @@ public class MetaProgression : MonoBehaviour
         // Safety: entferne IDs die es nicht mehr gibt
         Data.unlockedWeaponIds.RemoveAll(id => registry && !registry.Has(id));
         Data.unlockedAbilityIds.RemoveAll(id => abilityRegistry && !abilityRegistry.Has(id));
+        Data.metaLevel = Mathf.Max(1, Data.metaLevel);
+        Data.metaXP = Mathf.Max(0, Data.metaXP);
     }
 
     public void Save()
@@ -87,4 +91,40 @@ public class MetaProgression : MonoBehaviour
         Data.ability1 = b1; Data.ability2 = b2;
         Save();
     }
+
+    public int GetMetaXpToNext(int baseCost, float costMult)
+    {
+        // gleiche Formel wie PlayerXP
+        double pow = Math.Pow(costMult, Math.Max(0, Data.metaLevel - 1));
+        return Mathf.Max(1, Mathf.RoundToInt((float)(baseCost * pow)));
+    }
+
+    /// <summary>
+    /// Fügt Meta-XP hinzu, löst ggf. mehrere Meta-LevelUps aus und speichert.
+    /// </summary>
+    public bool AddMetaXP(int amount, int baseCost, float costMult)
+    {
+        if (amount <= 0) return false;
+
+        Data.metaLevel = Mathf.Max(1, Data.metaLevel);
+        Data.metaXP = Mathf.Max(0, Data.metaXP);
+
+        Data.metaXP += amount;
+
+        bool leveled = false;
+        int toNext = GetMetaXpToNext(baseCost, costMult);
+
+        while (Data.metaXP >= toNext)
+        {
+            Data.metaXP -= toNext;
+            Data.metaLevel++;
+            leveled = true;
+
+            toNext = GetMetaXpToNext(baseCost, costMult);
+        }
+
+        Save();
+        return leveled;
+    }
+
 }
