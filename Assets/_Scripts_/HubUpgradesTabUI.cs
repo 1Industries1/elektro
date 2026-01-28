@@ -21,8 +21,8 @@ public class HubUpgradesTabUI : MonoBehaviour
 
         int toNext = MetaProgression.I.GetMetaXpToNext(formula.baseCost, formula.costMult);
 
-        if (levelText) levelText.text = $"META LEVEL: {lvl}";
-        if (xpText) xpText.text = $"XP: {xp} / {toNext}";
+        if (levelText) levelText.text = $"{lvl}";
+        if (xpText) xpText.text = $"XP {xp} / {toNext}";
 
         if (xpSlider)
         {
@@ -33,6 +33,7 @@ public class HubUpgradesTabUI : MonoBehaviour
     }
 }
 
+// WERTE AUCH WOANDERST ÄNDERN?
 [System.Serializable]
 public class PlayerXPFormula
 {
